@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Whisper Subtitles</title>
+</head>
+<body>
+    <div id="WhisperSubtitlesConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-select,emby-checkbox">
+        <div data-role="content">
+            <div class="content-primary">
+                <form id="WhisperSubtitlesConfigForm">
+                    <h2>Whisper Subtitles Configuration</h2>
+                    <p>Automatically generate subtitles for your media using OpenAI's Whisper AI.</p>
+                    
+                    <div class="selectContainer">
+                        <label for="WhisperModel">Whisper Model:</label>
+                        <select id="WhisperModel" name="WhisperModel" class="emby-select-withcolor emby-select">
+                            <option value="tiny">Tiny (~10x speed, ~1GB VRAM)</option>
+                            <option value="base">Base (~7x speed, ~1GB VRAM)</option>
+                            <option value="small">Small (~4x speed, ~2GB VRAM) - Recommended</option>
+                            <option value="medium">Medium (~2x speed, ~5GB VRAM)</option>
+                            <option value="turbo">Turbo (~8x speed, ~6GB VRAM)</option>
+                            <option value="large">Large (Best quality, ~10GB VRAM)</option>
+                        </select>
+                        <div class="fieldDescription">Larger models are more accurate but slower</div>
+                    </div>
+
+                    <div class="inputContainer">
+                        <label for="TargetLanguage">Target Language:</label>
+                        <input type="text" id="TargetLanguage" name="TargetLanguage" class="emby-input" value="en" />
+                        <div class="fieldDescription">Language code (e.g., en, es, fr, de, ja)</div>
+                    </div>
+
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label>
+                            <input type="checkbox" id="TranslateToEnglish" name="TranslateToEnglish" class="emby-checkbox" />
+                            <span>Translate to English</span>
+                        </label>
+                        <div class="fieldDescription">Translate audio to English regardless of source language</div>
+                    </div>
+
+                    <div class="inputContainer">
+                        <label for="AIIdentifier">AI Identifier:</label>
+                        <input type="text" id="AIIdentifier" name="AIIdentifier" class="emby-input" value="whisper" />
+                        <div class="fieldDescription">Added to subtitle filename (e.g., movie.en.whisper.srt). Leave empty to disable.</div>
+                    </div>
+
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label>
+                            <input type="checkbox" id="WordTimestamps" name="WordTimestamps" class="emby-checkbox" />
+                            <span>Enable Word-Level Timestamps</span>
+                        </label>
+                        <div class="fieldDescription">More precise timing but slower processing</div>
+                    </div>
+
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label>
+                            <input type="checkbox" id="ProcessOnLibraryScan" name="ProcessOnLibraryScan" class="emby-checkbox" />
+                            <span>Process on Library Scan</span>
+                        </label>
+                        <div class="fieldDescription">Automatically generate subtitles when library is scanned</div>
+                    </div>
+
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label>
+                            <input type="checkbox" id="SkipExisting" name="SkipExisting" class="emby-checkbox" />
+                            <span>Skip Existing Subtitles</span>
+                        </label>
+                        <div class="fieldDescription">Don't process files that already have subtitles</div>
+                    </div>
+
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label>
+                            <input type="checkbox" id="RegenerateAI" name="RegenerateAI" class="emby-checkbox" />
+                            <span>Regenerate AI Subtitles</span>
+                        </label>
+                        <div class="fieldDescription">Re-process files with AI-generated subtitles</div>
+                    </div>
+
+                    <div>
+                        <button is="emby-button" type="submit" class="raised button-submit block">
+                            <span>Save</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script type="text/javascript">
+        var WhisperSubtitlesConfig = {
+            pluginUniqueId: 'a8b7c6d5-e4f3-4a5b-9c8d-7e6f5a4b3c2d'
+        };
+
+        document.getElementById('WhisperSubtitlesConfigPage').addEventListener('pageshow', function () {
+            Dashboard.showLoadingMsg();
+            ApiClient.getPluginConfiguration(WhisperSubtitlesConfig.pluginUniqueId).then(function (config) {
+                document.getElementById('WhisperModel').value = config.WhisperModel || 'small';
+                document.getElementById('TargetLanguage').value = config.TargetLanguage || 'en';
+                document.getElementById('TranslateToEnglish').checked = config.TranslateToEnglish !== false;
+                document.getElementById('AIIdentifier').value = config.AIIdentifier || 'whisper';
+                document.getElementById('WordTimestamps').checked = config.WordTimestamps || false;
+                document.getElementById('ProcessOnLibraryScan').checked = config.ProcessOnLibraryScan || false;
+                document.getElementById('SkipExisting').checked = config.SkipExisting !== false;
+                document.getElementById('RegenerateAI').checked = config.RegenerateAI || false;
+                Dashboard.hideLoadingMsg();
+            });
+        });
+
+        document.getElementById('WhisperSubtitlesConfigForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+            Dashboard.showLoadingMsg();
+
+            ApiClient.getPluginConfiguration(WhisperSubtitlesConfig.pluginUniqueId).then(function (config) {
+                config.WhisperModel = document.getElementById('WhisperModel').value;
+                config.TargetLanguage = document.getElementById('TargetLanguage').value;
+                config.TranslateToEnglish = document.getElementById('TranslateToEnglish').checked;
+                config.AIIdentifier = document.getElementById('AIIdentifier').value;
+                config.WordTimestamps = document.getElementById('WordTimestamps').checked;
+                config.ProcessOnLibraryScan = document.getElementById('ProcessOnLibraryScan').checked;
+                config.SkipExisting = document.getElementById('SkipExisting').checked;
+                config.RegenerateAI = document.getElementById('RegenerateAI').checked;
+
+                ApiClient.updatePluginConfiguration(WhisperSubtitlesConfig.pluginUniqueId, config).then(function (result) {
+                    Dashboard.processPluginConfigurationUpdateResult(result);
+                });
+            });
+
+            return false;
+        });
+    </script>
+</body>
+</html>

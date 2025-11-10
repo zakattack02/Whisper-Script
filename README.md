@@ -1,176 +1,365 @@
-# Whisper Subtitle Generator for Jellyfin
+# Jellyfin Whisper Subtitles Plugin# Whisper Subtitle Generator
 
-Automatically generate subtitles for your Jellyfin/Plex media library using OpenAI's Whisper AI. Perfect for anime, foreign films, and any video content that needs subtitles.
 
-## Features
 
-- **Translation** - Translate any language to English
-- **Transcription** - Generate subtitles in the original language
-- **GPU Acceleration** - Automatic CUDA support for fast processing
+> **Note:** For the standalone Python CLI version, see the [`main` branch](https://github.com/zakattack02/Whisper-Script/tree/main)> **📌 Repository Structure**
+
+> - **`main` branch** (you are here): Python CLI tool for standalone use
+
+Automatically generate subtitles for your Jellyfin media library using OpenAI's Whisper AI. This is a native C# plugin that integrates directly with Jellyfin.> - **`feature/jellyfin-plugin` branch**: Jellyfin plugin with web UI (in development)
+
+> 
+
+## 🚧 Status: In Development> Switch branches: `git checkout feature/jellyfin-plugin`
+
+
+
+This plugin is currently under active development. The foundation is complete and the project compiles, but subtitle generation functionality is still being implemented.---
+
+
+
+### ✅ CompletedAutomatically generate subtitles for your Jellyfin/Plex media library using OpenAI's Whisper AI. Perfect for anime, foreign films, and any video content that needs subtitles.
+
+- Project structure with .NET 8.0
+
+- Jellyfin plugin integration## Features
+
+- Whisper.NET library integration
+
+- Configuration system with all settings- **Translation** - Translate any language to English
+
+- Professional web UI for configuration- **Transcription** - Generate subtitles in the original language
+
+- Successfully compiles- **GPU Acceleration** - Automatic CUDA support for fast processing
+
 - **Batch Processing** - Process entire folders or specific files
-- **Smart Detection** - Skip videos that already have subtitles
-- **AI Identifier** - Mark AI-generated subtitles (e.g., `video.en.whisper.srt`)
-- **Flexible Models** - Choose from 5 model sizes (tiny to large)
-- **Multiple Formats** - SRT, VTT, TXT, JSON output
-- **Regeneration** - Re-process files with better models
+
+### 🔨 In Progress- **Smart Detection** - Skip videos that already have subtitles
+
+- WhisperService implementation (core subtitle generation)- **AI Identifier** - Mark AI-generated subtitles (e.g., `video.en.whisper.srt`)
+
+- Scheduled task integration- **Flexible Models** - Choose from 5 model sizes (tiny to large)
+
+- Library post-scan support- **Multiple Formats** - SRT, VTT, TXT, JSON output
+
+- Subtitle detection logic- **Regeneration** - Re-process files with better models
+
 - **Long Filename Support** - Handles filesystem limits gracefully
+
+## Features (When Complete)
 
 ## Requirements
 
-- Python 3.8+
-- FFmpeg (for audio extraction)
-- CUDA-capable GPU (optional, but highly recommended for speed)
+- **Native Jellyfin Integration** - Works directly within Jellyfin's plugin system
 
-## Quick Start
+- **Scheduled Tasks** - Generate subtitles on schedule or manually- Python 3.8+
 
-### 1. Install Dependencies
+- **Auto-Processing** - Optional automatic generation after library scans- FFmpeg (for audio extraction)
 
-```bash
+- **GPU Acceleration** - Uses your GPU via Whisper.NET for fast processing- CUDA-capable GPU (optional, but highly recommended for speed)
+
+- **Multiple Models** - Choose from tiny, base, small, medium, turbo, or large
+
+- **Translation Support** - Translate any language to English or transcribe in original## Quick Start
+
+- **AI Identifier** - Mark AI-generated subtitles (e.g., `video.en.whisper.srt`)
+
+- **Word Timestamps** - Optional word-level timing for precise subtitles### 1. Install Dependencies
+
+- **Smart Detection** - Skip files that already have subtitles
+
+- **Library Selection** - Choose which libraries to process```bash
+
 # Create virtual environment
-python -m venv .venv
+
+## Requirementspython -m venv .venv
+
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 
-# Install requirements
-pip install -U openai-whisper torch tqdm
+- Jellyfin Server 10.8.x or higher
+
+- .NET 8.0 Runtime (included with Jellyfin)# Install requirements
+
+- Optional: CUDA-capable GPU for faster processingpip install -U openai-whisper torch tqdm
+
 ```
+
+## Building from Source
 
 ### 2. Configure Your Folders
 
+### Prerequisites
+
 Edit `batch_generate.py` and add your media folders:
 
-```python
-DEFAULT_MEDIA_FOLDERS = [
-    "/mnt/jellyfin/anime/",
+```bash
+
+# Install .NET SDK 8.0```python
+
+# Arch LinuxDEFAULT_MEDIA_FOLDERS = [
+
+sudo pacman -S dotnet-sdk-8.0    "/mnt/jellyfin/anime/",
+
     "/mnt/jellyfin/movies/",
-    "/path/to/tv-shows/",
-]
+
+# Ubuntu/Debian    "/path/to/tv-shows/",
+
+sudo apt install dotnet-sdk-8.0]
+
 ```
 
-### 3. Run the Script
+# Or download from https://dotnet.microsoft.com/download
 
-```bash
+```### 3. Run the Script
+
+
+
+### Build```bash
+
 # Activate virtual environment
-source .venv/bin/activate
 
-# Process configured folders
-python batch_generate.py
+```bashsource .venv/bin/activate
 
-# Or process a specific folder
+cd Jellyfin.Plugin.WhisperSubtitles/Jellyfin.Plugin.WhisperSubtitles
+
+dotnet build -c Release# Process configured folders
+
+```python batch_generate.py
+
+
+
+The compiled DLL will be in `bin/Release/net8.0/Jellyfin.Plugin.WhisperSubtitles.dll`# Or process a specific folder
+
 python batch_generate.py /path/to/media
-```
 
-## Usage
+## Installation (When Ready)```
 
-### Basic Commands
 
-```bash
-# Process configured folders with defaults
+
+1. Build the plugin (see above)## Usage
+
+2. Copy the DLL to your Jellyfin plugins folder:
+
+   - Linux: `~/.local/share/jellyfin/plugins/WhisperSubtitles/`### Basic Commands
+
+   - Windows: `%AppData%\Jellyfin\Server\plugins\WhisperSubtitles\`
+
+3. Restart Jellyfin```bash
+
+4. Configure via Dashboard → Plugins → Whisper Subtitles# Process configured folders with defaults
+
 python batch_generate.py
+
+## Configuration
 
 # Process specific folder
-python batch_generate.py /mnt/jellyfin/anime
 
-# Process multiple folders
-python batch_generate.py /media/anime /media/movies
+All settings are available through the Jellyfin web interface:python batch_generate.py /mnt/jellyfin/anime
 
-# Dry run (preview without generating)
-python batch_generate.py /media --dry-run
 
-# Show all options
-python batch_generate.py --help
+
+### Model Settings# Process multiple folders
+
+- **Whisper Model**: Choose model size (tiny to large, plus turbo)python batch_generate.py /media/anime /media/movies
+
+  - `tiny` - ~10x speed, ~1GB VRAM (fastest)
+
+  - `base` - ~7x speed, ~1GB VRAM# Dry run (preview without generating)
+
+  - `small` - ~4x speed, ~2GB VRAM (recommended)python batch_generate.py /media --dry-run
+
+  - `medium` - ~2x speed, ~5GB VRAM
+
+  - `turbo` - ~8x speed, ~6GB VRAM (great balance)# Show all options
+
+  - `large` - 1x speed, ~10GB VRAM (best quality)python batch_generate.py --help
+
 ```
 
-## Common Use Cases
+### Language Settings
 
-#### 1. Translate Japanese Anime to English
+- **Target Language**: Language code (en, es, fr, de, ja, ko, zh, etc.)## Common Use Cases
 
-```bash
-python batch_generate.py /mnt/jellyfin/anime \
-  --model small \
-  --translate \
-  --identifier whisper
+- **Translate to English**: Convert any language to English
+
+- **AI Identifier**: String added to filenames (default: "whisper")#### 1. Translate Japanese Anime to English
+
+
+
+### Processing Options```bash
+
+- **Word Timestamps**: Enable word-level timing (slower but more precise)python batch_generate.py /mnt/jellyfin/anime \
+
+- **Process on Library Scan**: Auto-generate for new media  --model small \
+
+- **Skip Existing**: Don't process files with subtitles  --translate \
+
+- **Regenerate AI**: Re-process AI-generated subtitles  --identifier whisper
+
 ```
+
+## Project Structure
 
 **Result:** `anime_episode.en.whisper.srt`
 
-#### 2. Transcribe English Content
-
-```bash
-python batch_generate.py /mnt/jellyfin/movies \
-  --model base \
-  --no-translate \
-  --language en
 ```
 
-**Result:** `movie.en.whisper.srt`
+Jellyfin.Plugin.WhisperSubtitles/#### 2. Transcribe English Content
 
-#### 3. Generate Spanish Subtitles
+├── Configuration/
 
-```bash
-python batch_generate.py /media/spanish \
-  --no-translate \
-  --language es
+│   ├── PluginConfiguration.cs      # Configuration class```bash
+
+│   └── configPage.html             # Web UIpython batch_generate.py /mnt/jellyfin/movies \
+
+├── Services/                        # (To be implemented)  --model base \
+
+│   ├── IWhisperService.cs  --no-translate \
+
+│   ├── WhisperService.cs  --language en
+
+│   └── SubtitleDetectionService.cs```
+
+├── Tasks/                           # (To be implemented)
+
+│   ├── WhisperSubtitleTask.cs**Result:** `movie.en.whisper.srt`
+
+│   └── WhisperPostScanTask.cs
+
+└── Plugin.cs                        # Main plugin entry point#### 3. Generate Spanish Subtitles
+
 ```
 
-**Result:** `video.es.whisper.srt`
-
-#### 4. Regenerate with Better Model
-
 ```bash
+
+## Developmentpython batch_generate.py /media/spanish \
+
+  --no-translate \
+
+### Architecture  --language es
+
+```
+
+This plugin uses:
+
+- **Whisper.NET** - C# bindings for OpenAI Whisper**Result:** `video.es.whisper.srt`
+
+- **Jellyfin.Model** - Jellyfin's core models and interfaces
+
+- **Jellyfin.Controller** - Jellyfin's controller abstractions#### 4. Regenerate with Better Model
+
+
+
+### Next Steps```bash
+
 # First run created subtitles with 'base' model
-# Upgrade to 'small' model:
-python batch_generate.py /media \
-  --model small \
-  --regenerate-ai
-```
+
+1. Implement `WhisperService` - Core logic to process videos with Whisper.NET# Upgrade to 'small' model:
+
+2. Implement `WhisperSubtitleTask` - Scheduled task for manual generationpython batch_generate.py /media \
+
+3. Implement `SubtitleDetectionService` - Check for existing subtitles  --model small \
+
+4. Implement `WhisperPostScanTask` - Auto-process after library scans  --regenerate-ai
+
+5. Add comprehensive error handling and logging```
+
+6. Testing with real Jellyfin instance
 
 #### 5. No AI Identifier (Clean Names)
 
+### Contributing
+
 ```bash
-python batch_generate.py /media \
-  --identifier ""
-```
 
-**Result:** `movie.en.srt`
+Contributions are welcome! Areas that need work:python batch_generate.py /media \
 
-## Configuration Options
+- Core subtitle generation implementation  --identifier ""
 
-### Model Selection (`--model`, `-m`)
+- Error handling and logging```
 
-Choose the Whisper model based on your needs:
+- Testing and bug fixes
+
+- Documentation improvements**Result:** `movie.en.srt`
+
+
+
+## Documentation## Configuration Options
+
+
+
+- [Development Plan](JELLYFIN_PLUGIN_PLAN.md) - Detailed development roadmap### Model Selection (`--model`, `-m`)
+
+- [Setup Complete](SETUP_COMPLETE.md) - What's been accomplished
+
+- [Jellyfin Plugin Docs](https://jellyfin.org/docs/general/server/plugins/)Choose the Whisper model based on your needs:
+
+- [Whisper.NET](https://github.com/sandrohanea/whisper.net)
 
 | Model    | Parameters | VRAM   | Relative Speed | Best For |
-|----------|-----------|--------|----------------|----------|
-| `tiny`   | 39M       | ~1 GB  | ~10x (fastest) | Quick testing, very fast processing |
-| `base`   | 74M       | ~1 GB  | ~7x            | Testing, decent speed |
-| `small`  | 244M      | ~2 GB  | ~4x            | **Recommended** - good balance |
-| `medium` | 769M      | ~5 GB  | ~2x            | High quality, slower |
-| `turbo`  | 809M      | ~6 GB  | ~8x            | Fast with good quality (newer) |
-| `large`  | 1550M     | ~10 GB | 1x (slowest)   | Best quality, professional use |
 
-**Default:** `small`
+## Comparison with Python CLI|----------|-----------|--------|----------------|----------|
+
+| `tiny`   | 39M       | ~1 GB  | ~10x (fastest) | Quick testing, very fast processing |
+
+| Feature | Python CLI (main branch) | C# Plugin (this branch) || `base`   | 74M       | ~1 GB  | ~7x            | Testing, decent speed |
+
+|---------|-------------------------|-------------------------|| `small`  | 244M      | ~2 GB  | ~4x            | **Recommended** - good balance |
+
+| Jellyfin Integration | ❌ External | ✅ Native || `medium` | 769M      | ~5 GB  | ~2x            | High quality, slower |
+
+| GUI Configuration | ❌ Command-line only | ✅ Web UI || `turbo`  | 809M      | ~6 GB  | ~8x            | Fast with good quality (newer) |
+
+| Scheduled Tasks | ❌ Manual cron/systemd | ✅ Jellyfin scheduler || `large`  | 1550M     | ~10 GB | 1x (slowest)   | Best quality, professional use |
+
+| Auto-processing | ❌ Manual | ✅ Post-scan hook |
+
+| Subtitle Generation | ✅ Working | 🚧 In progress |**Default:** `small`
+
+| GPU Support | ✅ Working | ✅ Via Whisper.NET |
 
 **Note:** Speed is relative to the `large` model. `turbo` is a newer optimized model that's faster than `small` with quality close to `large`.
 
+## Why Two Versions?
+
 ```bash
-python batch_generate.py /media --model tiny    # Fastest (10x)
-python batch_generate.py /media --model turbo   # Fast + quality (8x, newer)
+
+- **Python CLI (main branch)**: Standalone tool, works with any media server, flexible command-line interfacepython batch_generate.py /media --model tiny    # Fastest (10x)
+
+- **C# Plugin (this branch)**: Deep Jellyfin integration, automated workflows, web-based configurationpython batch_generate.py /media --model turbo   # Fast + quality (8x, newer)
+
 python batch_generate.py /media --model base    # Fast (7x)
-python batch_generate.py /media --model small   # Recommended (4x)
+
+Both serve different use cases!python batch_generate.py /media --model small   # Recommended (4x)
+
 python batch_generate.py /media --model medium  # High quality (2x)
-python batch_generate.py /media --model large   # Best quality (1x)
+
+## Licensepython batch_generate.py /media --model large   # Best quality (1x)
+
 ```
+
+GPL-3.0 - Required by Jellyfin's plugin system as plugins link against GPL-licensed Jellyfin libraries.
 
 ### Output Format (`--format`, `-f`)
 
+## Credits
+
 **Default:** `srt`
 
-```bash
-python batch_generate.py /media --format srt   # SubRip (most compatible)
+- [OpenAI Whisper](https://github.com/openai/whisper) - The amazing AI model
+
+- [Whisper.NET](https://github.com/sandrohanea/whisper.net) - C# bindings```bash
+
+- [Jellyfin](https://jellyfin.org/) - The free media serverpython batch_generate.py /media --format srt   # SubRip (most compatible)
+
 python batch_generate.py /media --format vtt   # WebVTT
-python batch_generate.py /media --format txt   # Plain text
+
+---python batch_generate.py /media --format txt   # Plain text
+
 python batch_generate.py /media --format json  # JSON format
-```
+
+**Development Status:** Foundation complete, core functionality in progress. Watch this repo for updates!```
+
 
 ### Language (`--language`, `-l`)
 

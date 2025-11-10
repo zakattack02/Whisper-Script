@@ -35,6 +35,7 @@ DEFAULT_LANGUAGE = "en"          # Target language code
 DEFAULT_TRANSLATE = True         # Translate to English
 DEFAULT_IDENTIFIER = "whisper"   # AI subtitle marker
 DEFAULT_REGENERATE_AI = False    # Re-process AI subtitles
+DEFAULT_FORCE = False            # Generate subtitles even if they exist
 
 # ============================================================================
 # CONSTANTS
@@ -140,12 +141,28 @@ def generate_subtitle(video_path, model, output_format='srt', target_language='e
             subtitle_path = video_path.parent / subtitle_filename
             print(f"  ⚠ Long filename, shortened to: {subtitle_path.name}")
         
-        # Write subtitle file
-        from whisper.utils import get_writer
-        writer = get_writer(output_format, str(video_path.parent))
-        writer(result, subtitle_path.stem)
+        # Write subtitle file using Whisper's writer
+        from whisper.utils import get_writer, WriteSRT, WriteVTT, WriteTXT, WriteJSON
         
-        print(f"  ✓ Saved: {subtitle_path.name}")
+        # Create a temporary writer to generate content
+        output_dir = str(video_path.parent)
+        
+        # Generate subtitle content with a temporary name
+        temp_name = f"_temp_whisper_{os.getpid()}"
+        writer = get_writer(output_format, output_dir)
+        writer(result, temp_name)
+        
+        # Find the temp file
+        temp_file = video_path.parent / f"{temp_name}.{output_format}"
+        
+        # Rename to desired filename with identifier
+        if temp_file.exists():
+            temp_file.rename(subtitle_path)
+            print(f"  ✓ Saved: {subtitle_path.name}")
+        else:
+            print(f"  ✗ Error: Temporary file not created")
+            return False
+        
         return True
         
     except KeyboardInterrupt:
@@ -162,7 +179,7 @@ def process_folder(folder_path, model, args):
     print(f"Processing: {folder_path}")
     print(f"{'='*70}")
     
-    # Find video files
+    # Find files
     video_files = find_video_files(folder_path)
     print(f"Found {len(video_files)} video files")
     
@@ -170,7 +187,7 @@ def process_folder(folder_path, model, args):
         print("No video files found.")
         return 0, 0, 0
     
-    # Filter files that need subtitles
+    # Filter files
     files_to_process = []
     files_with_subtitles = []
     
@@ -317,8 +334,8 @@ Configuration:
     parser.add_argument(
         '--skip-existing',
         action='store_true',
-        default=True,
-        help='Skip files with existing subtitles (default: enabled)'
+        default=not DEFAULT_FORCE,
+        help='Skip files with existing subtitles (default: enabled unless DEFAULT_FORCE is True)'
     )
     
     parser.add_argument(
@@ -329,6 +346,13 @@ Configuration:
     )
     
     parser.add_argument(
+        '--force',
+        dest='skip_existing',
+        action='store_false',
+        help='Force generation even if subtitles exist (alias for --no-skip-existing)'
+    )
+    
+    parser.add_argument(
         '--dry-run', '-n',
         action='store_true',
         help='Preview which files would be processed without generating'
@@ -336,7 +360,7 @@ Configuration:
     
     args = parser.parse_args()
     
-    # Determine folders to process
+    # Folders to process
     if args.folders:
         folders_to_process = [Path(f) for f in args.folders]
     elif DEFAULT_MEDIA_FOLDERS:
@@ -349,7 +373,7 @@ Configuration:
         print("\nExample: python batch_generate.py /mnt/jellyfin/anime")
         sys.exit(1)
     
-    # Validate folders
+    # Validate
     valid_folders = []
     for folder in folders_to_process:
         if folder.exists() and folder.is_dir():

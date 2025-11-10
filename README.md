@@ -244,7 +244,7 @@ python batch_generate.py /media --no-skip-existing   # Process all
 python batch_generate.py /media --dry-run
 ```
 
-## 📁 Output File Naming
+## Output File Naming
 
 ### Naming Format
 
@@ -272,7 +272,7 @@ All naming formats are compatible with Jellyfin and Plex:
 ✅ `video.eng.srt`  
 ✅ `video.en.forced.srt`
 
-## 🎯 Real-World Examples
+## Real-World Examples
 
 ### Example 1: Anime Library
 
@@ -348,7 +348,7 @@ python batch_generate.py /media \
 
 This will re-process only files with AI-generated subtitles.
 
-## 📊 Performance
+## Performance
 
 ### Processing Speed (with RTX 3080 Ti)
 
@@ -385,7 +385,7 @@ This will re-process only files with AI-generated subtitles.
 
 5. **Monitor first few files** to ensure quality is acceptable
 
-## 🔧 Troubleshooting
+## Troubleshooting
 
 ### GPU Not Detected
 
@@ -420,7 +420,7 @@ python batch_generate.py /media --model base
 - Process fewer files at once
 - Consider cloud GPU instances for one-time batch jobs
 
-## 🎨 Customization
+## Customization
 
 ### Editing Default Configuration
 
@@ -448,7 +448,7 @@ MP4, MKV, AVI, MOV, WMV, FLV, WebM, M4V, MPG, MPEG
 The script checks for existing subtitles in these formats:
 SRT, VTT, ASS, SSA, SUB
 
-## 📚 Command Reference
+## Command Reference
 
 ### All Options
 
@@ -488,12 +488,15 @@ options:
 | `-i` | `--identifier` | AI identifier |
 | `-n` | `--dry-run` | Dry run mode |
 
-
-## 📄 License
+## License
 
 This script uses OpenAI's Whisper model. See [Whisper License](https://github.com/openai/whisper/blob/main/LICENSE) for details.
 
-## 🙏 Credits
+## Credits
 
 - [OpenAI Whisper](https://github.com/openai/whisper) - The amazing AI model
 - [FFmpeg](https://ffmpeg.org/) - Audio extraction
+
+---
+
+**Made for Jellyfin/Plex Media Servers**

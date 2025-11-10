@@ -1,10 +1,6 @@
 # Jellyfin Whisper Subtitles Plugin# Whisper Subtitle Generator
 
-
-
 > **Note:** For the standalone Python CLI version, see the [`main` branch](https://github.com/zakattack02/Whisper-Script/tree/main)> **📌 Repository Structure**
-
-> - **`main` branch** (you are here): Python CLI tool for standalone use
 
 Automatically generate subtitles for your Jellyfin media library using OpenAI's Whisper AI. This is a native C# plugin that integrates directly with Jellyfin.> - **`feature/jellyfin-plugin` branch**: Jellyfin plugin with web UI (in development)
 

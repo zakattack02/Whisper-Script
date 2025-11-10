@@ -27,18 +27,16 @@ DEFAULT_MEDIA_FOLDERS = [
     # "/mnt/jellyfin/anime/",
     # "/mnt/jellyfin/movies/",
     # "/path/to/tv-shows/",
-    "/mnt/jellyfin/movies/Dead Mans Bluff (2005) [imdbid-tt0420982]/",
-    "/mnt/jellyfin/kids_movies/Bee Movie (2007) [imdbid-tt0389790]/",
 ]
 
-DEFAULT_MODEL = "large"                     # tiny, base, small, medium, large, turbo
-DEFAULT_FORMAT = "srt"                      # srt, vtt, txt, json
-DEFAULT_LANGUAGE = "en"                     # Target language code
-DEFAULT_TRANSLATE = True                    # Translate to English
-DEFAULT_IDENTIFIER = "whisper-large"        # AI subtitle marker
-DEFAULT_REGENERATE_AI = False               # Re-process AI subtitles
-DEFAULT_FORCE = True                        # Generate subtitles even if they exist
-DEFAULT_WORD_TIMESTAMPS = True              # Enable word-level timestamps (slower but more precise)
+DEFAULT_MODEL = "medium"                     # tiny, base, small, medium, large, turbo
+DEFAULT_FORMAT = "srt"                       # srt, vtt, txt, json
+DEFAULT_LANGUAGE = "en"                      # Target language code
+DEFAULT_TRANSLATE = True                     # Translate to English
+DEFAULT_IDENTIFIER = "whisper"               # AI subtitle marker
+DEFAULT_REGENERATE_AI = True                 # Re-process AI subtitles
+DEFAULT_FORCE = False                        # Generate subtitles even if they exist
+DEFAULT_WORD_TIMESTAMPS = False               # Enable word-level timestamps (slower but more precise)
 
 # ============================================================================
 # CONSTANTS

@@ -1,695 +1,375 @@
-# Jellyfin Whisper Subtitles Plugin# Whisper Subtitle Generator
+# So you want to make a Jellyfin plugin
 
-> **Note:** For the standalone Python CLI version, see the [`main` branch](https://github.com/zakattack02/Whisper-Script/tree/main)> **📌 Repository Structure**
+Awesome! This guide is for you. Jellyfin plugins are written using the dotnet standard framework. What that means is you can write them in any language that implements the CLI or the DLI and can compile to net8.0. The examples on this page are in C# because that is what most of Jellyfin is written in, but F#, Visual Basic, and IronPython should all be compatible once compiled.
 
-Automatically generate subtitles for your Jellyfin media library using OpenAI's Whisper AI. This is a native C# plugin that integrates directly with Jellyfin.> - **`feature/jellyfin-plugin` branch**: Jellyfin plugin with web UI (in development)
+## 0. Things you need to get started
 
-> 
+- [Dotnet SDK 8.0](https://dotnet.microsoft.com/download)
 
-## 🚧 Status: In Development> Switch branches: `git checkout feature/jellyfin-plugin`
+- An editor of your choice. Some free choices are:
 
+   [Visual Studio Code](https://code.visualstudio.com)
 
+   [Visual Studio Community Edition](https://visualstudio.microsoft.com/downloads)
 
-This plugin is currently under active development. The foundation is complete and the project compiles, but subtitle generation functionality is still being implemented.---
+   [Mono Develop](https://www.monodevelop.com)
 
+## 0.5. Quickstarts
 
+We have a number of quickstart options available to speed you along the way.
 
-### ✅ CompletedAutomatically generate subtitles for your Jellyfin/Plex media library using OpenAI's Whisper AI. Perfect for anime, foreign films, and any video content that needs subtitles.
+- [Download the Example Plugin Project](https://github.com/jellyfin/jellyfin-plugin-template/tree/master/Jellyfin.Plugin.Template) from this repository, open it in your IDE and go to [step 3](https://github.com/jellyfin/jellyfin-plugin-template#3-customize-plugin-information)
 
-- Project structure with .NET 8.0
+- Install our dotnet template by [downloading the dotnet-template/content folder from this repo](https://github.com/jellyfin/jellyfin-plugin-template/tree/master/dotnet-template/content) or off of Nuget (Coming soon)
 
-- Jellyfin plugin integration## Features
-
-- Whisper.NET library integration
-
-- Configuration system with all settings- **Translation** - Translate any language to English
-
-- Professional web UI for configuration- **Transcription** - Generate subtitles in the original language
-
-- Successfully compiles- **GPU Acceleration** - Automatic CUDA support for fast processing
-
-- **Batch Processing** - Process entire folders or specific files
-
-### 🔨 In Progress- **Smart Detection** - Skip videos that already have subtitles
-
-- WhisperService implementation (core subtitle generation)- **AI Identifier** - Mark AI-generated subtitles (e.g., `video.en.whisper.srt`)
-
-- Scheduled task integration- **Flexible Models** - Choose from 5 model sizes (tiny to large)
-
-- Library post-scan support- **Multiple Formats** - SRT, VTT, TXT, JSON output
-
-- Subtitle detection logic- **Regeneration** - Re-process files with better models
-
-- **Long Filename Support** - Handles filesystem limits gracefully
-
-## Features (When Complete)
-
-## Requirements
-
-- **Native Jellyfin Integration** - Works directly within Jellyfin's plugin system
-
-- **Scheduled Tasks** - Generate subtitles on schedule or manually- Python 3.8+
-
-- **Auto-Processing** - Optional automatic generation after library scans- FFmpeg (for audio extraction)
-
-- **GPU Acceleration** - Uses your GPU via Whisper.NET for fast processing- CUDA-capable GPU (optional, but highly recommended for speed)
-
-- **Multiple Models** - Choose from tiny, base, small, medium, turbo, or large
-
-- **Translation Support** - Translate any language to English or transcribe in original## Quick Start
-
-- **AI Identifier** - Mark AI-generated subtitles (e.g., `video.en.whisper.srt`)
-
-- **Word Timestamps** - Optional word-level timing for precise subtitles### 1. Install Dependencies
-
-- **Smart Detection** - Skip files that already have subtitles
-
-- **Library Selection** - Choose which libraries to process```bash
-
-# Create virtual environment
-
-## Requirementspython -m venv .venv
-
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-
-- Jellyfin Server 10.8.x or higher
-
-- .NET 8.0 Runtime (included with Jellyfin)# Install requirements
-
-- Optional: CUDA-capable GPU for faster processingpip install -U openai-whisper torch tqdm
-
-```
-
-## Building from Source
-
-### 2. Configure Your Folders
-
-### Prerequisites
-
-Edit `batch_generate.py` and add your media folders:
-
-```bash
-
-# Install .NET SDK 8.0```python
-
-# Arch LinuxDEFAULT_MEDIA_FOLDERS = [
-
-sudo pacman -S dotnet-sdk-8.0    "/mnt/jellyfin/anime/",
-
-    "/mnt/jellyfin/movies/",
-
-# Ubuntu/Debian    "/path/to/tv-shows/",
-
-sudo apt install dotnet-sdk-8.0]
-
-```
-
-# Or download from https://dotnet.microsoft.com/download
-
-```### 3. Run the Script
-
-
-
-### Build```bash
-
-# Activate virtual environment
-
-```bashsource .venv/bin/activate
-
-cd Jellyfin.Plugin.WhisperSubtitles/Jellyfin.Plugin.WhisperSubtitles
-
-dotnet build -c Release# Process configured folders
-
-```python batch_generate.py
-
-
-
-The compiled DLL will be in `bin/Release/net8.0/Jellyfin.Plugin.WhisperSubtitles.dll`# Or process a specific folder
-
-python batch_generate.py /path/to/media
-
-## Installation (When Ready)```
-
-
-
-1. Build the plugin (see above)## Usage
-
-2. Copy the DLL to your Jellyfin plugins folder:
-
-   - Linux: `~/.local/share/jellyfin/plugins/WhisperSubtitles/`### Basic Commands
-
-   - Windows: `%AppData%\Jellyfin\Server\plugins\WhisperSubtitles\`
-
-3. Restart Jellyfin```bash
-
-4. Configure via Dashboard → Plugins → Whisper Subtitles# Process configured folders with defaults
-
-python batch_generate.py
-
-## Configuration
-
-# Process specific folder
-
-All settings are available through the Jellyfin web interface:python batch_generate.py /mnt/jellyfin/anime
-
-
-
-### Model Settings# Process multiple folders
-
-- **Whisper Model**: Choose model size (tiny to large, plus turbo)python batch_generate.py /media/anime /media/movies
-
-  - `tiny` - ~10x speed, ~1GB VRAM (fastest)
-
-  - `base` - ~7x speed, ~1GB VRAM# Dry run (preview without generating)
-
-  - `small` - ~4x speed, ~2GB VRAM (recommended)python batch_generate.py /media --dry-run
-
-  - `medium` - ~2x speed, ~5GB VRAM
-
-  - `turbo` - ~8x speed, ~6GB VRAM (great balance)# Show all options
-
-  - `large` - 1x speed, ~10GB VRAM (best quality)python batch_generate.py --help
-
-```
-
-### Language Settings
-
-- **Target Language**: Language code (en, es, fr, de, ja, ko, zh, etc.)## Common Use Cases
-
-- **Translate to English**: Convert any language to English
-
-- **AI Identifier**: String added to filenames (default: "whisper")#### 1. Translate Japanese Anime to English
-
-
-
-### Processing Options```bash
-
-- **Word Timestamps**: Enable word-level timing (slower but more precise)python batch_generate.py /mnt/jellyfin/anime \
-
-- **Process on Library Scan**: Auto-generate for new media  --model small \
-
-- **Skip Existing**: Don't process files with subtitles  --translate \
-
-- **Regenerate AI**: Re-process AI-generated subtitles  --identifier whisper
-
-```
-
-## Project Structure
-
-**Result:** `anime_episode.en.whisper.srt`
-
-```
-
-Jellyfin.Plugin.WhisperSubtitles/#### 2. Transcribe English Content
-
-├── Configuration/
-
-│   ├── PluginConfiguration.cs      # Configuration class```bash
-
-│   └── configPage.html             # Web UIpython batch_generate.py /mnt/jellyfin/movies \
-
-├── Services/                        # (To be implemented)  --model base \
-
-│   ├── IWhisperService.cs  --no-translate \
-
-│   ├── WhisperService.cs  --language en
-
-│   └── SubtitleDetectionService.cs```
-
-├── Tasks/                           # (To be implemented)
-
-│   ├── WhisperSubtitleTask.cs**Result:** `movie.en.whisper.srt`
-
-│   └── WhisperPostScanTask.cs
-
-└── Plugin.cs                        # Main plugin entry point#### 3. Generate Spanish Subtitles
-
-```
-
-```bash
-
-## Developmentpython batch_generate.py /media/spanish \
-
-  --no-translate \
-
-### Architecture  --language es
-
-```
-
-This plugin uses:
-
-- **Whisper.NET** - C# bindings for OpenAI Whisper**Result:** `video.es.whisper.srt`
-
-- **Jellyfin.Model** - Jellyfin's core models and interfaces
-
-- **Jellyfin.Controller** - Jellyfin's controller abstractions#### 4. Regenerate with Better Model
-
-
-
-### Next Steps```bash
-
-# First run created subtitles with 'base' model
-
-1. Implement `WhisperService` - Core logic to process videos with Whisper.NET# Upgrade to 'small' model:
-
-2. Implement `WhisperSubtitleTask` - Scheduled task for manual generationpython batch_generate.py /media \
-
-3. Implement `SubtitleDetectionService` - Check for existing subtitles  --model small \
-
-4. Implement `WhisperPostScanTask` - Auto-process after library scans  --regenerate-ai
-
-5. Add comprehensive error handling and logging```
-
-6. Testing with real Jellyfin instance
-
-#### 5. No AI Identifier (Clean Names)
-
-### Contributing
-
-```bash
-
-Contributions are welcome! Areas that need work:python batch_generate.py /media \
-
-- Core subtitle generation implementation  --identifier ""
-
-- Error handling and logging```
-
-- Testing and bug fixes
-
-- Documentation improvements**Result:** `movie.en.srt`
-
-
-
-## Documentation## Configuration Options
-
-
-
-- [Development Plan](JELLYFIN_PLUGIN_PLAN.md) - Detailed development roadmap### Model Selection (`--model`, `-m`)
-
-- [Setup Complete](SETUP_COMPLETE.md) - What's been accomplished
-
-- [Jellyfin Plugin Docs](https://jellyfin.org/docs/general/server/plugins/)Choose the Whisper model based on your needs:
-
-- [Whisper.NET](https://github.com/sandrohanea/whisper.net)
-
-| Model    | Parameters | VRAM   | Relative Speed | Best For |
-
-## Comparison with Python CLI|----------|-----------|--------|----------------|----------|
-
-| `tiny`   | 39M       | ~1 GB  | ~10x (fastest) | Quick testing, very fast processing |
-
-| Feature | Python CLI (main branch) | C# Plugin (this branch) || `base`   | 74M       | ~1 GB  | ~7x            | Testing, decent speed |
-
-|---------|-------------------------|-------------------------|| `small`  | 244M      | ~2 GB  | ~4x            | **Recommended** - good balance |
-
-| Jellyfin Integration | ❌ External | ✅ Native || `medium` | 769M      | ~5 GB  | ~2x            | High quality, slower |
-
-| GUI Configuration | ❌ Command-line only | ✅ Web UI || `turbo`  | 809M      | ~6 GB  | ~8x            | Fast with good quality (newer) |
-
-| Scheduled Tasks | ❌ Manual cron/systemd | ✅ Jellyfin scheduler || `large`  | 1550M     | ~10 GB | 1x (slowest)   | Best quality, professional use |
-
-| Auto-processing | ❌ Manual | ✅ Post-scan hook |
-
-| Subtitle Generation | ✅ Working | 🚧 In progress |**Default:** `small`
-
-| GPU Support | ✅ Working | ✅ Via Whisper.NET |
-
-**Note:** Speed is relative to the `large` model. `turbo` is a newer optimized model that's faster than `small` with quality close to `large`.
-
-## Why Two Versions?
-
-```bash
-
-- **Python CLI (main branch)**: Standalone tool, works with any media server, flexible command-line interfacepython batch_generate.py /media --model tiny    # Fastest (10x)
-
-- **C# Plugin (this branch)**: Deep Jellyfin integration, automated workflows, web-based configurationpython batch_generate.py /media --model turbo   # Fast + quality (8x, newer)
-
-python batch_generate.py /media --model base    # Fast (7x)
-
-Both serve different use cases!python batch_generate.py /media --model small   # Recommended (4x)
-
-python batch_generate.py /media --model medium  # High quality (2x)
-
-## Licensepython batch_generate.py /media --model large   # Best quality (1x)
-
-```
-
-GPL-3.0 - Required by Jellyfin's plugin system as plugins link against GPL-licensed Jellyfin libraries.
-
-### Output Format (`--format`, `-f`)
-
-## Credits
-
-**Default:** `srt`
-
-- [OpenAI Whisper](https://github.com/openai/whisper) - The amazing AI model
-
-- [Whisper.NET](https://github.com/sandrohanea/whisper.net) - C# bindings```bash
-
-- [Jellyfin](https://jellyfin.org/) - The free media serverpython batch_generate.py /media --format srt   # SubRip (most compatible)
-
-python batch_generate.py /media --format vtt   # WebVTT
-
----python batch_generate.py /media --format txt   # Plain text
-
-python batch_generate.py /media --format json  # JSON format
-
-**Development Status:** Foundation complete, core functionality in progress. Watch this repo for updates!```
-
-
-### Language (`--language`, `-l`)
-
-**Default:** `en` (English)
-
-```bash
-python batch_generate.py /media --language en  # English
-python batch_generate.py /media --language es  # Spanish
-python batch_generate.py /media --language fr  # French
-python batch_generate.py /media --language de  # German
-python batch_generate.py /media --language ja  # Japanese
-python batch_generate.py /media --language ko  # Korean
-python batch_generate.py /media --language zh  # Chinese
-python batch_generate.py /media --language ru  # Russian
-python batch_generate.py /media --language pt  # Portuguese
-python batch_generate.py /media --language it  # Italian
-```
-
-[Full list of supported language codes](https://github.com/openai/whisper#available-models-and-languages)
-
-### Translation vs Transcription
-
-**Translation** - Convert any language to English:
-
-```bash
-python batch_generate.py /media --translate
-```
-
-**Transcription** - Keep original language:
-
-```bash
-python batch_generate.py /media --no-translate --language ja
-```
-
-**Default:** Translation enabled (set in script configuration)
-
-### AI Identifier (`--identifier`, `-i`)
-
-Mark AI-generated subtitles with an identifier:
-
-**Default:** `whisper`
-
-```bash
-python batch_generate.py /media --identifier whisper
-# Result: video.en.whisper.srt
-
-python batch_generate.py /media --identifier ai
-# Result: video.en.ai.srt
-
-python batch_generate.py /media --identifier auto
-# Result: video.en.auto.srt
-
-python batch_generate.py /media --identifier ""
-# Result: video.en.srt (no identifier)
-```
-
-### Processing Options
-
-**Regenerate AI Subtitles** - Re-process files that already have AI-generated subtitles:
-
-```bash
-python batch_generate.py /media --regenerate-ai
-```
-
-**Skip/Don't Skip Existing** - Control whether to skip files with existing subtitles:
-
-```bash
-python batch_generate.py /media --skip-existing      # Skip (default)
-python batch_generate.py /media --no-skip-existing   # Process all
-```
-
-**Dry Run** - Preview what would be processed:
-
-```bash
-python batch_generate.py /media --dry-run
-```
-
-## Output File Naming
-
-### Naming Format
-
-```
-video_name.{language}.{identifier}.{format}
-```
-
-### Examples
-
-| Configuration | Output Filename |
-|--------------|-----------------|
-| Default (translate, identifier: whisper) | `anime.en.whisper.srt` |
-| No identifier | `movie.en.srt` |
-| Spanish transcription | `video.es.whisper.srt` |
-| Custom identifier (ai) | `show.en.ai.srt` |
-| VTT format | `film.en.whisper.vtt` |
-
-### Jellyfin/Plex Compatibility
-
-All naming formats are compatible with Jellyfin and Plex:
-
-✅ `video.srt`  
-✅ `video.en.srt`  
-✅ `video.en.whisper.srt`  
-✅ `video.eng.srt`  
-✅ `video.en.forced.srt`
-
-## Real-World Examples
-
-### Example 1: Anime Library
-
-**Scenario:** You have a large anime collection in Japanese and want English subtitles.
-
-```bash
-# Configure in script
-DEFAULT_MEDIA_FOLDERS = ["/mnt/jellyfin/anime/"]
-DEFAULT_MODEL = "small"
-DEFAULT_TRANSLATE = True
-DEFAULT_IDENTIFIER = "whisper"
-
-# Run
-python batch_generate.py
-```
-
-**Result:**
-```
-Attack on Titan/
-├── S01E01.mkv
-├── S01E01.en.whisper.srt  ← Generated
-├── S01E02.mkv
-└── S01E02.en.whisper.srt  ← Generated
-```
-
-### Example 2: English Movie Collection
-
-**Scenario:** Generate subtitles for English movies without translation.
-
-```bash
-python batch_generate.py /mnt/jellyfin/movies \
-  --model base \
-  --no-translate \
-  --identifier ""
-```
-
-**Result:**
-```
-Movies/
-├── Inception.mkv
-├── Inception.en.srt       ← Clean filename
-├── The Matrix.mkv
-└── The Matrix.en.srt      ← Clean filename
-```
-
-### Example 3: Multi-Language Library
-
-**Scenario:** Transcribe Spanish content in Spanish.
-
-```bash
-python batch_generate.py /media/spanish \
-  --no-translate \
-  --language es \
-  --model small
-```
-
-**Result:**
-```
-spanish/
-├── La Casa de Papel S01E01.mkv
-└── La Casa de Papel S01E01.es.whisper.srt  ← Spanish subtitles
-```
-
-### Example 4: Upgrade Subtitle Quality
-
-**Scenario:** You previously generated subtitles with 'base' model, now upgrade to 'small'.
-
-```bash
-python batch_generate.py /media \
-  --model small \
-  --regenerate-ai
-```
-
-This will re-process only files with AI-generated subtitles.
-
-## Performance
-
-### Processing Speed (with RTX 3080 Ti)
-
-| Content | Model | Time per Minute of Video | Notes |
-|---------|-------|--------------------------|-------|
-| 22-min anime | tiny | ~30 seconds | Very fast but lower quality |
-| 22-min anime | base | ~2-3 minutes | Good for quick processing |
-| 22-min anime | small | ~3-5 minutes | **Recommended balance** |
-| 22-min anime | medium | ~6-10 minutes | Better quality |
-| 22-min anime | turbo | ~2-3 minutes | Fast with near-large quality |
-| 90-min movie | small | ~12-18 minutes | |
-| 90-min movie | medium | ~18-36 minutes | |
-| 90-min movie | turbo | ~9-15 minutes | Great for movies |
-
-**CPU Processing:** 10-20x slower than GPU
-
-**Turbo Model:** Newer optimized model (late 2023+) - nearly as accurate as `large` but ~8x faster. Great choice if available.
-
-### Tips for Large Libraries
-
-1. **Use `screen` or `tmux`** for long-running sessions:
-   ```bash
-   screen -S subtitles
-   source .venv/bin/activate
-   python batch_generate.py
-   # Detach: Ctrl+A, then D
-   # Reattach: screen -r subtitles
+   ```
+   dotnet new -i /path/to/templatefolder
    ```
 
-2. **Start with dry-run** to see what will be processed:
-   ```bash
-   python batch_generate.py --dry-run
+- Run this command then skip to step 4
+
+   ```
+      dotnet new Jellyfin-plugin -name MyPlugin
    ```
 
-3. **Process overnight** for very large libraries
+If you'd rather start from scratch keep going on to step one. This assumes no specific editor or IDE and requires only the command line with dotnet in the path.
 
-4. **Use appropriate model** - `base` for speed, `small` for quality
+## 1. Initialize Your Project
 
-5. **Monitor first few files** to ensure quality is acceptable
-
-## Troubleshooting
-
-### GPU Not Detected
-
-```bash
-# Check GPU availability
-python -c "import torch; print('GPU:', torch.cuda.is_available())"
-
-# If False, install CUDA-enabled PyTorch
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
-```
-
-### Out of Memory Errors
-
-Use a smaller model:
-```bash
-python batch_generate.py /media --model tiny
-# or
-python batch_generate.py /media --model base
-```
-
-### Subtitles Not Appearing in Jellyfin
-
-1. **Refresh metadata** in Jellyfin/Plex
-2. **Check file location** - subtitle must be in same folder as video
-3. **Verify naming** - ensure subtitle matches video filename
-4. **Use SRT format** - most compatible: `--format srt`
-
-### Slow Processing on CPU
-
-- Install CUDA-enabled PyTorch for GPU acceleration
-- Use smaller model (`tiny` or `base`)
-- Process fewer files at once
-- Consider cloud GPU instances for one-time batch jobs
-
-## Customization
-
-### Editing Default Configuration
-
-Open `batch_generate.py` and modify the DEFAULT_* variables:
-
-```python
-DEFAULT_MEDIA_FOLDERS = [
-    "/your/media/folder/",
-]
-
-DEFAULT_MODEL = "small"           # Change default model
-DEFAULT_FORMAT = "srt"            # Change default format
-DEFAULT_LANGUAGE = "en"           # Change default language
-DEFAULT_TRANSLATE = True          # Enable/disable translation
-DEFAULT_IDENTIFIER = "whisper"    # Change identifier
-DEFAULT_REGENERATE_AI = False     # Regenerate AI subs by default
-```
-
-### Supported Video Formats
-
-MP4, MKV, AVI, MOV, WMV, FLV, WebM, M4V, MPG, MPEG
-
-### Supported Subtitle Formats
-
-The script checks for existing subtitles in these formats:
-SRT, VTT, ASS, SSA, SUB
-
-## Command Reference
-
-### All Options
+Make a new dotnet standard project with the following command, it will make a directory for itself.
 
 ```
-usage: batch_generate.py [-h] [--model {tiny,base,small,medium,large}]
-                        [--format {srt,vtt,txt,json}] [--language LANGUAGE]
-                        [--translate] [--no-translate] [--identifier IDENTIFIER]
-                        [--regenerate-ai] [--skip-existing] [--no-skip-existing]
-                        [--dry-run]
-                        [folders ...]
-
-positional arguments:
-  folders               Media folders to process
-
-options:
-  -h, --help            show this help message and exit
-  --model, -m           Whisper model size
-  --format, -f          Subtitle format
-  --language, -l        Target language code
-  --translate, -t       Translate audio to English
-  --no-translate        Transcribe in original language
-  --identifier, -i      AI subtitle identifier
-  --regenerate-ai       Regenerate AI-generated subtitles
-  --skip-existing       Skip files with existing subtitles
-  --no-skip-existing    Process all files
-  --dry-run, -n         Preview without generating
+dotnet new classlib -f net8.0 -n MyJellyfinPlugin
 ```
 
-### Short Options
+Now add the Jellyfin shared libraries.
 
-| Short | Long | Description |
-|-------|------|-------------|
-| `-m` | `--model` | Model size |
-| `-f` | `--format` | Output format |
-| `-l` | `--language` | Language code |
-| `-t` | `--translate` | Enable translation |
-| `-i` | `--identifier` | AI identifier |
-| `-n` | `--dry-run` | Dry run mode |
+```
+dotnet add package Jellyfin.Model
+dotnet add package Jellyfin.Controller
+```
 
-## License
+You have an autogenerated Class1.cs file. You won't be needing this, so go ahead and delete it.
 
-This script uses OpenAI's Whisper model. See [Whisper License](https://github.com/openai/whisper/blob/main/LICENSE) for details.
+## 2. Set Up the Basics
 
-## Credits
+There are a few mandatory classes you'll need for a plugin so we need to make them.
 
-- [OpenAI Whisper](https://github.com/openai/whisper) - The amazing AI model
-- [FFmpeg](https://ffmpeg.org/) - Audio extraction
+### PluginConfiguration
 
----
+You can call it whatever you'd like really. This class is used to hold settings your plugin might need. We can leave it empty for now. This class should inherit from `MediaBrowser.Model.Plugins.BasePluginConfiguration`
 
-**Made for Jellyfin/Plex Media Servers**
+### Plugin
+
+This is the main class for your plugin. It will define your name, version and Id. It should inherit from `MediaBrowser.Common.Plugins.BasePlugin<PluginConfiguration>`
+
+Note: If you called your PluginConfiguration class something different, you need to put that between the <>
+
+### Implement Required Properties
+
+The Plugin class needs a few properties implemented before it can work correctly.
+
+It needs an override on ID, an override on Name, and a constructor that follows a specific model. To get started you can use the following section.
+
+```c#
+public Plugin(IApplicationPaths applicationPaths, IXmlSerializer xmlSerializer) : base(applicationPaths, xmlSerializer){}
+public override string Name => throw new System.NotImplementedException();
+public override Guid Id => Guid.Parse("");
+```
+
+## 3. Customize Plugin Information
+
+You need to populate some of your plugin's information. Go ahead a put in a string of the Name you've overridden name, and generate a GUID
+
+- **Windows Users**: you can use the Powershell command `New-Guid`, `[guid]::NewGuid()` or the Visual Studio GUID generator
+
+- **Linux and OS X Users**: you can use the Powershell Core command `New-Guid` or this command from your shell of choice:
+
+   ```bash
+   od -x /dev/urandom | head -n1 | awk '{OFS="-"; srand($6); sub(/./,"4",$5); sub(/./,substr("89ab",1+rand()*4,1),$6); print $2$3,$4,$5,$6,$7$8$9}'
+   ```
+
+or
+
+   ```bash
+   uuidgen
+   ```
+
+- Place that guid inside the `Guid.Parse("")` quotes to define your plugin's ID.
+
+## 4. Adding Functionality
+
+Congratulations, you now have everything you need for a perfectly functional functionless Jellyfin plugin! You can try it out right now if you'd like by compiling it, then placing the dll you generate in a subfolder (named after your plugin for example) within the plugins folder under your Jellyfin config directory. If you want to try and hook it up to a debugger make sure you copy the generated PDB file alongside it.
+
+Most people aren't satisfied with just having an entry in a menu for their plugin, most people want to have some functionality, so lets look at how to add it.
+
+### 4a. Implement Interfaces
+
+If the functionality you are trying to add is functionality related to something that Jellyfin has an interface for you're in luck. Jellyfin uses some automatic discovery and injection to allow any interfaces you implement in your plugin to be available in Jellyfin.
+
+Here's some interfaces you could implement for common use cases:
+
+- **IAuthenticationProvider** - Allows you to add an authentication provider that can authenticate a user based on a name and a password, but that doesn't expect to deal with local users.
+- **IBaseItemComparer** - Allows you to add sorting rules for dealing with media that will show up in sort menus
+- **IIntroProvider** - Allows you to play a piece of media before another piece of media (i.e. a trailer before a movie, or a network bumper before an episode of a show)
+- **IItemResolver** - Allows you to define custom media types
+- **ILibraryPostScanTask** - Allows you to define a task that fires after scanning a library
+- **IMetadataSaver** - Allows you to define a metadata standard that Jellyfin can use to write metadata
+- **IResolverIgnoreRule** - Allows you to define subpaths that are ignored by media resolvers for use with another function (i.e. you wanted to have a theme song for each tv series stored in a subfolder that could be accessed by your plugin for playback in a menu).
+- **IScheduledTask** - Allows you to create a scheduled task that will appear in the scheduled task lists on the dashboard.
+
+There are loads of other interfaces that can be used, but you'll need to poke around the API to get some info. If you're an expert on a particular interface, you should help [contribute some documentation](https://docs.jellyfin.org/general/contributing/index.html)!
+
+### 4b. Use plugin aimed interfaces to add custom functionality
+
+If your plugin doesn't fit perfectly neatly into a predefined interface, never fear, there are a set of interfaces and classes that allow your plugin to extend Jellyfin any which way you please. Here's a quick overview on how to use them
+
+- **IPluginConfigurationPage** - Allows you to have a plugin config page on the dashboard. If you used one of the quickstart example projects, a premade page with some useful components to work with has been created for you! If not you can check out this guide here for how to whip one up.
+
+ **IPluginServiceRegistrator** - Will be located by Jellyfin at server startup and allows you to add services to the DI container to allow for injection in your plugin's classes later.
+
+- **IHostedService** - Allows you to run code as a background task that will be started at program startup and will remain in memory. See [Microsoft's documentation](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/host/hosted-services?view=aspnetcore-8.0&tabs=visual-studio#ihostedservice-interface) for more information. You can make as many of these as you need; make Jellyfin aware of them with an `IPluginServiceRegistrator`. It is wildly useful for loading configs or persisting state. **Be aware that your main plugin class (IBasePlugin) cannot also be a IHostedService.**
+
+- **ControllerBase** - Allows you to define custom REST-API endpoints. This is the default ASP.NET Web-API controller. You can use it exactly as you would in a normal Web-API project. Learn more about it [here](https://docs.microsoft.com/aspnet/core/web-api/?view=aspnetcore-5.0).
+
+Likewise you might need to get data and services from the Jellyfin core, Jellyfin provides a number of interfaces you can add as parameters to your plugin constructor which are then made available in your project (you can see the 2 mandatory ones that are needed by the plugin system in the constructor as is).
+
+- **IBlurayExaminer** - Allows you to examine blu-ray folders
+- **IDtoService** - Allows you to create data transport objects, presumably to send to other plugins or to the core
+- **ILibraryManager** - Allows you to directly access the media libraries without hopping through the API
+- **ILocalizationManager** - Allows you tap into the main localization engine which governs translations, rating systems, units etc...
+- **INetworkManager** - Allows you to get information about the server's networking status
+- **IServerApplicationPaths** - Allows you to get the running server's paths
+- **IServerConfigurationManager** - Allows you to write or read server configuration data into the application paths
+- **ITaskManager** - Allows you to execute and manipulate scheduled tasks
+- **IUserManager** - Allows you to retrieve user info and user library related info
+- **IXmlSerializer** - Allows you to use the main xml serializer
+- **IZipClient** - Allows you to use the core zip client for compressing and decompressing data
+
+## 5. Create a Repository
+
+- [See blog post](https://jellyfin.org/posts/plugin-updates/)
+
+## 6. Set Up Debugging
+
+Debugging can be set up by creating tasks which will be executed when running the plugin project. The specifics on setting up these tasks are not included as they may differ from IDE to IDE. The following list describes the general process:
+
+- Compile the plugin in debug mode.
+- Create the plugin directory if it doesn't exist.
+- Copy the plugin into your server's plugin directory. The server will then execute it.
+- Make sure to set the working directory of the program being debugged to the working directory of the Jellyfin Server.
+- Start the server.
+
+Some IDEs like Visual Studio Code may need the following compile flags to compile the plugin:
+
+```shell
+dotnet build Your-Plugin.sln /property:GenerateFullPaths=true /consoleloggerparameters:NoSummary
+```
+
+These flags generate the full paths for file names and **do not** generate a summary during the build process as this may lead to duplicate errors in the problem panel of your IDE.
+
+### 6.a Set Up Debugging on Visual Studio
+
+Visual Studio allows developers to connect to other processes and debug them, setting breakpoints and inspecting the variables of the program. We can set this up following this steps:
+On this section we will explain how to set up our solution to enable debugging before the server starts.
+
+1. Right-click on the solution, And click on Add -> Existing Project...
+2. Locate Jellyfin executable in your installation folder and click on 'Open'. It is called `Jellyfin.exe`. Now The solution will have a new "Project" called Jellyfin. This is the executable, not the source code of Jellyfin.
+3. Right-click on this new project and click on 'Set up as Startup Project'
+4. Right-click on this new project and click on 'Properties'
+5. Make sure that the 'Attach' parameter is set to 'No'
+
+From now on, everytime you click on start from Visual Studio, it will start Jellyfin attached to the debugger!
+
+The only thing left to do is to compile the project as it is specified a few lines above and you are done.
+
+### 6.b Automate the Setup on Visual Studio Code
+
+Visual Studio Code allows developers to automate the process of starting all necessary dependencies to start debugging the plugin. This guide assumes the reader is familiar with the [documentation on debugging in Visual Studio Code](https://code.visualstudio.com/docs/editor/debugging) and has read the documentation in this file. It is assumed that the Jellyfin Server has already been compiled once. However, should one desire to automatically compile the server before the start of the debugging session, this can be easily implemented, but is not further discussed here.
+
+A full example, which aims to be portable may be found in this repo's `.vscode` folder.
+
+This example expects you to clone `jellyfin`, `jellyfin-web` and `jellyfin-plugin-template` under the same parent directory, though you can customize this in `settings.json`
+
+1. Create a `settings.json` file inside your `.vscode` folder, to specify common options specific to your local setup.
+   ```jsonc
+    {
+        // jellyfinDir : The directory of the cloned jellyfin server project
+        // This needs to be built once before it can be used
+        "jellyfinDir"     : "${workspaceFolder}/../jellyfin/Jellyfin.Server",
+        // jellyfinWebDir : The directory of the cloned jellyfin-web project
+        // This needs to be built once before it can be used
+        "jellyfinWebDir"  : "${workspaceFolder}/../jellyfin-web",
+        // jellyfinDataDir : the root data directory for a running jellyfin instance
+        // This is where jellyfin stores its configs, plugins, metadata etc
+        // This is platform specific by default, but on Windows defaults to
+        // ${env:LOCALAPPDATA}/jellyfin
+        "jellyfinDataDir" : "${env:LOCALAPPDATA}/jellyfin",
+        // The name of the plugin
+        "pluginName" : "Jellyfin.Plugin.Template",
+    }
+   ```
+
+1. To automate the launch process, create a new `launch.json` file for C# projects inside the `.vscode` folder. The example below shows only the relevant parts of the file. Adjustments to your specific setup and operating system may be required.
+
+   ```jsonc
+    {
+        // Paths and plugin names are configured in settings.json
+        "version": "0.2.0",
+        "configurations": [
+            {
+                "type": "coreclr",
+                "name": "Launch",
+                "request": "launch",
+                "preLaunchTask": "build-and-copy",
+                "program": "${config:jellyfinDir}/bin/Debug/net8.0/jellyfin.dll",
+                "args": [
+                //"--nowebclient"
+                "--webdir",
+                "${config:jellyfinWebDir}/dist/"
+                ],
+                "cwd": "${config:jellyfinDir}",
+            }
+        ]
+    }
+
+   ```
+
+   The `request` type is specified as `launch`, as this `launch.json` file will start the Jellyfin Server process. The `preLaunchTask` defines a task that will run before the Jellyfin Server starts. More on this later. It is important to set the `program` path to the Jellyin Server program and set the current working directory (`cwd`) to the working directory of the Jellyfin Server.
+   The `args` option allows to specify arguments to be passed to the server, e.g. whether Jellyfin should start with the web-client or without it.
+
+2. Create a `tasks.json` file inside your `.vscode` folder and specify a `build-and-copy` task that will run in `sequence` order. This tasks depends on multiple other tasks and all of those other tasks can be defined as simple `shell` tasks that run commands like the `cp` command to copy a file. The sequence to run those tasks in is given below. Please note that it might be necessary to adjust the examples for your specific setup and operating system.
+
+   The full file is shown here - Specific sections will be discussed in depth
+    ```jsonc
+    {
+        // Paths and plugin name are configured in settings.json
+        "version": "2.0.0",
+        "tasks": [
+            {
+            // A chain task - build the plugin, then copy it to your
+            // jellyfin server's plugin directory
+            "label": "build-and-copy",
+            "dependsOrder": "sequence",
+            "dependsOn": ["build", "make-plugin-dir", "copy-dll"]
+            },
+            {
+            // Build the plugin
+            "label": "build",
+            "command": "dotnet",
+            "type": "shell",
+            "args": [
+                "publish",
+                "${workspaceFolder}/${config:pluginName}.sln",
+                "/property:GenerateFullPaths=true",
+                "/consoleloggerparameters:NoSummary"
+            ],
+            "group": "build",
+            "presentation": {
+                "reveal": "silent"
+            },
+            "problemMatcher": "$msCompile"
+            },
+            {
+                // Ensure the plugin directory exists before trying to use it
+                "label": "make-plugin-dir",
+                "type": "shell",
+                "command": "mkdir",
+                "args": [
+                "-Force",
+                "-Path",
+                "${config:jellyfinDataDir}/plugins/${config:pluginName}/"
+                ]
+            },
+            {
+                // Copy the plugin dll to the jellyfin plugin install path
+                // This command copies every .dll from the build directory to the plugin dir
+                // Usually, you probablly only need ${config:pluginName}.dll
+                // But some plugins may bundle extra requirements
+                "label": "copy-dll",
+                "type": "shell",
+                "command": "cp",
+                "args": [
+                "./${config:pluginName}/bin/Debug/net8.0/publish/*",
+                "${config:jellyfinDataDir}/plugins/${config:pluginName}/"
+                ]
+
+            },
+        ]
+    }
+
+    ```
+    1.  The "build-and-copy" task which triggers all of the other tasks
+    ```jsonc
+        {
+        // A chain task - build the plugin, then copy it to your
+        // jellyfin server's plugin directory
+        "label": "build-and-copy",
+        "dependsOrder": "sequence",
+        "dependsOn": ["build", "make-plugin-dir", "copy-dll"]
+        },
+    ```
+    2.  A build task. This task builds the plugin without generating summary, but with full paths for file names enabled.
+
+        ```jsonc
+            {
+            // Build the plugin
+            "label": "build",
+            "command": "dotnet",
+            "type": "shell",
+            "args": [
+                "publish",
+                "${workspaceFolder}/${config:pluginName}.sln",
+                "/property:GenerateFullPaths=true",
+                "/consoleloggerparameters:NoSummary"
+            ],
+            "group": "build",
+            "presentation": {
+                "reveal": "silent"
+            },
+            "problemMatcher": "$msCompile"
+            },
+        ```
+
+    3.  A tasks which creates the necessary plugin directory and a sub-folder for the specific plugin. The plugin directory is located below the [data directory](https://jellyfin.org/docs/general/administration/configuration.html) of the Jellyfin Server. As an example, the following path can be used for the bookshelf plugin: `$HOME/.local/share/jellyfin/plugins/Bookshelf/`
+        ```jsonc
+            {
+                // Ensure the plugin directory exists before trying to use it
+                "label": "make-plugin-dir",
+                "type": "shell",
+                "command": "mkdir",
+                "args": [
+                "-Force",
+                "-Path",
+                "${config:jellyfinDataDir}/plugins/${config:pluginName}/"
+                ]
+            },
+        ```
+
+    4.  A tasks which copies the plugin dll which has been built in step 2.1. The file is copied into it's specific plugin directory within the server's plugin directory.
+
+        ```jsonc
+            {
+                // Copy the plugin dll to the jellyfin plugin install path
+                // This command copies every .dll from the build directory to the plugin dir
+                // Usually, you probablly only need ${config:pluginName}.dll
+                // But some plugins may bundle extra requirements
+                "label": "copy-dll",
+                "type": "shell",
+                "command": "cp",
+                "args": [
+                "./${config:pluginName}/bin/Debug/net8.0/publish/*",
+                "${config:jellyfinDataDir}/plugins/${config:pluginName}/"
+                ]
+            },
+        ```
+
+## Licensing
+
+Licensing is a complex topic. This repository features a GPLv3 license template that can be used to provide a good default license for your plugin. You may alter this if you like, but if you do a permissive license must be chosen.
+
+Due to how plugins in Jellyfin work, when your plugin is compiled into a binary, it will link against the various Jellyfin binary NuGet packages. These packages are licensed under the GPLv3. Thus, due to the nature and restrictions of the GPL, the binary plugin you get will also be licensed under the GPLv3.
+
+If you accept the default GPLv3 license from this template, all will be good. However if you choose a different license, please keep this fact in mind, as it might not always be obvious that an, e.g. MIT-licensed plugin would become GPLv3 when compiled.
+
+Please note that this also means making "proprietary", source-unavailable, or otherwise "hidden" plugins for public consumption is not permitted. To build a Jellyfin plugin for distribution to others, it must be under the GPLv3 or a permissive open-source license that can be linked against the GPLv3.

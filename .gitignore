@@ -1,3 +1,9 @@
+bin/
+obj/
+.vs/
+.idea/
+artifacts
+
 
 *.backup
 .venv/

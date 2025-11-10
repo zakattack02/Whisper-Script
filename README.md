@@ -139,22 +139,26 @@ python batch_generate.py /media \
 
 Choose the Whisper model based on your needs:
 
-| Model    | Size   | RAM   | Speed      | Accuracy | Best For |
-|----------|--------|-------|------------|----------|----------|
-| `tiny`   | 72MB   | ~1GB  | Very Fast  | Good     | Testing, quick previews |
-| `base`   | 142MB  | ~1GB  | Fast       | Better   | General use, fast processing |
-| `small`  | 466MB  | ~2GB  | Medium     | Great    | **Recommended** for quality |
-| `medium` | 1.5GB  | ~5GB  | Slow       | Excellent| High-quality content |
-| `large`  | 2.9GB  | ~10GB | Very Slow  | Best     | Professional use |
+| Model    | Parameters | VRAM   | Relative Speed | Best For |
+|----------|-----------|--------|----------------|----------|
+| `tiny`   | 39M       | ~1 GB  | ~10x (fastest) | Quick testing, very fast processing |
+| `base`   | 74M       | ~1 GB  | ~7x            | Testing, decent speed |
+| `small`  | 244M      | ~2 GB  | ~4x            | **Recommended** - good balance |
+| `medium` | 769M      | ~5 GB  | ~2x            | High quality, slower |
+| `turbo`  | 809M      | ~6 GB  | ~8x            | Fast with good quality (newer) |
+| `large`  | 1550M     | ~10 GB | 1x (slowest)   | Best quality, professional use |
 
 **Default:** `small`
 
+**Note:** Speed is relative to the `large` model. `turbo` is a newer optimized model that's faster than `small` with quality close to `large`.
+
 ```bash
-python batch_generate.py /media --model tiny    # Fastest
-python batch_generate.py /media --model base    # Good balance
-python batch_generate.py /media --model small   # Recommended
-python batch_generate.py /media --model medium  # High quality
-python batch_generate.py /media --model large   # Best quality
+python batch_generate.py /media --model tiny    # Fastest (10x)
+python batch_generate.py /media --model turbo   # Fast + quality (8x, newer)
+python batch_generate.py /media --model base    # Fast (7x)
+python batch_generate.py /media --model small   # Recommended (4x)
+python batch_generate.py /media --model medium  # High quality (2x)
+python batch_generate.py /media --model large   # Best quality (1x)
 ```
 
 ### Output Format (`--format`, `-f`)
@@ -352,16 +356,20 @@ This will re-process only files with AI-generated subtitles.
 
 ### Processing Speed (with RTX 3080 Ti)
 
-| Content | Model | Time per Minute of Video |
-|---------|-------|-------------------------|
-| 22-min anime episode | base | ~2-3 minutes |
-| 22-min anime episode | small | ~3-5 minutes |
-| 90-min movie | base | ~9-12 minutes |
-| 90-min movie | small | ~12-18 minutes |
-| 120-min movie | base | ~12-18 minutes |
-| 120-min movie | small | ~18-30 minutes |
+| Content | Model | Time per Minute of Video | Notes |
+|---------|-------|--------------------------|-------|
+| 22-min anime | tiny | ~30 seconds | Very fast but lower quality |
+| 22-min anime | base | ~2-3 minutes | Good for quick processing |
+| 22-min anime | small | ~3-5 minutes | **Recommended balance** |
+| 22-min anime | medium | ~6-10 minutes | Better quality |
+| 22-min anime | turbo | ~2-3 minutes | Fast with near-large quality |
+| 90-min movie | small | ~12-18 minutes | |
+| 90-min movie | medium | ~18-36 minutes | |
+| 90-min movie | turbo | ~9-15 minutes | Great for movies |
 
 **CPU Processing:** 10-20x slower than GPU
+
+**Turbo Model:** Newer optimized model (late 2023+) - nearly as accurate as `large` but ~8x faster. Great choice if available.
 
 ### Tips for Large Libraries
 

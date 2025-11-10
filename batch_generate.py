@@ -27,15 +27,18 @@ DEFAULT_MEDIA_FOLDERS = [
     # "/mnt/jellyfin/anime/",
     # "/mnt/jellyfin/movies/",
     # "/path/to/tv-shows/",
+    "/mnt/jellyfin/movies/Dead Mans Bluff (2005) [imdbid-tt0420982]/",
+    "/mnt/jellyfin/kids_movies/Bee Movie (2007) [imdbid-tt0389790]/",
 ]
 
-DEFAULT_MODEL = "small"          # tiny, base, small, medium, large
-DEFAULT_FORMAT = "srt"           # srt, vtt, txt, json
-DEFAULT_LANGUAGE = "en"          # Target language code
-DEFAULT_TRANSLATE = True         # Translate to English
-DEFAULT_IDENTIFIER = "whisper"   # AI subtitle marker
-DEFAULT_REGENERATE_AI = False    # Re-process AI subtitles
-DEFAULT_FORCE = False            # Generate subtitles even if they exist
+DEFAULT_MODEL = "large"                     # tiny, base, small, medium, large, turbo
+DEFAULT_FORMAT = "srt"                      # srt, vtt, txt, json
+DEFAULT_LANGUAGE = "en"                     # Target language code
+DEFAULT_TRANSLATE = True                    # Translate to English
+DEFAULT_IDENTIFIER = "whisper-large"        # AI subtitle marker
+DEFAULT_REGENERATE_AI = False               # Re-process AI subtitles
+DEFAULT_FORCE = True                        # Generate subtitles even if they exist
+DEFAULT_WORD_TIMESTAMPS = True              # Enable word-level timestamps (slower but more precise)
 
 # ============================================================================
 # CONSTANTS
@@ -98,7 +101,7 @@ def find_video_files(media_folder):
 
 
 def generate_subtitle(video_path, model, output_format='srt', target_language='en',
-                     translate=False, ai_identifier="whisper"):
+                     translate=False, ai_identifier="whisper", word_timestamps=False):
     """Generate a subtitle file for a video using Whisper."""
     try:
         print(f"\n▶ Processing: {video_path.name}")
@@ -108,7 +111,8 @@ def generate_subtitle(video_path, model, output_format='srt', target_language='e
         transcribe_params = {
             'audio': str(video_path),
             'task': task,
-            'verbose': False
+            'verbose': False,
+            'word_timestamps': word_timestamps
         }
         
         if not translate:
@@ -226,7 +230,7 @@ def process_folder(folder_path, model, args):
     try:
         for video_file in tqdm(files_to_process, desc="Progress", unit="file"):
             if generate_subtitle(video_file, model, args.format, args.language,
-                               args.translate, args.identifier):
+                               args.translate, args.identifier, args.word_timestamps):
                 success_count += 1
             else:
                 failure_count += 1
@@ -279,9 +283,9 @@ Configuration:
     parser.add_argument(
         '--model', '-m',
         default=DEFAULT_MODEL,
-        choices=['tiny', 'base', 'small', 'medium', 'large'],
+        choices=['tiny', 'base', 'small', 'medium', 'large', 'turbo'],
         help=f'Whisper model size (default: {DEFAULT_MODEL}). '
-             'Larger = more accurate but slower and needs more RAM'
+             'tiny=~10x speed, turbo=~8x speed, base=~7x, small=~4x, medium=~2x, large=1x (slowest/best)'
     )
     
     # Output settings
@@ -358,6 +362,13 @@ Configuration:
         help='Preview which files would be processed without generating'
     )
     
+    parser.add_argument(
+        '--word-timestamps',
+        action='store_true',
+        default=DEFAULT_WORD_TIMESTAMPS,
+        help='Enable word-level timestamps for more precise timing (slower processing)'
+    )
+    
     args = parser.parse_args()
     
     # Folders to process
@@ -396,6 +407,7 @@ Configuration:
     print(f"AI Identifier: {args.identifier if args.identifier else '(none)'}")
     print(f"Regenerate AI: {args.regenerate_ai}")
     print(f"Skip Existing: {args.skip_existing}")
+    print(f"Word Timestamps: {args.word_timestamps}")
     print(f"Dry Run: {args.dry_run}")
     print(f"Folders: {len(valid_folders)}")
     

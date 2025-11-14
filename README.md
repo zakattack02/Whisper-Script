@@ -1,28 +1,35 @@
-# So you want to make a Jellyfin plugin
 # Jellyfin Whisper Subtitles Plugin
 
 Automatically generate subtitles for your Jellyfin media library using OpenAI's Whisper AI.
 
 ## Project Status
 
-🚧 **IN DEVELOPMENT** - This is the initial setup of the Jellyfin plugin using pure C# with Whisper.NET.
+🚧 **IN DEVELOPMENT** - Core services implemented, tasks and integration in progress.
 
-## What's Been Set Up
+## What's Been Completed
 
 ✅ .NET 8.0 project structure  
 ✅ Jellyfin packages installed (10.8.x for .NET 8 compatibility)  
-✅ Whisper.NET library integrated  
-✅ Plugin configuration system  
-✅ Basic web UI for configuration
+✅ Whisper.NET library integrated (v1.8.1)  
+✅ Plugin configuration system with all settings  
+✅ Complete web UI for configuration  
+✅ **WhisperService** - Core subtitle generation with Whisper.NET  
+✅ **IWhisperService** interface - Clean service abstraction  
+✅ Model download & caching system  
+✅ SRT subtitle file generation  
+✅ GPLv3 License  
+✅ HttpClient integration for model downloads  
+✅ Successful compilation
 
 ## Next Steps
 
 ### Immediate Tasks
-1. Create `WhisperService.cs` - Core service to handle Whisper transcription
-2. Create `WhisperSubtitleTask.cs` - Scheduled task implementation
-3. Implement subtitle detection logic
-4. Add library scanning support
-5. Test compilation and basic functionality
+1. ✅ ~~Create `WhisperService.cs`~~ - **COMPLETED**
+2. Create `SubtitleDetectionService.cs` - Check for existing subtitles
+3. Create `WhisperSubtitleTask.cs` - Scheduled task implementation
+4. Create `WhisperPostScanTask.cs` - Library scan hook
+5. Test with actual Jellyfin server
+6. Package and deploy plugin
 
 ### Architecture
 
@@ -32,8 +39,8 @@ Jellyfin.Plugin.WhisperSubtitles/
 │   ├── PluginConfiguration.cs     ✅ Created
 │   └── configPage.html             ✅ Created
 ├── Services/
-│   ├── IWhisperService.cs          ⏳ TODO
-│   ├── WhisperService.cs           ⏳ TODO
+│   ├── IWhisperService.cs          ✅ Created
+│   ├── WhisperService.cs           ✅ Created
 │   └── SubtitleDetectionService.cs ⏳ TODO
 ├── Tasks/
 │   ├── WhisperSubtitleTask.cs      ⏳ TODO
@@ -66,9 +73,15 @@ Jellyfin.Plugin.WhisperSubtitles/
 ## Building
 
 ```bash
+# Build the solution
+dotnet build Jellyfin.Plugin.WhisperSubtitles.sln
+
+# Or build just the project
 cd Jellyfin.Plugin.WhisperSubtitles/Jellyfin.Plugin.WhisperSubtitles
 dotnet build
 ```
+
+**Current Build Status:** ✅ Compiles successfully
 
 ## Installation (Once Complete)
 
@@ -85,9 +98,34 @@ dotnet build
 - Targeting 10.8.x for broader compatibility
 
 ### Whisper.NET
-- C# bindings for OpenAI Whisper
-- Native performance with GPU support
+- C# bindings for OpenAI Whisper (v1.8.1)
+- Native performance with GPU support potential
 - Cross-platform (Windows, Linux, macOS)
+- Model download and caching built-in
+- Supports all Whisper models: tiny, base, small, medium, large-v1/v2/v3, turbo
+
+## Current Implementation Details
+
+### WhisperService Features
+- ✅ Automatic model download from Hugging Face
+- ✅ Model caching in `~/.cache/whisper/`
+- ✅ SRT subtitle file generation
+- ✅ Configurable language detection
+- ✅ Translation support
+- ✅ Word-level timestamps (configurable)
+- ✅ Proper resource disposal (HttpClient, streams)
+- ✅ Comprehensive logging
+- ✅ Cancellation token support
+
+### Supported Models
+| Model | Parameters | Relative Speed | VRAM |
+|-------|-----------|----------------|------|
+| tiny | 39M | ~10x | ~1 GB |
+| base | 74M | ~7x | ~1 GB |
+| small | 244M | ~4x | ~2 GB |
+| medium | 769M | ~2x | ~5 GB |
+| large-v3 | 1550M | 1x | ~10 GB |
+| turbo | 809M | ~8x | ~6 GB |
 
 ## References
 

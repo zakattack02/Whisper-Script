@@ -21,7 +21,6 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
 
         /// <summary>
         /// Initializes a new instance of the <see cref="WhisperService"/> class.
-        /// </summary>
         /// <param name="logger">Logger instance.</param>
         public WhisperService(ILogger<WhisperService> logger)
         {
@@ -183,7 +182,6 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
 
         /// <summary>
         /// Get the full path for a model file.
-        /// </summary>
         /// <param name="modelName">Name of the model.</param>
         /// <returns>Full path to the model file.</returns>
         private string GetModelPath(string modelName)
@@ -215,7 +213,6 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
 
         /// <summary>
         /// Write segments to an SRT subtitle file.
-        /// </summary>
         /// <param name="outputPath">Path to output file.</param>
         /// <param name="segments">Subtitle segments.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
@@ -249,7 +246,6 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
 
         /// <summary>
         /// Format a TimeSpan as SRT timestamp (HH:MM:SS,mmm).
-        /// </summary>
         /// <param name="time">TimeSpan to format.</param>
         /// <returns>Formatted timestamp string.</returns>
         private string FormatSrtTimestamp(TimeSpan time)
@@ -266,7 +262,6 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
 
         /// <summary>
         /// Dispose of resources.
-        /// </summary>
         /// <param name="disposing">Whether to dispose managed resources.</param>
         protected virtual void Dispose(bool disposing)
         {

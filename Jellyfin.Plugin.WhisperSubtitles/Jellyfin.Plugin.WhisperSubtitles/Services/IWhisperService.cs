@@ -11,7 +11,6 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
     {
         /// <summary>
         /// Generate subtitles for a video file.
-        /// </summary>
         /// <param name="videoPath">Path to the video file.</param>
         /// <param name="outputPath">Path where the subtitle file should be saved.</param>
         /// <param name="model">Whisper model to use (tiny, base, small, medium, large, turbo).</param>

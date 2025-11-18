@@ -15,6 +15,8 @@ Automatically generate subtitles for your Jellyfin media library using OpenAI's 
 ✅ Complete web UI for configuration  
 ✅ **WhisperService** - Core subtitle generation with Whisper.NET  
 ✅ **IWhisperService** interface - Clean service abstraction  
+✅ **SubtitleDetectionService** - Subtitle file detection and management  
+✅ **ISubtitleDetectionService** interface  
 ✅ Model download & caching system  
 ✅ SRT subtitle file generation  
 ✅ GPLv3 License  
@@ -25,11 +27,12 @@ Automatically generate subtitles for your Jellyfin media library using OpenAI's 
 
 ### Immediate Tasks
 1. ✅ ~~Create `WhisperService.cs`~~ - **COMPLETED**
-2. Create `SubtitleDetectionService.cs` - Check for existing subtitles
+2. ✅ ~~Create `SubtitleDetectionService.cs`~~ - **COMPLETED**
 3. Create `WhisperSubtitleTask.cs` - Scheduled task implementation
 4. Create `WhisperPostScanTask.cs` - Library scan hook
-5. Test with actual Jellyfin server
-6. Package and deploy plugin
+5. Register services with dependency injection
+6. Test with actual Jellyfin server
+7. Package and deploy plugin
 
 ### Architecture
 
@@ -41,7 +44,8 @@ Jellyfin.Plugin.WhisperSubtitles/
 ├── Services/
 │   ├── IWhisperService.cs          ✅ Created
 │   ├── WhisperService.cs           ✅ Created
-│   └── SubtitleDetectionService.cs ⏳ TODO
+│   ├── ISubtitleDetectionService.cs ✅ Created
+│   └── SubtitleDetectionService.cs  ✅ Created
 ├── Tasks/
 │   ├── WhisperSubtitleTask.cs      ⏳ TODO
 │   └── WhisperPostScanTask.cs      ⏳ TODO  
@@ -116,6 +120,15 @@ dotnet build
 - ✅ Proper resource disposal (HttpClient, streams)
 - ✅ Comprehensive logging
 - ✅ Cancellation token support
+
+### SubtitleDetectionService Features
+- ✅ Check for existing subtitle files by language
+- ✅ Detect AI-generated subtitles by identifier
+- ✅ Get all subtitle files for a video
+- ✅ Generate subtitle output paths with AI identifier
+- ✅ Handle long filenames (255 char limit with truncation)
+- ✅ Support multiple subtitle formats (srt, vtt, ass, ssa, sub, idx)
+- ✅ Pattern matching for forced/SDH subtitles
 
 ### Supported Models
 | Model | Parameters | Relative Speed | VRAM |

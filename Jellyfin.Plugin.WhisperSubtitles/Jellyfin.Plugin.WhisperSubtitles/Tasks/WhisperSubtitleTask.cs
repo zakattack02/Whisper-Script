@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Jellyfin.Data.Enums;
 using Jellyfin.Plugin.WhisperSubtitles.Configuration;
 using Jellyfin.Plugin.WhisperSubtitles.Services;
 using MediaBrowser.Controller.Entities;
@@ -169,7 +170,7 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Tasks
         {
             var query = new InternalItemsQuery
             {
-                IncludeItemTypes = new[] { MediaBrowser.Model.Entities.BaseItemKind.Movie, MediaBrowser.Model.Entities.BaseItemKind.Episode },
+                IncludeItemTypes = new[] { BaseItemKind.Movie, BaseItemKind.Episode },
                 IsVirtualItem = false,
                 Recursive = true
             };
@@ -181,7 +182,7 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Tasks
                     .Select(name => _libraryManager.GetItemList(new InternalItemsQuery
                     {
                         Name = name,
-                        IncludeItemTypes = new[] { MediaBrowser.Model.Entities.BaseItemKind.CollectionFolder }
+                        IncludeItemTypes = new[] { BaseItemKind.CollectionFolder }
                     }).FirstOrDefault()?.Id)
                     .Where(id => id.HasValue)
                     .Select(id => id!.Value)

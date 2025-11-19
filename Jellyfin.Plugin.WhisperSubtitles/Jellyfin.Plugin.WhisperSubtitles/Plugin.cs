@@ -14,7 +14,7 @@ namespace Jellyfin.Plugin.WhisperSubtitles
     /// <summary>
     /// The main plugin class.
     /// </summary>
-    public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
+    public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages, IPluginServiceRegistrator
     {
         /// <summary>
         /// Initializes a new instance of the <see cref="Plugin"/> class.
@@ -43,7 +43,7 @@ namespace Jellyfin.Plugin.WhisperSubtitles
         /// This method is called by Jellyfin to allow plugins to add services.
         /// </summary>
         /// <param name="services">Service collection to register into.</param>
-        public void ConfigureServices(IServiceCollection services)
+        public void RegisterServices(IServiceCollection services)
         {
             // Register core services
             services.AddSingleton<IWhisperService, WhisperService>();

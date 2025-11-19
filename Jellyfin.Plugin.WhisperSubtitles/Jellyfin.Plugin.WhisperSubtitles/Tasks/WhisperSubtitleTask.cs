@@ -21,31 +21,33 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Tasks
     public class WhisperSubtitleTask : IScheduledTask
     {
         private readonly ILibraryManager _libraryManager;
-        private readonly IWhisperService _whisperService;
-        private readonly ISubtitleDetectionService _subtitleDetectionService;
         private readonly ILogger<WhisperSubtitleTask> _logger;
         private readonly ILocalizationManager _localization;
+        private readonly ILoggerFactory _loggerFactory;
+        private readonly IWhisperService _whisperService;
+        private readonly ISubtitleDetectionService _subtitleDetectionService;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="WhisperSubtitleTask"/> class.
         /// </summary>
         /// <param name="libraryManager">Library manager instance.</param>
-        /// <param name="whisperService">Whisper service instance.</param>
-        /// <param name="subtitleDetectionService">Subtitle detection service instance.</param>
         /// <param name="logger">Logger instance.</param>
         /// <param name="localization">Localization manager instance.</param>
+        /// <param name="loggerFactory">Logger factory for creating service loggers.</param>
         public WhisperSubtitleTask(
             ILibraryManager libraryManager,
-            IWhisperService whisperService,
-            ISubtitleDetectionService subtitleDetectionService,
             ILogger<WhisperSubtitleTask> logger,
-            ILocalizationManager localization)
+            ILocalizationManager localization,
+            ILoggerFactory loggerFactory)
         {
             _libraryManager = libraryManager;
-            _whisperService = whisperService;
-            _subtitleDetectionService = subtitleDetectionService;
             _logger = logger;
             _localization = localization;
+            _loggerFactory = loggerFactory;
+            
+            // Create service instances directly since Jellyfin 10.11 doesn't support plugin DI registration
+            _whisperService = new WhisperService(_loggerFactory.CreateLogger<WhisperService>());
+            _subtitleDetectionService = new SubtitleDetectionService(_loggerFactory.CreateLogger<SubtitleDetectionService>());
         }
 
         /// <inheritdoc />

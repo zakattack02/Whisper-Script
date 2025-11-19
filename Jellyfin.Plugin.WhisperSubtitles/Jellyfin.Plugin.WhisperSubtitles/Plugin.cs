@@ -5,18 +5,13 @@ using MediaBrowser.Common.Configuration;
 using MediaBrowser.Common.Plugins;
 using MediaBrowser.Model.Plugins;
 using MediaBrowser.Model.Serialization;
-using Microsoft.Extensions.DependencyInjection;
-using Jellyfin.Plugin.WhisperSubtitles.Services;
-using Jellyfin.Plugin.WhisperSubtitles.Tasks;
-using MediaBrowser.Controller.Plugins;
-using MediaBrowser.Common;
 
 namespace Jellyfin.Plugin.WhisperSubtitles
 {
     /// <summary>
     /// The main plugin class.
     /// </summary>
-    public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages, IPluginServiceRegistrator
+    public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
     {
         /// <summary>
         /// Initializes a new instance of the <see cref="Plugin"/> class.
@@ -39,22 +34,6 @@ namespace Jellyfin.Plugin.WhisperSubtitles
         /// Gets the current plugin instance.
         /// </summary>
         public static Plugin? Instance { get; private set; }
-
-        /// <summary>
-        /// Register services into the host's service collection.
-        /// This method is called by Jellyfin to allow plugins to add services.
-        /// </summary>
-        /// <param name="services">Service collection to register into.</param>
-        public void RegisterServices(IServiceCollection services)
-        {
-            // Register core services
-            services.AddSingleton<IWhisperService, WhisperService>();
-            services.AddSingleton<ISubtitleDetectionService, SubtitleDetectionService>();
-
-            // Register tasks
-            services.AddTransient<WhisperSubtitleTask>();
-            services.AddTransient<WhisperPostScanTask>();
-        }
 
         /// <inheritdoc />
         public IEnumerable<PluginPageInfo> GetPages()

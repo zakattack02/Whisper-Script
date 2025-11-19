@@ -5,6 +5,9 @@ using MediaBrowser.Common.Configuration;
 using MediaBrowser.Common.Plugins;
 using MediaBrowser.Model.Plugins;
 using MediaBrowser.Model.Serialization;
+using Microsoft.Extensions.DependencyInjection;
+using Jellyfin.Plugin.WhisperSubtitles.Services;
+using Jellyfin.Plugin.WhisperSubtitles.Tasks;
 
 namespace Jellyfin.Plugin.WhisperSubtitles
 {
@@ -34,6 +37,22 @@ namespace Jellyfin.Plugin.WhisperSubtitles
         /// Gets the current plugin instance.
         /// </summary>
         public static Plugin? Instance { get; private set; }
+
+        /// <summary>
+        /// Register services into the host's service collection.
+        /// This method is called by Jellyfin to allow plugins to add services.
+        /// </summary>
+        /// <param name="services">Service collection to register into.</param>
+        public void ConfigureServices(IServiceCollection services)
+        {
+            // Register core services
+            services.AddSingleton<IWhisperService, WhisperService>();
+            services.AddSingleton<ISubtitleDetectionService, SubtitleDetectionService>();
+
+            // Register tasks
+            services.AddTransient<WhisperSubtitleTask>();
+            services.AddTransient<WhisperPostScanTask>();
+        }
 
         /// <inheritdoc />
         public IEnumerable<PluginPageInfo> GetPages()

@@ -7,6 +7,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Jellyfin.Plugin.WhisperSubt
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jellyfin.Plugin.WhisperSubtitles", "Jellyfin.Plugin.WhisperSubtitles\Jellyfin.Plugin.WhisperSubtitles\Jellyfin.Plugin.WhisperSubtitles.csproj", "{8C79A544-F2C8-45B6-BA90-C468050A0F47}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{EA34E44F-7E64-4722-ABFD-C1B5DC344743}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Whisper.Plugin.Tests", "tests\Whisper.Plugin.Tests\Whisper.Plugin.Tests.csproj", "{9E3B699B-74E6-455A-8287-B21E56B09D89}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -20,8 +24,13 @@ Global
 		{8C79A544-F2C8-45B6-BA90-C468050A0F47}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8C79A544-F2C8-45B6-BA90-C468050A0F47}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8C79A544-F2C8-45B6-BA90-C468050A0F47}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9E3B699B-74E6-455A-8287-B21E56B09D89}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9E3B699B-74E6-455A-8287-B21E56B09D89}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9E3B699B-74E6-455A-8287-B21E56B09D89}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9E3B699B-74E6-455A-8287-B21E56B09D89}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{8C79A544-F2C8-45B6-BA90-C468050A0F47} = {A4098BEB-B04D-4FFB-9B24-4B5138D7DC26}
+		{9E3B699B-74E6-455A-8287-B21E56B09D89} = {EA34E44F-7E64-4722-ABFD-C1B5DC344743}
 	EndGlobalSection
 EndGlobal

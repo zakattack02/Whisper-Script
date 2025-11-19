@@ -23,6 +23,8 @@ Automatically generate subtitles for your Jellyfin media library using OpenAI's 
 3. Implement subtitle detection logic
 4. Add library scanning support
 5. Test compilation and basic functionality
+6. Register services with dependency injection (see `Plugin.ConfigureServices`) - IWhisperService, ISubtitleDetectionService, WhisperSubtitleTask, WhisperPostScanTask
+7. Add unit tests (xUnit) for `SubtitleDetectionService` and `WhisperPostScanTask`
 
 ### Architecture
 

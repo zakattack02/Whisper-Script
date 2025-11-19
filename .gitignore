@@ -4,7 +4,7 @@ obj/
 .idea/
 artifacts
 
-
+Jellyfin.log
 *.backup
 .venv/
 .vs/

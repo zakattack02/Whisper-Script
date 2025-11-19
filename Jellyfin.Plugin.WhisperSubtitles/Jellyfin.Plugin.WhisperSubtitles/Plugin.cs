@@ -8,6 +8,8 @@ using MediaBrowser.Model.Serialization;
 using Microsoft.Extensions.DependencyInjection;
 using Jellyfin.Plugin.WhisperSubtitles.Services;
 using Jellyfin.Plugin.WhisperSubtitles.Tasks;
+using MediaBrowser.Controller.Plugins;
+using MediaBrowser.Common;
 
 namespace Jellyfin.Plugin.WhisperSubtitles
 {

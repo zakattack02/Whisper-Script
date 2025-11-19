@@ -13,7 +13,7 @@
         "changelog": "Initial release\n- Core subtitle generation with Whisper.NET\n- Support for all Whisper models (tiny, base, small, medium, large, turbo)\n- Translation to English from any language\n- Word-level timestamps\n- AI identifier in filenames\n- Scheduled task for manual generation\n- Auto-generation after library scans\n- Skip existing subtitles\n- Regenerate AI subtitles option\n- Multi-platform support (Windows, Linux, macOS)",
         "targetAbi": "10.8.13.0",
         "sourceUrl": "https://raw.githubusercontent.com/zakattack02/Whisper-Script/feature/jellyfin-plugin/releases/jellyfin-plugin-whispersubtitles_0.0.0.1.zip",
-        "checksum": "a4dfec8382dffc1f17ddacc8243dfdf2",
+        "checksum": "322dc3a5b38fe72f2048cad947e33bc2",
         "timestamp": "2025-11-18T00:00:00Z"
       }
     ]

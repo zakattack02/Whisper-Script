@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/zakattack02/Whisper-Script/feature/jellyfin-plugin/logo.png",
     "versions": [
       {
+        "version": "0.0.0.6",
+        "changelog": "UI Improvements\n- Fixed configuration page checkboxes to use proper emby-checkbox components\n- Improved checkbox rendering with is=\"emby-checkbox\" attributes\n- Better visual consistency with Jellyfin 10.11 web UI\n- Fixed checkbox default value handling\n- Pinned to Jellyfin 10.11.2 package versions",
+        "targetAbi": "10.11.2.0",
+        "sourceUrl": "https://raw.githubusercontent.com/zakattack02/Whisper-Script/feature/jellyfin-plugin/releases/jellyfin-plugin-whispersubtitles_0.0.0.6.zip",
+        "checksum": "703337eeb1f730a5f292316e7750994d",
+        "timestamp": "2025-11-20T20:35:00Z"
+      },
+      {
         "version": "0.0.0.5",
         "changelog": "Jellyfin 10.11.2 Support - Verified Working Release\n- Pinned to exact Jellyfin 10.11.2 package versions (not 10.11.3)\n- Minimal package with only essential DLLs (Jellyfin.Plugin.WhisperSubtitles.dll + Whisper.net.dll)\n- Fixed all assembly version mismatches\n- Compatible with Jellyfin Server 10.11.2\n- Note: Whisper models must be installed separately on the system",
         "targetAbi": "10.11.2.0",

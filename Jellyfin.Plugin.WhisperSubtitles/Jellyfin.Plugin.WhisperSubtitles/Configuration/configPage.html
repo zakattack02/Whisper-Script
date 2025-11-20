@@ -14,8 +14,8 @@
                     <p>Automatically generate subtitles for your media using OpenAI's Whisper AI.</p>
                     
                     <div class="selectContainer">
-                        <label for="WhisperModel">Whisper Model:</label>
-                        <select id="WhisperModel" name="WhisperModel" class="emby-select-withcolor emby-select">
+                        <label class="selectLabel" for="WhisperModel">Whisper Model:</label>
+                        <select is="emby-select" id="WhisperModel" name="WhisperModel" class="emby-select-withcolor emby-select">
                             <option value="tiny">Tiny (~10x speed, ~1GB VRAM)</option>
                             <option value="base">Base (~7x speed, ~1GB VRAM)</option>
                             <option value="small">Small (~4x speed, ~2GB VRAM) - Recommended</option>
@@ -27,59 +27,60 @@
                     </div>
 
                     <div class="inputContainer">
-                        <label for="TargetLanguage">Target Language:</label>
-                        <input type="text" id="TargetLanguage" name="TargetLanguage" class="emby-input" value="en" />
+                        <label class="inputLabel" for="TargetLanguage">Target Language:</label>
+                        <input is="emby-input" type="text" id="TargetLanguage" name="TargetLanguage" class="emby-input" value="en" />
                         <div class="fieldDescription">Language code (e.g., en, es, fr, de, ja)</div>
                     </div>
 
                     <div class="checkboxContainer checkboxContainer-withDescription">
-                        <label>
-                            <input type="checkbox" id="TranslateToEnglish" name="TranslateToEnglish" class="emby-checkbox" />
+                        <label class="emby-checkbox-label">
+                            <input is="emby-checkbox" type="checkbox" id="TranslateToEnglish" name="TranslateToEnglish" />
                             <span>Translate to English</span>
                         </label>
                         <div class="fieldDescription">Translate audio to English regardless of source language</div>
                     </div>
 
                     <div class="inputContainer">
-                        <label for="AIIdentifier">AI Identifier:</label>
-                        <input type="text" id="AIIdentifier" name="AIIdentifier" class="emby-input" value="whisper" />
+                        <label class="inputLabel" for="AIIdentifier">AI Identifier:</label>
+                        <input is="emby-input" type="text" id="AIIdentifier" name="AIIdentifier" class="emby-input" value="whisper" />
                         <div class="fieldDescription">Added to subtitle filename (e.g., movie.en.whisper.srt). Leave empty to disable.</div>
                     </div>
 
                     <div class="checkboxContainer checkboxContainer-withDescription">
-                        <label>
-                            <input type="checkbox" id="WordTimestamps" name="WordTimestamps" class="emby-checkbox" />
+                        <label class="emby-checkbox-label">
+                            <input is="emby-checkbox" type="checkbox" id="WordTimestamps" name="WordTimestamps" />
                             <span>Enable Word-Level Timestamps</span>
                         </label>
                         <div class="fieldDescription">More precise timing but slower processing</div>
                     </div>
 
                     <div class="checkboxContainer checkboxContainer-withDescription">
-                        <label>
-                            <input type="checkbox" id="ProcessOnLibraryScan" name="ProcessOnLibraryScan" class="emby-checkbox" />
+                        <label class="emby-checkbox-label">
+                            <input is="emby-checkbox" type="checkbox" id="ProcessOnLibraryScan" name="ProcessOnLibraryScan" />
                             <span>Process on Library Scan</span>
                         </label>
                         <div class="fieldDescription">Automatically generate subtitles when library is scanned</div>
                     </div>
 
                     <div class="checkboxContainer checkboxContainer-withDescription">
-                        <label>
-                            <input type="checkbox" id="SkipExisting" name="SkipExisting" class="emby-checkbox" />
+                        <label class="emby-checkbox-label">
+                            <input is="emby-checkbox" type="checkbox" id="SkipExisting" name="SkipExisting" />
                             <span>Skip Existing Subtitles</span>
                         </label>
                         <div class="fieldDescription">Don't process files that already have subtitles</div>
                     </div>
 
                     <div class="checkboxContainer checkboxContainer-withDescription">
-                        <label>
-                            <input type="checkbox" id="RegenerateAI" name="RegenerateAI" class="emby-checkbox" />
+                        <label class="emby-checkbox-label">
+                            <input is="emby-checkbox" type="checkbox" id="RegenerateAI" name="RegenerateAI" />
                             <span>Regenerate AI Subtitles</span>
                         </label>
                         <div class="fieldDescription">Re-process files with AI-generated subtitles</div>
                     </div>
 
+                    <br/>
                     <div>
-                        <button is="emby-button" type="submit" class="raised button-submit block">
+                        <button is="emby-button" type="submit" class="raised button-submit block emby-button">
                             <span>Save</span>
                         </button>
                     </div>
@@ -100,10 +101,10 @@
                 document.getElementById('TargetLanguage').value = config.TargetLanguage || 'en';
                 document.getElementById('TranslateToEnglish').checked = config.TranslateToEnglish !== false;
                 document.getElementById('AIIdentifier').value = config.AIIdentifier || 'whisper';
-                document.getElementById('WordTimestamps').checked = config.WordTimestamps || false;
-                document.getElementById('ProcessOnLibraryScan').checked = config.ProcessOnLibraryScan || false;
+                document.getElementById('WordTimestamps').checked = config.WordTimestamps === true;
+                document.getElementById('ProcessOnLibraryScan').checked = config.ProcessOnLibraryScan === true;
                 document.getElementById('SkipExisting').checked = config.SkipExisting !== false;
-                document.getElementById('RegenerateAI').checked = config.RegenerateAI || false;
+                document.getElementById('RegenerateAI').checked = config.RegenerateAI === true;
                 Dashboard.hideLoadingMsg();
             });
         });

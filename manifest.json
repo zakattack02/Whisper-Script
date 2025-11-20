@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/zakattack02/Whisper-Script/feature/jellyfin-plugin/logo.png",
     "versions": [
       {
+        "version": "0.0.0.4",
+        "changelog": "Jellyfin 10.11 Support - Fixed Package\n- Minimal package with only essential DLLs\n- Removed unnecessary dependencies and native runtimes\n- Fixed plugin loading issues in Jellyfin 10.11.2+\n- Note: Whisper models must be installed separately on the system",
+        "targetAbi": "10.11.2.0",
+        "sourceUrl": "https://raw.githubusercontent.com/zakattack02/Whisper-Script/feature/jellyfin-plugin/releases/jellyfin-plugin-whispersubtitles_0.0.0.4.zip",
+        "checksum": "096634d0c61c6f8ab498a9564fc3cb6d",
+        "timestamp": "2025-11-20T13:00:00Z"
+      },
+      {
         "version": "0.0.0.3",
         "changelog": "Jellyfin 10.11 Support\n- Updated to target Jellyfin 10.11.x with .NET 9.0\n- Removed dependency injection registration (not supported in 10.11)\n- Services now instantiated directly in tasks\n- Full compatibility with Jellyfin 10.11.2+",
         "targetAbi": "10.11.2.0",

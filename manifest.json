@@ -13,7 +13,7 @@
         "changelog": "Jellyfin 10.11 Support - Fixed Package\n- Minimal package with only essential DLLs\n- Removed unnecessary dependencies and native runtimes\n- Fixed plugin loading issues in Jellyfin 10.11.2+\n- Note: Whisper models must be installed separately on the system",
         "targetAbi": "10.11.2.0",
         "sourceUrl": "https://raw.githubusercontent.com/zakattack02/Whisper-Script/feature/jellyfin-plugin/releases/jellyfin-plugin-whispersubtitles_0.0.0.4.zip",
-        "checksum": "096634d0c61c6f8ab498a9564fc3cb6d",
+        "checksum": "a36fe08f8b0f6c352b2bc410614e9efe",
         "timestamp": "2025-11-20T13:00:00Z"
       },
       {

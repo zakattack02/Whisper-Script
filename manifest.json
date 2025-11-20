@@ -13,7 +13,7 @@
         "changelog": "Jellyfin 10.11 Support\n- Updated to target Jellyfin 10.11.x with .NET 9.0\n- Removed dependency injection registration (not supported in 10.11)\n- Services now instantiated directly in tasks\n- Full compatibility with Jellyfin 10.11.2+",
         "targetAbi": "10.11.2.0",
         "sourceUrl": "https://raw.githubusercontent.com/zakattack02/Whisper-Script/feature/jellyfin-plugin/releases/jellyfin-plugin-whispersubtitles_0.0.0.3.zip",
-        "checksum": "87c5741713d9b171efedfcae339e45b7",
+        "checksum": "8291cffd4ca65f11dfb7c24eb00c6fd6",
         "timestamp": "2025-11-19T05:00:00Z"
       },
       {

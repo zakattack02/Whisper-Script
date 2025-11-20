@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/zakattack02/Whisper-Script/feature/jellyfin-plugin/logo.png",
     "versions": [
       {
+        "version": "0.0.0.7",
+        "changelog": "Critical Fix - Cache Directory Permissions\n- Fixed UnauthorizedAccessException when accessing cache directory\n- Improved cache directory detection for container environments\n- Added fallback to temp directory if HOME is not available\n- Better error handling for directory creation\n- Plugin now initializes properly without crashing\n- Configuration page now works correctly",
+        "targetAbi": "10.11.2.0",
+        "sourceUrl": "https://raw.githubusercontent.com/zakattack02/Whisper-Script/feature/jellyfin-plugin/releases/jellyfin-plugin-whispersubtitles_0.0.0.7.zip",
+        "checksum": "3b713aa5d36219d18fd316d1a79b1f0e",
+        "timestamp": "2025-11-20T21:45:00Z"
+      },
+      {
         "version": "0.0.0.6",
         "changelog": "UI Improvements\n- Fixed configuration page checkboxes to use proper emby-checkbox components\n- Improved checkbox rendering with is=\"emby-checkbox\" attributes\n- Better visual consistency with Jellyfin 10.11 web UI\n- Fixed checkbox default value handling\n- Pinned to Jellyfin 10.11.2 package versions",
         "targetAbi": "10.11.2.0",

@@ -27,15 +27,38 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
             _logger = logger;
             _httpClient = new HttpClient();
             
-            // Use Whisper model cache directory
-            var homeDir = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-            _modelPath = Path.Combine(homeDir, ".cache", "whisper");
+            // Use appropriate cache directory for different environments
+            var cacheDir = Environment.GetEnvironmentVariable("JELLYFIN_CACHE_DIR");
+            if (string.IsNullOrEmpty(cacheDir))
+            {
+                // Try to use HOME environment variable
+                var homeDir = Environment.GetEnvironmentVariable("HOME");
+                if (string.IsNullOrEmpty(homeDir))
+                {
+                    // Fallback to temp directory if HOME is not available (container environment)
+                    homeDir = Path.GetTempPath();
+                    _logger.LogWarning("HOME environment variable not set, using temp directory: {TempPath}", homeDir);
+                }
+                cacheDir = Path.Combine(homeDir, ".cache");
+            }
+            
+            _modelPath = Path.Combine(cacheDir, "whisper");
             
             // Ensure model directory exists
-            if (!Directory.Exists(_modelPath))
+            try
             {
-                Directory.CreateDirectory(_modelPath);
-                _logger.LogInformation("Created Whisper model directory: {ModelPath}", _modelPath);
+                if (!Directory.Exists(_modelPath))
+                {
+                    Directory.CreateDirectory(_modelPath);
+                    _logger.LogInformation("Created Whisper model directory: {ModelPath}", _modelPath);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to create model directory at {ModelPath}. Whisper models must be pre-installed.", _modelPath);
+                // Don't throw - let the service initialize but log the error
+                _modelPath = Path.Combine(Path.GetTempPath(), "whisper");
+                _logger.LogWarning("Using fallback model path: {ModelPath}", _modelPath);
             }
         }
 

@@ -4,11 +4,21 @@
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Jellyfin.Controller" Version="10.11.*" />
-    <PackageReference Include="Jellyfin.Model" Version="10.11.*" />
+    <!-- Reference Jellyfin assemblies without copying them (provided by Jellyfin) -->
+    <PackageReference Include="Jellyfin.Controller" Version="10.11.*">
+      <PrivateAssets>All</PrivateAssets>
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </PackageReference>
+    <PackageReference Include="Jellyfin.Model" Version="10.11.*">
+      <PrivateAssets>All</PrivateAssets>
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </PackageReference>
+    
+    <!-- Include Whisper.net assemblies -->
     <PackageReference Include="Whisper.net" Version="1.8.1" />
     <PackageReference Include="Whisper.net.Runtime" Version="1.8.1" />
   </ItemGroup>

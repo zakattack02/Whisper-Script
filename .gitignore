@@ -62,3 +62,7 @@ models/
 # OS
 .DS_Store
 Thumbs.db
+
+
+build/
+plugin-package/

@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/zakattack02/Whisper-Script/feature/jellyfin-plugin/logo.png",
     "versions": [
       {
+        "version": "0.0.0.8",
+        "changelog": "Enhance configuration page logging and error handling for improved debugging ",
+        "targetAbi": "10.11.2.0",
+        "sourceUrl": "https://raw.githubusercontent.com/zakattack02/Whisper-Script/feature/jellyfin-plugin/releases/jellyfin-plugin-whispersubtitles_0.0.0.8.zip",
+        "checksum": "0e8a1c7585f8a7c416c30e1d145628e0",
+        "timestamp": "2025-11-22T06:36:48Z"
+      },
+      {
         "version": "0.0.0.7",
         "changelog": "Critical Fix - Cache Directory Permissions\n- Fixed UnauthorizedAccessException when accessing cache directory\n- Improved cache directory detection for container environments\n- Added fallback to temp directory if HOME is not available\n- Better error handling for directory creation\n- Plugin now initializes properly without crashing\n- Configuration page now works correctly",
         "targetAbi": "10.11.2.0",

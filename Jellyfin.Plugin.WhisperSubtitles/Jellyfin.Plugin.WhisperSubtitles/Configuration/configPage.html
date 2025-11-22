@@ -94,9 +94,16 @@
             pluginUniqueId: 'a8b7c6d5-e4f3-4a5b-9c8d-7e6f5a4b3c2d'
         };
 
+        // Verify Jellyfin's theme and API are loaded
+        console.log('Jellyfin Dashboard available:', typeof Dashboard !== 'undefined');
+        console.log('Jellyfin ApiClient available:', typeof ApiClient !== 'undefined');
+        console.log('Current theme applied:', document.querySelector('html').className);
+
         document.getElementById('WhisperSubtitlesConfigPage').addEventListener('pageshow', function () {
             Dashboard.showLoadingMsg();
             ApiClient.getPluginConfiguration(WhisperSubtitlesConfig.pluginUniqueId).then(function (config) {
+                console.log('Loaded config:', config);
+                
                 document.getElementById('WhisperModel').value = config.WhisperModel || 'small';
                 document.getElementById('TargetLanguage').value = config.TargetLanguage || 'en';
                 document.getElementById('TranslateToEnglish').checked = config.TranslateToEnglish !== false;
@@ -105,7 +112,12 @@
                 document.getElementById('ProcessOnLibraryScan').checked = config.ProcessOnLibraryScan === true;
                 document.getElementById('SkipExisting').checked = config.SkipExisting !== false;
                 document.getElementById('RegenerateAI').checked = config.RegenerateAI === true;
+                
                 Dashboard.hideLoadingMsg();
+            }).catch(function (error) {
+                console.error('Error loading configuration:', error);
+                Dashboard.hideLoadingMsg();
+                Dashboard.alert('Error loading configuration: ' + error);
             });
         });
 
@@ -113,7 +125,9 @@
             e.preventDefault();
             Dashboard.showLoadingMsg();
 
+            // Get fresh config, update it, then save
             ApiClient.getPluginConfiguration(WhisperSubtitlesConfig.pluginUniqueId).then(function (config) {
+                // Update config with form values
                 config.WhisperModel = document.getElementById('WhisperModel').value;
                 config.TargetLanguage = document.getElementById('TargetLanguage').value;
                 config.TranslateToEnglish = document.getElementById('TranslateToEnglish').checked;
@@ -123,9 +137,18 @@
                 config.SkipExisting = document.getElementById('SkipExisting').checked;
                 config.RegenerateAI = document.getElementById('RegenerateAI').checked;
 
-                ApiClient.updatePluginConfiguration(WhisperSubtitlesConfig.pluginUniqueId, config).then(function (result) {
-                    Dashboard.processPluginConfigurationUpdateResult(result);
-                });
+                console.log('Saving config:', config);
+
+                // Save the updated config
+                return ApiClient.updatePluginConfiguration(WhisperSubtitlesConfig.pluginUniqueId, config);
+            }).then(function (result) {
+                console.log('Configuration saved successfully:', result);
+                Dashboard.processPluginConfigurationUpdateResult(result);
+                Dashboard.hideLoadingMsg();
+            }).catch(function (error) {
+                console.error('Error saving configuration:', error);
+                Dashboard.hideLoadingMsg();
+                Dashboard.alert('Error saving configuration: ' + error);
             });
 
             return false;

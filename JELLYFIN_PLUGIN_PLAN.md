@@ -345,7 +345,7 @@ public class WhisperService : IWhisperService
 ## Questions to Answer
 
 1. ✅ ~~Do you want to keep Python script or go pure C#?~~ **ANSWERED: Pure C# with Whisper.NET**
-2. ⏳ Should it auto-generate on library scan or only manual/scheduled? **TODO: Implement both options**
+2. ⏳ Should it auto-generate on library scan or only manual/scheduled? **TODO: Implement both options?**
 3. ✅ ~~Do you want to package Python environment with plugin?~~ **N/A - No Python needed**
 4. ✅ ~~Target Jellyfin version? (10.8.x or 10.9.x)~~ **ANSWERED: 10.8.x (.NET 8.0)**
 

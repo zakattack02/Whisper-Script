@@ -5,6 +5,7 @@ using MediaBrowser.Common.Configuration;
 using MediaBrowser.Common.Plugins;
 using MediaBrowser.Model.Plugins;
 using MediaBrowser.Model.Serialization;
+using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.WhisperSubtitles
 {
@@ -13,15 +14,26 @@ namespace Jellyfin.Plugin.WhisperSubtitles
     /// </summary>
     public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
     {
+        private readonly ILogger<Plugin> _logger;
+
         /// <summary>
         /// Initializes a new instance of the <see cref="Plugin"/> class.
         /// </summary>
         /// <param name="applicationPaths">Instance of the <see cref="IApplicationPaths"/> interface.</param>
         /// <param name="xmlSerializer">Instance of the <see cref="IXmlSerializer"/> interface.</param>
-        public Plugin(IApplicationPaths applicationPaths, IXmlSerializer xmlSerializer)
+        /// <param name="logger">Instance of the <see cref="ILogger{Plugin}"/> interface.</param>
+        public Plugin(IApplicationPaths applicationPaths, IXmlSerializer xmlSerializer, ILogger<Plugin> logger)
             : base(applicationPaths, xmlSerializer)
         {
             Instance = this;
+            _logger = logger;
+            
+            _logger.LogInformation("Whisper Subtitles Plugin v{Version} initialized", Version);
+            _logger.LogInformation("Plugin ID: {PluginId}", Id);
+            _logger.LogInformation("Configuration loaded - Model: {Model}, Language: {Language}, TranslateToEnglish: {Translate}",
+                Configuration.WhisperModel,
+                Configuration.TargetLanguage,
+                Configuration.TranslateToEnglish);
         }
 
         /// <inheritdoc />
@@ -36,8 +48,35 @@ namespace Jellyfin.Plugin.WhisperSubtitles
         public static Plugin? Instance { get; private set; }
 
         /// <inheritdoc />
+        public override void UpdateConfiguration(BasePluginConfiguration configuration)
+        {
+            var oldConfig = Configuration;
+            base.UpdateConfiguration(configuration);
+            
+            _logger.LogInformation("Configuration updated");
+            _logger.LogInformation("  Whisper Model: {OldModel} -> {NewModel}", 
+                oldConfig.WhisperModel, Configuration.WhisperModel);
+            _logger.LogInformation("  Target Language: {OldLang} -> {NewLang}", 
+                oldConfig.TargetLanguage, Configuration.TargetLanguage);
+            _logger.LogInformation("  Translate to English: {OldTranslate} -> {NewTranslate}", 
+                oldConfig.TranslateToEnglish, Configuration.TranslateToEnglish);
+            _logger.LogInformation("  AI Identifier: {OldId} -> {NewId}", 
+                oldConfig.AIIdentifier, Configuration.AIIdentifier);
+            _logger.LogInformation("  Word Timestamps: {OldWord} -> {NewWord}", 
+                oldConfig.WordTimestamps, Configuration.WordTimestamps);
+            _logger.LogInformation("  Process on Library Scan: {OldScan} -> {NewScan}", 
+                oldConfig.ProcessOnLibraryScan, Configuration.ProcessOnLibraryScan);
+            _logger.LogInformation("  Skip Existing: {OldSkip} -> {NewSkip}", 
+                oldConfig.SkipExisting, Configuration.SkipExisting);
+            _logger.LogInformation("  Regenerate AI: {OldRegen} -> {NewRegen}", 
+                oldConfig.RegenerateAI, Configuration.RegenerateAI);
+        }
+
+        /// <inheritdoc />
         public IEnumerable<PluginPageInfo> GetPages()
         {
+            _logger.LogDebug("Configuration page requested");
+            
             return new[]
             {
                 new PluginPageInfo

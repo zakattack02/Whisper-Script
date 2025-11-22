@@ -28,12 +28,12 @@
 
                     <div class="inputContainer">
                         <label class="inputLabel" for="TargetLanguage">Target Language:</label>
-                        <input is="emby-input" type="text" id="TargetLanguage" name="TargetLanguage" class="emby-input" value="en" />
+                        <input is="emby-input" type="text" id="TargetLanguage" name="TargetLanguage" class="emby-input" />
                         <div class="fieldDescription">Language code (e.g., en, es, fr, de, ja)</div>
                     </div>
 
                     <div class="checkboxContainer checkboxContainer-withDescription">
-                        <label class="emby-checkbox-label">
+                        <label>
                             <input is="emby-checkbox" type="checkbox" id="TranslateToEnglish" name="TranslateToEnglish" />
                             <span>Translate to English</span>
                         </label>
@@ -42,12 +42,12 @@
 
                     <div class="inputContainer">
                         <label class="inputLabel" for="AIIdentifier">AI Identifier:</label>
-                        <input is="emby-input" type="text" id="AIIdentifier" name="AIIdentifier" class="emby-input" value="whisper" />
+                        <input is="emby-input" type="text" id="AIIdentifier" name="AIIdentifier" class="emby-input" />
                         <div class="fieldDescription">Added to subtitle filename (e.g., movie.en.whisper.srt). Leave empty to disable.</div>
                     </div>
 
                     <div class="checkboxContainer checkboxContainer-withDescription">
-                        <label class="emby-checkbox-label">
+                        <label>
                             <input is="emby-checkbox" type="checkbox" id="WordTimestamps" name="WordTimestamps" />
                             <span>Enable Word-Level Timestamps</span>
                         </label>
@@ -55,7 +55,7 @@
                     </div>
 
                     <div class="checkboxContainer checkboxContainer-withDescription">
-                        <label class="emby-checkbox-label">
+                        <label>
                             <input is="emby-checkbox" type="checkbox" id="ProcessOnLibraryScan" name="ProcessOnLibraryScan" />
                             <span>Process on Library Scan</span>
                         </label>
@@ -63,7 +63,7 @@
                     </div>
 
                     <div class="checkboxContainer checkboxContainer-withDescription">
-                        <label class="emby-checkbox-label">
+                        <label>
                             <input is="emby-checkbox" type="checkbox" id="SkipExisting" name="SkipExisting" />
                             <span>Skip Existing Subtitles</span>
                         </label>
@@ -71,7 +71,7 @@
                     </div>
 
                     <div class="checkboxContainer checkboxContainer-withDescription">
-                        <label class="emby-checkbox-label">
+                        <label>
                             <input is="emby-checkbox" type="checkbox" id="RegenerateAI" name="RegenerateAI" />
                             <span>Regenerate AI Subtitles</span>
                         </label>
@@ -84,6 +84,9 @@
                             <span>Save</span>
                         </button>
                     </div>
+                    
+                    <!-- Status message area -->
+                    <div id="statusMessage" style="margin-top: 1em; padding: 1em; border-radius: 4px; display: none;"></div>
                 </form>
             </div>
         </div>
@@ -93,6 +96,35 @@
         var WhisperSubtitlesConfig = {
             pluginUniqueId: 'a8b7c6d5-e4f3-4a5b-9c8d-7e6f5a4b3c2d'
         };
+
+        // Helper function to show status messages
+        function showStatus(message, type) {
+            var statusDiv = document.getElementById('statusMessage');
+            statusDiv.textContent = message;
+            statusDiv.style.display = 'block';
+            
+            // Color based on type
+            if (type === 'success') {
+                statusDiv.style.backgroundColor = 'rgba(0, 164, 220, 0.2)';
+                statusDiv.style.color = '#00a4dc';
+                statusDiv.style.border = '1px solid #00a4dc';
+            } else if (type === 'error') {
+                statusDiv.style.backgroundColor = 'rgba(220, 0, 0, 0.2)';
+                statusDiv.style.color = '#dc0000';
+                statusDiv.style.border = '1px solid #dc0000';
+            } else {
+                statusDiv.style.backgroundColor = 'rgba(255, 193, 7, 0.2)';
+                statusDiv.style.color = '#ffc107';
+                statusDiv.style.border = '1px solid #ffc107';
+            }
+            
+            // Auto-hide after 5 seconds for success messages
+            if (type === 'success') {
+                setTimeout(function() {
+                    statusDiv.style.display = 'none';
+                }, 5000);
+            }
+        }
 
         // Verify Jellyfin's theme and API are loaded
         console.log('Jellyfin Dashboard available:', typeof Dashboard !== 'undefined');
@@ -114,16 +146,20 @@
                 document.getElementById('RegenerateAI').checked = config.RegenerateAI === true;
                 
                 Dashboard.hideLoadingMsg();
+                showStatus('Configuration loaded successfully', 'success');
             }).catch(function (error) {
                 console.error('Error loading configuration:', error);
                 Dashboard.hideLoadingMsg();
-                Dashboard.alert('Error loading configuration: ' + error);
+                showStatus('Error loading configuration: ' + error.message, 'error');
             });
         });
 
         document.getElementById('WhisperSubtitlesConfigForm').addEventListener('submit', function (e) {
             e.preventDefault();
             Dashboard.showLoadingMsg();
+            
+            // Hide any previous status messages
+            document.getElementById('statusMessage').style.display = 'none';
 
             // Get fresh config, update it, then save
             ApiClient.getPluginConfiguration(WhisperSubtitlesConfig.pluginUniqueId).then(function (config) {
@@ -145,10 +181,11 @@
                 console.log('Configuration saved successfully:', result);
                 Dashboard.processPluginConfigurationUpdateResult(result);
                 Dashboard.hideLoadingMsg();
+                showStatus('✓ Configuration saved successfully!', 'success');
             }).catch(function (error) {
                 console.error('Error saving configuration:', error);
                 Dashboard.hideLoadingMsg();
-                Dashboard.alert('Error saving configuration: ' + error);
+                showStatus('✗ Error saving configuration: ' + error.message, 'error');
             });
 
             return false;

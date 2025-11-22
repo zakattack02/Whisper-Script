@@ -13,7 +13,7 @@ Jellyfin.log
 # Build results
 [Dd]ebug/
 [Dd]ebugPublic/
-
+make-release.sh
 x64/
 x86/
 [Aa][Rr][Mm]/
@@ -61,7 +61,6 @@ models/
 # OS
 .DS_Store
 Thumbs.db
-
 
 build/
 plugin-package/

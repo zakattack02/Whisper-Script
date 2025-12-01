@@ -1,16 +1,18 @@
 ---
 name: "Whisper Subtitles"
 guid: "a8b7c6d5-e4f3-4a5b-9c8d-7e6f5a4b3c2d"
-version: "0.0.0.15"
+version: "0.0.0.16"
 targetAbi: "10.9.0.0"
 framework: "net8.0"
-overview: "Short description about your plugin"
+overview: "Automatically generate subtitles using OpenAI's Whisper AI"
 description: >
-  This is a longer description that can span more than one
-  line and include details about your plugin.
-category: "General"
-owner: "jellyfin"
+  Generate high-quality subtitles for your media using OpenAI's Whisper AI.
+  Supports multiple models (tiny to large), multiple languages, translation to English,
+  and automatic processing during library scans. Download models directly from the
+  configuration page.
+category: "Metadata"
+owner: "zakattack02"
 artifacts:
-- "Jellyfin.Plugin.Template.dll"
+- "Jellyfin.Plugin.WhisperSubtitles.dll"
 changelog: >
   changelog

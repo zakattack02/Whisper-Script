@@ -148,21 +148,25 @@
                 document.getElementById('TargetLanguage').value = config.TargetLanguage || 'en';
                 document.getElementById('AIIdentifier').value = config.AIIdentifier || 'whisper';
                 
-                // Set checkboxes - handle boolean values properly (don't use || operator!)
-                document.getElementById('TranslateToEnglish').checked = 
-                    config.TranslateToEnglish !== undefined ? config.TranslateToEnglish : true;
-                document.getElementById('WordTimestamps').checked = 
-                    config.WordTimestamps !== undefined ? config.WordTimestamps : false;
-                document.getElementById('ProcessOnLibraryScan').checked = 
-                    config.ProcessOnLibraryScan !== undefined ? config.ProcessOnLibraryScan : false;
-                document.getElementById('SkipExisting').checked = 
-                    config.SkipExisting !== undefined ? config.SkipExisting : true;
-                document.getElementById('RegenerateAI').checked = 
-                    config.RegenerateAI !== undefined ? config.RegenerateAI : false;
-                
-                console.log('=== FORM POPULATED ===');
-                console.log('TranslateToEnglish checkbox:', document.getElementById('TranslateToEnglish').checked);
-                console.log('SkipExisting checkbox:', document.getElementById('SkipExisting').checked);
+                // Wait a tick for emby-checkbox custom elements to initialize
+                // This ensures the checkbox components are ready before we set values
+                setTimeout(function() {
+                    // Set checkboxes - handle boolean values properly (don't use || operator!)
+                    document.getElementById('TranslateToEnglish').checked = 
+                        config.TranslateToEnglish !== undefined ? config.TranslateToEnglish : true;
+                    document.getElementById('WordTimestamps').checked = 
+                        config.WordTimestamps !== undefined ? config.WordTimestamps : false;
+                    document.getElementById('ProcessOnLibraryScan').checked = 
+                        config.ProcessOnLibraryScan !== undefined ? config.ProcessOnLibraryScan : false;
+                    document.getElementById('SkipExisting').checked = 
+                        config.SkipExisting !== undefined ? config.SkipExisting : true;
+                    document.getElementById('RegenerateAI').checked = 
+                        config.RegenerateAI !== undefined ? config.RegenerateAI : false;
+                    
+                    console.log('=== FORM POPULATED ===');
+                    console.log('TranslateToEnglish checkbox:', document.getElementById('TranslateToEnglish').checked);
+                    console.log('SkipExisting checkbox:', document.getElementById('SkipExisting').checked);
+                }, 200);
                 
                 Dashboard.hideLoadingMsg();
             }).catch(function (error) {

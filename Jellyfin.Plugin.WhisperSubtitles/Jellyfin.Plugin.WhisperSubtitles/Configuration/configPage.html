@@ -24,6 +24,12 @@
                             <option value="large">Large (Best quality, ~10GB VRAM)</option>
                         </select>
                         <div class="fieldDescription">Larger models are more accurate but slower</div>
+                        <div style="margin-top: 0.5em;">
+                            <button is="emby-button" type="button" id="DownloadModelButton" class="raised button-submit block emby-button">  
+                                <span>Download Selected Model</span>
+                            </button>
+                        </div>
+                        <div id="downloadStatus" style="margin-top: 0.5em; display: none; padding: 0.5em; border-radius: 4px;"></div>
                     </div>
 
                     <div class="inputContainer">
@@ -179,9 +185,24 @@
                 return ApiClient.updatePluginConfiguration(WhisperSubtitlesConfig.pluginUniqueId, config);
             }).then(function (result) {
                 console.log('Configuration saved successfully:', result);
-                Dashboard.processPluginConfigurationUpdateResult(result);
                 Dashboard.hideLoadingMsg();
                 showStatus('✓ Configuration saved successfully!', 'success');
+                
+                // Reload the configuration to display saved values
+                // Note: Don't call processPluginConfigurationUpdateResult as it may cause reload issues
+                return ApiClient.getPluginConfiguration(WhisperSubtitlesConfig.pluginUniqueId);
+            }).then(function (config) {
+                console.log('Reloaded config after save:', config);
+                
+                // Update form with saved values to confirm they were saved
+                document.getElementById('WhisperModel').value = config.WhisperModel || 'small';
+                document.getElementById('TargetLanguage').value = config.TargetLanguage || 'en';
+                document.getElementById('TranslateToEnglish').checked = config.TranslateToEnglish !== false;
+                document.getElementById('AIIdentifier').value = config.AIIdentifier || 'whisper';
+                document.getElementById('WordTimestamps').checked = config.WordTimestamps === true;
+                document.getElementById('ProcessOnLibraryScan').checked = config.ProcessOnLibraryScan === true;
+                document.getElementById('SkipExisting').checked = config.SkipExisting !== false;
+                document.getElementById('RegenerateAI').checked = config.RegenerateAI === true;
             }).catch(function (error) {
                 console.error('Error saving configuration:', error);
                 Dashboard.hideLoadingMsg();
@@ -189,6 +210,62 @@
             });
 
             return false;
+        });
+
+        // Download model button handler
+        document.getElementById('DownloadModelButton').addEventListener('click', function() {
+            var selectedModel = document.getElementById('WhisperModel').value;
+            var downloadStatusDiv = document.getElementById('downloadStatus');
+            
+            console.log('Download model requested:', selectedModel);
+            
+            // Show downloading status
+            downloadStatusDiv.style.display = 'block';
+            downloadStatusDiv.style.backgroundColor = 'rgba(0, 164, 220, 0.2)';
+            downloadStatusDiv.style.color = '#00a4dc';
+            downloadStatusDiv.style.border = '1px solid #00a4dc';
+            downloadStatusDiv.innerHTML = '⏳ Downloading model "' + selectedModel + '"... This may take several minutes.';
+            
+            // Disable button during download
+            var downloadButton = document.getElementById('DownloadModelButton');
+            downloadButton.disabled = true;
+            downloadButton.querySelector('span').textContent = 'Downloading...';
+            
+            // Call the API endpoint to download the model
+            ApiClient.fetch({
+                type: 'POST',
+                url: ApiClient.getUrl('WhisperSubtitles/DownloadModel'),
+                data: JSON.stringify({ modelName: selectedModel }),
+                contentType: 'application/json',
+                dataType: 'json'
+            }).then(function(response) {
+                console.log('Model download response:', response);
+                
+                downloadStatusDiv.style.backgroundColor = 'rgba(0, 200, 83, 0.2)';
+                downloadStatusDiv.style.color = '#00c853';
+                downloadStatusDiv.style.border = '1px solid #00c853';
+                downloadStatusDiv.innerHTML = '✓ Model "' + selectedModel + '" downloaded successfully!';
+                
+                // Re-enable button
+                downloadButton.disabled = false;
+                downloadButton.querySelector('span').textContent = 'Download Selected Model';
+                
+                // Auto-hide after 5 seconds
+                setTimeout(function() {
+                    downloadStatusDiv.style.display = 'none';
+                }, 5000);
+            }).catch(function(error) {
+                console.error('Error downloading model:', error);
+                
+                downloadStatusDiv.style.backgroundColor = 'rgba(220, 0, 0, 0.2)';
+                downloadStatusDiv.style.color = '#dc0000';
+                downloadStatusDiv.style.border = '1px solid #dc0000';
+                downloadStatusDiv.innerHTML = '✗ Error downloading model: ' + (error.message || error);
+                
+                // Re-enable button
+                downloadButton.disabled = false;
+                downloadButton.querySelector('span').textContent = 'Download Selected Model';
+            });
         });
     </script>
 </body>

@@ -12,7 +12,7 @@
         "version": "0.0.0.10",
         "changelog": "fixed bugs and enhancement",
         "targetAbi": "10.11.2.0",
-        "sourceUrl": "https://raw.githubusercontent.com/zakattack02/Whisper-Script/feature/jellyfin-plugin/releases/jellyfin-plugin-whispersubtitles_0.0.0.10.zip",
+        "sourceUrl": "https://github.com/zakattack02/Whisper-Script/releases/download/v0.0.0.10/jellyfin-plugin-whispersubtitles_0.0.0.10.zip",
         "checksum": "005cb8404d0c013de4ba5e07ba2df344",
         "timestamp": "2025-11-22T07:19:35Z"
       },
@@ -20,7 +20,7 @@
         "version": "0.0.0.9",
         "changelog": "Enhance logging",
         "targetAbi": "10.11.2.0",
-        "sourceUrl": "https://raw.githubusercontent.com/zakattack02/Whisper-Script/feature/jellyfin-plugin/releases/jellyfin-plugin-whispersubtitles_0.0.0.9.zip",
+        "sourceUrl": "https://github.com/zakattack02/Whisper-Script/releases/download/v0.0.0.9/jellyfin-plugin-whispersubtitles_0.0.0.9.zip",
         "checksum": "cd5ccae0fd1f3bbe7558767dd55b5c28",
         "timestamp": "2025-11-22T07:09:22Z"
       },
@@ -28,9 +28,65 @@
         "version": "0.0.0.8",
         "changelog": "Enhance configuration page logging and error handling for improved debugging ",
         "targetAbi": "10.11.2.0",
-        "sourceUrl": "https://raw.githubusercontent.com/zakattack02/Whisper-Script/feature/jellyfin-plugin/releases/jellyfin-plugin-whispersubtitles_0.0.0.8.zip",
+        "sourceUrl": "https://github.com/zakattack02/Whisper-Script/releases/download/v0.0.0.8/jellyfin-plugin-whispersubtitles_0.0.0.8.zip",
         "checksum": "0e8a1c7585f8a7c416c30e1d145628e0",
         "timestamp": "2025-11-22T06:36:48Z"
+      },
+      {
+        "version": "0.0.0.7",
+        "changelog": "Critical Fix - Cache Directory Permissions\n- Fixed UnauthorizedAccessException when accessing cache directory\n- Improved cache directory detection for container environments\n- Added fallback to temp directory if HOME is not available\n- Better error handling for directory creation\n- Plugin now initializes properly without crashing\n- Configuration page now works correctly",
+        "targetAbi": "10.11.2.0",
+        "sourceUrl": "https://github.com/zakattack02/Whisper-Script/releases/download/v0.0.0.7/jellyfin-plugin-whispersubtitles_0.0.0.7.zip",
+        "checksum": "3b713aa5d36219d18fd316d1a79b1f0e",
+        "timestamp": "2025-11-20T21:45:00Z"
+      },
+      {
+        "version": "0.0.0.6",
+        "changelog": "UI Improvements\n- Fixed configuration page checkboxes to use proper emby-checkbox components\n- Improved checkbox rendering with is=\"emby-checkbox\" attributes\n- Better visual consistency with Jellyfin 10.11 web UI\n- Fixed checkbox default value handling\n- Pinned to Jellyfin 10.11.2 package versions",
+        "targetAbi": "10.11.2.0",
+        "sourceUrl": "https://github.com/zakattack02/Whisper-Script/releases/download/v0.0.0.6/jellyfin-plugin-whispersubtitles_0.0.0.6.zip",
+        "checksum": "703337eeb1f730a5f292316e7750994d",
+        "timestamp": "2025-11-20T20:35:00Z"
+      },
+      {
+        "version": "0.0.0.5",
+        "changelog": "Jellyfin 10.11.2 Support - Verified Working Release\n- Pinned to exact Jellyfin 10.11.2 package versions (not 10.11.3)\n- Minimal package with only essential DLLs (Jellyfin.Plugin.WhisperSubtitles.dll + Whisper.net.dll)\n- Fixed all assembly version mismatches\n- Compatible with Jellyfin Server 10.11.2\n- Note: Whisper models must be installed separately on the system",
+        "targetAbi": "10.11.2.0",
+        "sourceUrl": "https://github.com/zakattack02/Whisper-Script/releases/download/v0.0.0.5/jellyfin-plugin-whispersubtitles_0.0.0.5.zip",
+        "checksum": "4ace158b6ad75d9317f019406354c6bc",
+        "timestamp": "2025-11-20T20:27:00Z"
+      },
+      {
+        "version": "0.0.0.4",
+        "changelog": "Jellyfin 10.11.2 Support - Fixed Version Compatibility\n- Fixed to use exact Jellyfin 10.11.2 package versions\n- Minimal package with only essential DLLs\n- Fixed AssemblyVersion to match Jellyfin 10.11.2.0 ABI\n- Note: Whisper models must be installed separately on the system",
+        "targetAbi": "10.11.2.0",
+        "sourceUrl": "https://github.com/zakattack02/Whisper-Script/releases/download/v0.0.0.4/jellyfin-plugin-whispersubtitles_0.0.0.4.zip",
+        "checksum": "512b45626b19042d90cfd7a23619ece2",
+        "timestamp": "2025-11-20T20:17:00Z"
+      },
+      {
+        "version": "0.0.0.3",
+        "changelog": "Jellyfin 10.11 Support\n- Updated to target Jellyfin 10.11.x with .NET 9.0\n- Removed dependency injection registration (not supported in 10.11)\n- Services now instantiated directly in tasks\n- Full compatibility with Jellyfin 10.11.2+",
+        "targetAbi": "10.11.2.0",
+        "sourceUrl": "https://github.com/zakattack02/Whisper-Script/releases/download/v0.0.0.3/jellyfin-plugin-whispersubtitles_0.0.0.3.zip",
+        "checksum": "d19f4c0a95bc7e259917fc52266e04db",
+        "timestamp": "2025-11-19T05:00:00Z"
+      },
+      {
+        "version": "0.0.0.2",
+        "changelog": "Bug fixes\n- Fixed dependency injection registration (implement IPluginServiceRegistrator)\n- Fixed configuration page embedding\n- Corrected RegisterServices method signature for Jellyfin 10.8 compatibility",
+        "targetAbi": "10.8.13.0",
+        "sourceUrl": "https://github.com/zakattack02/Whisper-Script/releases/download/v0.0.0.2/jellyfin-plugin-whispersubtitles_0.0.0.2.zip",
+        "checksum": "3d10d6a898101478aea48265cd92b8ec",
+        "timestamp": "2025-11-19T00:00:00Z"
+      },
+      {
+        "version": "0.0.0.1",
+        "changelog": "Initial release\n- Core subtitle generation with Whisper.NET\n- Support for all Whisper models (tiny, base, small, medium, large, turbo)\n- Translation to English from any language\n- Word-level timestamps\n- AI identifier in filenames\n- Scheduled task for manual generation\n- Auto-generation after library scans\n- Skip existing subtitles\n- Regenerate AI subtitles option\n- Multi-platform support (Windows, Linux, macOS)",
+        "targetAbi": "10.8.13.0",
+        "sourceUrl": "https://github.com/zakattack02/Whisper-Script/releases/download/v0.0.0.1/jellyfin-plugin-whispersubtitles_0.0.0.1.zip",
+        "checksum": "6d78159b8ae975609d126a978ed6571e",
+        "timestamp": "2025-11-18T00:00:00Z"
       }
     ]
   }

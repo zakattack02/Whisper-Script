@@ -16,7 +16,6 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Controllers
     /// Whisper Subtitles API controller.
     /// </summary>
     [ApiController]
-    [Authorize(Policy = "RequiresElevation")]
     [Route("WhisperSubtitles")]
     public class WhisperSubtitlesController : ControllerBase
     {

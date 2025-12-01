@@ -39,8 +39,8 @@
                     </div>
 
                     <div class="checkboxContainer checkboxContainer-withDescription">
-                        <label>
-                            <input is="emby-checkbox" type="checkbox" id="TranslateToEnglish" name="TranslateToEnglish" />
+                        <label class="emby-checkbox-label">
+                            <input is="emby-checkbox" type="checkbox" id="TranslateToEnglish" name="TranslateToEnglish" class="emby-checkbox" />
                             <span>Translate to English</span>
                         </label>
                         <div class="fieldDescription">Translate audio to English regardless of source language</div>
@@ -53,32 +53,32 @@
                     </div>
 
                     <div class="checkboxContainer checkboxContainer-withDescription">
-                        <label>
-                            <input is="emby-checkbox" type="checkbox" id="WordTimestamps" name="WordTimestamps" />
+                        <label class="emby-checkbox-label">
+                            <input is="emby-checkbox" type="checkbox" id="WordTimestamps" name="WordTimestamps" class="emby-checkbox" />
                             <span>Enable Word-Level Timestamps</span>
                         </label>
                         <div class="fieldDescription">More precise timing but slower processing</div>
                     </div>
 
                     <div class="checkboxContainer checkboxContainer-withDescription">
-                        <label>
-                            <input is="emby-checkbox" type="checkbox" id="ProcessOnLibraryScan" name="ProcessOnLibraryScan" />
+                        <label class="emby-checkbox-label">
+                            <input is="emby-checkbox" type="checkbox" id="ProcessOnLibraryScan" name="ProcessOnLibraryScan" class="emby-checkbox" />
                             <span>Process on Library Scan</span>
                         </label>
                         <div class="fieldDescription">Automatically generate subtitles when library is scanned</div>
                     </div>
 
                     <div class="checkboxContainer checkboxContainer-withDescription">
-                        <label>
-                            <input is="emby-checkbox" type="checkbox" id="SkipExisting" name="SkipExisting" />
+                        <label class="emby-checkbox-label">
+                            <input is="emby-checkbox" type="checkbox" id="SkipExisting" name="SkipExisting" class="emby-checkbox" />
                             <span>Skip Existing Subtitles</span>
                         </label>
                         <div class="fieldDescription">Don't process files that already have subtitles</div>
                     </div>
 
                     <div class="checkboxContainer checkboxContainer-withDescription">
-                        <label>
-                            <input is="emby-checkbox" type="checkbox" id="RegenerateAI" name="RegenerateAI" />
+                        <label class="emby-checkbox-label">
+                            <input is="emby-checkbox" type="checkbox" id="RegenerateAI" name="RegenerateAI" class="emby-checkbox" />
                             <span>Regenerate AI Subtitles</span>
                         </label>
                         <div class="fieldDescription">Re-process files with AI-generated subtitles</div>
@@ -138,26 +138,33 @@
         console.log('Current theme applied:', document.querySelector('html').className);
 
         document.getElementById('WhisperSubtitlesConfigPage').addEventListener('pageshow', function () {
+            console.log('=== CONFIG PAGE LOADING ===');
             Dashboard.showLoadingMsg();
             ApiClient.getPluginConfiguration(WhisperSubtitlesConfig.pluginUniqueId).then(function (config) {
-                console.log('Loaded config:', config);
+                console.log('Loaded config from API:', JSON.stringify(config, null, 2));
                 
                 // Set text inputs
                 document.getElementById('WhisperModel').value = config.WhisperModel || 'small';
                 document.getElementById('TargetLanguage').value = config.TargetLanguage || 'en';
                 document.getElementById('AIIdentifier').value = config.AIIdentifier || 'whisper';
                 
-                // Set checkboxes - handle explicit values properly
+                // Set checkboxes - handle boolean values properly (don't use || operator!)
                 document.getElementById('TranslateToEnglish').checked = 
-                    config.TranslateToEnglish === undefined ? true : config.TranslateToEnglish;
-                document.getElementById('WordTimestamps').checked = config.WordTimestamps || false;
-                document.getElementById('ProcessOnLibraryScan').checked = config.ProcessOnLibraryScan || false;
+                    config.TranslateToEnglish !== undefined ? config.TranslateToEnglish : true;
+                document.getElementById('WordTimestamps').checked = 
+                    config.WordTimestamps !== undefined ? config.WordTimestamps : false;
+                document.getElementById('ProcessOnLibraryScan').checked = 
+                    config.ProcessOnLibraryScan !== undefined ? config.ProcessOnLibraryScan : false;
                 document.getElementById('SkipExisting').checked = 
-                    config.SkipExisting === undefined ? true : config.SkipExisting;
-                document.getElementById('RegenerateAI').checked = config.RegenerateAI || false;
+                    config.SkipExisting !== undefined ? config.SkipExisting : true;
+                document.getElementById('RegenerateAI').checked = 
+                    config.RegenerateAI !== undefined ? config.RegenerateAI : false;
+                
+                console.log('=== FORM POPULATED ===');
+                console.log('TranslateToEnglish checkbox:', document.getElementById('TranslateToEnglish').checked);
+                console.log('SkipExisting checkbox:', document.getElementById('SkipExisting').checked);
                 
                 Dashboard.hideLoadingMsg();
-                console.log('Configuration loaded and form populated');
             }).catch(function (error) {
                 console.error('Error loading configuration:', error);
                 Dashboard.hideLoadingMsg();
@@ -167,6 +174,9 @@
 
         document.getElementById('WhisperSubtitlesConfigForm').addEventListener('submit', function (e) {
             e.preventDefault();
+            e.stopPropagation();
+            
+            console.log('=== SAVE BUTTON CLICKED ===');
             Dashboard.showLoadingMsg();
             
             // Hide any previous status messages
@@ -174,6 +184,8 @@
 
             // Get fresh config, update it, then save
             ApiClient.getPluginConfiguration(WhisperSubtitlesConfig.pluginUniqueId).then(function (config) {
+                console.log('Current config from API:', JSON.stringify(config, null, 2));
+                
                 // Update config with form values
                 config.WhisperModel = document.getElementById('WhisperModel').value;
                 config.TargetLanguage = document.getElementById('TargetLanguage').value;
@@ -184,15 +196,21 @@
                 config.SkipExisting = document.getElementById('SkipExisting').checked;
                 config.RegenerateAI = document.getElementById('RegenerateAI').checked;
 
-                console.log('Saving config:', config);
+                console.log('Updated config to save:', JSON.stringify(config, null, 2));
+                console.log('TranslateToEnglish value being saved:', config.TranslateToEnglish, typeof config.TranslateToEnglish);
+                console.log('SkipExisting value being saved:', config.SkipExisting, typeof config.SkipExisting);
 
                 // Save the updated config
                 return ApiClient.updatePluginConfiguration(WhisperSubtitlesConfig.pluginUniqueId, config);
             }).then(function (result) {
+                console.log('=== SAVE SUCCESSFUL ===');
                 console.log('Configuration saved successfully:', result);
                 Dashboard.hideLoadingMsg();
                 showStatus('✓ Configuration saved successfully!', 'success');
+                
+                // DO NOT reload/navigate - stay on page to show the message
             }).catch(function (error) {
+                console.error('=== SAVE FAILED ===');
                 console.error('Error saving configuration:', error);
                 Dashboard.hideLoadingMsg();
                 showStatus('✗ Error saving configuration: ' + error.message, 'error');

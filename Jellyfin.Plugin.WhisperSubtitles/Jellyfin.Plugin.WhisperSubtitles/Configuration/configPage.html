@@ -148,37 +148,41 @@
                 document.getElementById('TargetLanguage').value = config.TargetLanguage || 'en';
                 document.getElementById('AIIdentifier').value = config.AIIdentifier || 'whisper';
                 
-                // Function to set checkbox values
-                var setCheckboxes = function() {
-                    console.log('=== SETTING CHECKBOXES ===');
-                    var checkboxes = {
-                        'TranslateToEnglish': config.TranslateToEnglish !== undefined ? config.TranslateToEnglish : true,
-                        'WordTimestamps': config.WordTimestamps !== undefined ? config.WordTimestamps : false,
-                        'ProcessOnLibraryScan': config.ProcessOnLibraryScan !== undefined ? config.ProcessOnLibraryScan : false,
-                        'SkipExisting': config.SkipExisting !== undefined ? config.SkipExisting : true,
-                        'RegenerateAI': config.RegenerateAI !== undefined ? config.RegenerateAI : false
-                    };
-                    
-                    for (var id in checkboxes) {
-                        var checkbox = document.getElementById(id);
-                        if (checkbox) {
-                            checkbox.checked = checkboxes[id];
-                            // Also trigger change event to ensure custom element updates
-                            var event = new Event('change', { bubbles: true });
-                            checkbox.dispatchEvent(event);
-                            console.log('Set', id, 'to', checkboxes[id]);
-                        }
-                    }
-                    
-                    console.log('=== FORM POPULATED ===');
-                    console.log('TranslateToEnglish checkbox:', document.getElementById('TranslateToEnglish').checked);
-                    console.log('SkipExisting checkbox:', document.getElementById('SkipExisting').checked);
+                // For emby-checkbox, we need to set the HTML attribute, not just the property
+                // The custom element reads from the attribute during initialization
+                var checkboxConfig = {
+                    'TranslateToEnglish': config.TranslateToEnglish !== undefined ? config.TranslateToEnglish : true,
+                    'WordTimestamps': config.WordTimestamps !== undefined ? config.WordTimestamps : false,
+                    'ProcessOnLibraryScan': config.ProcessOnLibraryScan !== undefined ? config.ProcessOnLibraryScan : false,
+                    'SkipExisting': config.SkipExisting !== undefined ? config.SkipExisting : true,
+                    'RegenerateAI': config.RegenerateAI !== undefined ? config.RegenerateAI : false
                 };
                 
-                // Try multiple times with increasing delays to ensure it sticks
-                setTimeout(setCheckboxes, 100);
-                setTimeout(setCheckboxes, 300);
-                setTimeout(setCheckboxes, 500);
+                for (var id in checkboxConfig) {
+                    var checkbox = document.getElementById(id);
+                    if (checkbox) {
+                        if (checkboxConfig[id]) {
+                            // Set both attribute and property
+                            checkbox.setAttribute('checked', 'checked');
+                            checkbox.checked = true;
+                        } else {
+                            checkbox.removeAttribute('checked');
+                            checkbox.checked = false;
+                        }
+                        console.log('Set', id, 'to', checkboxConfig[id]);
+                    }
+                }
+                
+                console.log('=== FORM POPULATED (immediate) ===');
+                console.log('TranslateToEnglish checkbox:', document.getElementById('TranslateToEnglish').checked);
+                console.log('SkipExisting checkbox:', document.getElementById('SkipExisting').checked);
+                
+                // Verify again after a delay to see if custom element resets it
+                setTimeout(function() {
+                    console.log('=== FORM STATE AFTER 500ms ===');
+                    console.log('TranslateToEnglish checkbox:', document.getElementById('TranslateToEnglish').checked);
+                    console.log('SkipExisting checkbox:', document.getElementById('SkipExisting').checked);
+                }, 500);
                 
                 Dashboard.hideLoadingMsg();
             }).catch(function (error) {

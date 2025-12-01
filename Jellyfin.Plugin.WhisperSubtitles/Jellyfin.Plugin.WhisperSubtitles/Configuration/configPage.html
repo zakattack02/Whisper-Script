@@ -142,17 +142,22 @@
             ApiClient.getPluginConfiguration(WhisperSubtitlesConfig.pluginUniqueId).then(function (config) {
                 console.log('Loaded config:', config);
                 
+                // Set text inputs
                 document.getElementById('WhisperModel').value = config.WhisperModel || 'small';
                 document.getElementById('TargetLanguage').value = config.TargetLanguage || 'en';
-                document.getElementById('TranslateToEnglish').checked = config.TranslateToEnglish !== false;
                 document.getElementById('AIIdentifier').value = config.AIIdentifier || 'whisper';
-                document.getElementById('WordTimestamps').checked = config.WordTimestamps === true;
-                document.getElementById('ProcessOnLibraryScan').checked = config.ProcessOnLibraryScan === true;
-                document.getElementById('SkipExisting').checked = config.SkipExisting !== false;
-                document.getElementById('RegenerateAI').checked = config.RegenerateAI === true;
+                
+                // Set checkboxes - handle explicit values properly
+                document.getElementById('TranslateToEnglish').checked = 
+                    config.TranslateToEnglish === undefined ? true : config.TranslateToEnglish;
+                document.getElementById('WordTimestamps').checked = config.WordTimestamps || false;
+                document.getElementById('ProcessOnLibraryScan').checked = config.ProcessOnLibraryScan || false;
+                document.getElementById('SkipExisting').checked = 
+                    config.SkipExisting === undefined ? true : config.SkipExisting;
+                document.getElementById('RegenerateAI').checked = config.RegenerateAI || false;
                 
                 Dashboard.hideLoadingMsg();
-                showStatus('Configuration loaded successfully', 'success');
+                console.log('Configuration loaded and form populated');
             }).catch(function (error) {
                 console.error('Error loading configuration:', error);
                 Dashboard.hideLoadingMsg();
@@ -187,22 +192,6 @@
                 console.log('Configuration saved successfully:', result);
                 Dashboard.hideLoadingMsg();
                 showStatus('✓ Configuration saved successfully!', 'success');
-                
-                // Reload the configuration to display saved values
-                // Note: Don't call processPluginConfigurationUpdateResult as it may cause reload issues
-                return ApiClient.getPluginConfiguration(WhisperSubtitlesConfig.pluginUniqueId);
-            }).then(function (config) {
-                console.log('Reloaded config after save:', config);
-                
-                // Update form with saved values to confirm they were saved
-                document.getElementById('WhisperModel').value = config.WhisperModel || 'small';
-                document.getElementById('TargetLanguage').value = config.TargetLanguage || 'en';
-                document.getElementById('TranslateToEnglish').checked = config.TranslateToEnglish !== false;
-                document.getElementById('AIIdentifier').value = config.AIIdentifier || 'whisper';
-                document.getElementById('WordTimestamps').checked = config.WordTimestamps === true;
-                document.getElementById('ProcessOnLibraryScan').checked = config.ProcessOnLibraryScan === true;
-                document.getElementById('SkipExisting').checked = config.SkipExisting !== false;
-                document.getElementById('RegenerateAI').checked = config.RegenerateAI === true;
             }).catch(function (error) {
                 console.error('Error saving configuration:', error);
                 Dashboard.hideLoadingMsg();

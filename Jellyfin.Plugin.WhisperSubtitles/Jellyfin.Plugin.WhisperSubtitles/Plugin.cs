@@ -53,23 +53,25 @@ namespace Jellyfin.Plugin.WhisperSubtitles
             var oldConfig = Configuration;
             base.UpdateConfiguration(configuration);
             
+            var newConfig = (PluginConfiguration)configuration;
+            
             _logger.LogInformation("Configuration updated");
             _logger.LogInformation("  Whisper Model: {OldModel} -> {NewModel}", 
-                oldConfig.WhisperModel, Configuration.WhisperModel);
+                oldConfig.WhisperModel, newConfig.WhisperModel);
             _logger.LogInformation("  Target Language: {OldLang} -> {NewLang}", 
-                oldConfig.TargetLanguage, Configuration.TargetLanguage);
+                oldConfig.TargetLanguage, newConfig.TargetLanguage);
             _logger.LogInformation("  Translate to English: {OldTranslate} -> {NewTranslate}", 
-                oldConfig.TranslateToEnglish, Configuration.TranslateToEnglish);
+                oldConfig.TranslateToEnglish, newConfig.TranslateToEnglish);
             _logger.LogInformation("  AI Identifier: {OldId} -> {NewId}", 
-                oldConfig.AIIdentifier, Configuration.AIIdentifier);
+                oldConfig.AIIdentifier, newConfig.AIIdentifier);
             _logger.LogInformation("  Word Timestamps: {OldWord} -> {NewWord}", 
-                oldConfig.WordTimestamps, Configuration.WordTimestamps);
+                oldConfig.WordTimestamps, newConfig.WordTimestamps);
             _logger.LogInformation("  Process on Library Scan: {OldScan} -> {NewScan}", 
-                oldConfig.ProcessOnLibraryScan, Configuration.ProcessOnLibraryScan);
+                oldConfig.ProcessOnLibraryScan, newConfig.ProcessOnLibraryScan);
             _logger.LogInformation("  Skip Existing: {OldSkip} -> {NewSkip}", 
-                oldConfig.SkipExisting, Configuration.SkipExisting);
+                oldConfig.SkipExisting, newConfig.SkipExisting);
             _logger.LogInformation("  Regenerate AI: {OldRegen} -> {NewRegen}", 
-                oldConfig.RegenerateAI, Configuration.RegenerateAI);
+                oldConfig.RegenerateAI, newConfig.RegenerateAI);
         }
 
         /// <inheritdoc />

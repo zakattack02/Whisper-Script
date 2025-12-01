@@ -29,6 +29,18 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Controllers
         public WhisperSubtitlesController(ILogger<WhisperSubtitlesController> logger)
         {
             _logger = logger;
+            _logger.LogInformation("WhisperSubtitlesController initialized");
+        }
+
+        /// <summary>
+        /// Test endpoint to verify controller is working.
+        /// </summary>
+        /// <returns>Test message.</returns>
+        [HttpGet("Test")]
+        public ActionResult<string> Test()
+        {
+            _logger.LogInformation("Test endpoint called");
+            return Ok("WhisperSubtitles controller is working!");
         }
 
         /// <summary>

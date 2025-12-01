@@ -37,6 +37,7 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Controllers
         /// </summary>
         /// <returns>Test message.</returns>
         [HttpGet("Test")]
+        [AllowAnonymous]
         public ActionResult<string> Test()
         {
             _logger.LogInformation("Test endpoint called");
@@ -54,8 +55,18 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Controllers
             [FromBody] ModelDownloadRequest request,
             CancellationToken cancellationToken = default)
         {
+            _logger.LogInformation("=== DownloadModel CALLED ===");
+            _logger.LogInformation("Request received: {Request}", request);
+            
+            if (request == null)
+            {
+                _logger.LogError("Request is null");
+                return BadRequest("Request is null");
+            }
+            
             if (string.IsNullOrWhiteSpace(request.ModelName))
             {
+                _logger.LogError("Model name is empty or null");
                 return BadRequest("Model name is required");
             }
 

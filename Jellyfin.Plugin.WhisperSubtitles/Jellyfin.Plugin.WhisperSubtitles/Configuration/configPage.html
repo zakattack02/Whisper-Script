@@ -206,7 +206,9 @@
             var selectedModel = document.getElementById('WhisperModel').value;
             var downloadStatusDiv = document.getElementById('downloadStatus');
             
-            console.log('Download model requested:', selectedModel);
+            console.log('=== Download button clicked ===');
+            console.log('Selected model:', selectedModel);
+            console.log('API URL:', ApiClient.getUrl('WhisperSubtitles/DownloadModel'));
             
             // Show downloading status
             downloadStatusDiv.style.display = 'block';
@@ -220,6 +222,8 @@
             downloadButton.disabled = true;
             downloadButton.querySelector('span').textContent = 'Downloading...';
             
+            console.log('Calling API with data:', JSON.stringify({ modelName: selectedModel }));
+            
             // Call the API endpoint to download the model
             ApiClient.fetch({
                 type: 'POST',
@@ -228,6 +232,7 @@
                 contentType: 'application/json',
                 dataType: 'json'
             }).then(function(response) {
+                console.log('=== Download SUCCESS ===');
                 console.log('Model download response:', response);
                 
                 downloadStatusDiv.style.backgroundColor = 'rgba(0, 200, 83, 0.2)';
@@ -244,12 +249,15 @@
                     downloadStatusDiv.style.display = 'none';
                 }, 5000);
             }).catch(function(error) {
+                console.error('=== Download FAILED ===');
                 console.error('Error downloading model:', error);
+                console.error('Error type:', typeof error);
+                console.error('Error keys:', Object.keys(error));
                 
                 downloadStatusDiv.style.backgroundColor = 'rgba(220, 0, 0, 0.2)';
                 downloadStatusDiv.style.color = '#dc0000';
                 downloadStatusDiv.style.border = '1px solid #dc0000';
-                downloadStatusDiv.innerHTML = '✗ Error downloading model: ' + (error.message || error);
+                downloadStatusDiv.innerHTML = '✗ Error downloading model: ' + (error.message || JSON.stringify(error));
                 
                 // Re-enable button
                 downloadButton.disabled = false;

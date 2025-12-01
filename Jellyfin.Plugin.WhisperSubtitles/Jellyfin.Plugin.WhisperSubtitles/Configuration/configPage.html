@@ -143,30 +143,42 @@
             ApiClient.getPluginConfiguration(WhisperSubtitlesConfig.pluginUniqueId).then(function (config) {
                 console.log('Loaded config from API:', JSON.stringify(config, null, 2));
                 
-                // Set text inputs
+                // Set text inputs immediately
                 document.getElementById('WhisperModel').value = config.WhisperModel || 'small';
                 document.getElementById('TargetLanguage').value = config.TargetLanguage || 'en';
                 document.getElementById('AIIdentifier').value = config.AIIdentifier || 'whisper';
                 
-                // Wait a tick for emby-checkbox custom elements to initialize
-                // This ensures the checkbox components are ready before we set values
-                setTimeout(function() {
-                    // Set checkboxes - handle boolean values properly (don't use || operator!)
-                    document.getElementById('TranslateToEnglish').checked = 
-                        config.TranslateToEnglish !== undefined ? config.TranslateToEnglish : true;
-                    document.getElementById('WordTimestamps').checked = 
-                        config.WordTimestamps !== undefined ? config.WordTimestamps : false;
-                    document.getElementById('ProcessOnLibraryScan').checked = 
-                        config.ProcessOnLibraryScan !== undefined ? config.ProcessOnLibraryScan : false;
-                    document.getElementById('SkipExisting').checked = 
-                        config.SkipExisting !== undefined ? config.SkipExisting : true;
-                    document.getElementById('RegenerateAI').checked = 
-                        config.RegenerateAI !== undefined ? config.RegenerateAI : false;
+                // Function to set checkbox values
+                var setCheckboxes = function() {
+                    console.log('=== SETTING CHECKBOXES ===');
+                    var checkboxes = {
+                        'TranslateToEnglish': config.TranslateToEnglish !== undefined ? config.TranslateToEnglish : true,
+                        'WordTimestamps': config.WordTimestamps !== undefined ? config.WordTimestamps : false,
+                        'ProcessOnLibraryScan': config.ProcessOnLibraryScan !== undefined ? config.ProcessOnLibraryScan : false,
+                        'SkipExisting': config.SkipExisting !== undefined ? config.SkipExisting : true,
+                        'RegenerateAI': config.RegenerateAI !== undefined ? config.RegenerateAI : false
+                    };
+                    
+                    for (var id in checkboxes) {
+                        var checkbox = document.getElementById(id);
+                        if (checkbox) {
+                            checkbox.checked = checkboxes[id];
+                            // Also trigger change event to ensure custom element updates
+                            var event = new Event('change', { bubbles: true });
+                            checkbox.dispatchEvent(event);
+                            console.log('Set', id, 'to', checkboxes[id]);
+                        }
+                    }
                     
                     console.log('=== FORM POPULATED ===');
                     console.log('TranslateToEnglish checkbox:', document.getElementById('TranslateToEnglish').checked);
                     console.log('SkipExisting checkbox:', document.getElementById('SkipExisting').checked);
-                }, 200);
+                };
+                
+                // Try multiple times with increasing delays to ensure it sticks
+                setTimeout(setCheckboxes, 100);
+                setTimeout(setCheckboxes, 300);
+                setTimeout(setCheckboxes, 500);
                 
                 Dashboard.hideLoadingMsg();
             }).catch(function (error) {

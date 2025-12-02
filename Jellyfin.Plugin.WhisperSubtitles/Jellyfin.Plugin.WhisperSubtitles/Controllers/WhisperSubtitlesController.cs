@@ -50,6 +50,7 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Controllers
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>Download result.</returns>
         [HttpPost("DownloadModel")]
+        [Authorize(Policy = "RequiresElevation")]
         public async Task<ActionResult<ModelDownloadResponse>> DownloadModel(
             [FromBody] ModelDownloadRequest request,
             CancellationToken cancellationToken = default)

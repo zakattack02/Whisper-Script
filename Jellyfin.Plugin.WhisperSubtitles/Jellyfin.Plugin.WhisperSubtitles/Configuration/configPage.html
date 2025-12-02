@@ -40,10 +40,8 @@
 
                     <!-- CRITICAL FIX: Label must NOT wrap the checkbox - they must be siblings! -->
                     <div class="checkboxContainer checkboxContainer-withDescription">
-                        <label class="emby-checkbox-label">
-                            <input is="emby-checkbox" type="checkbox" id="TranslateToEnglish" name="TranslateToEnglish" />
-                            <span>Translate to English</span>
-                        </label>
+                        <input is="emby-checkbox" type="checkbox" id="TranslateToEnglish" name="TranslateToEnglish" />
+                        <label for="TranslateToEnglish">Translate to English</label>
                         <div class="fieldDescription">Translate audio to English regardless of source language</div>
                     </div>
 
@@ -54,34 +52,26 @@
                     </div>
 
                     <div class="checkboxContainer checkboxContainer-withDescription">
-                        <label class="emby-checkbox-label">
-                            <input is="emby-checkbox" type="checkbox" id="WordTimestamps" name="WordTimestamps" />
-                            <span>Enable Word-Level Timestamps</span>
-                        </label>
+                        <input is="emby-checkbox" type="checkbox" id="WordTimestamps" name="WordTimestamps" />
+                        <label for="WordTimestamps">Enable Word-Level Timestamps</label>
                         <div class="fieldDescription">More precise timing but slower processing</div>
                     </div>
 
                     <div class="checkboxContainer checkboxContainer-withDescription">
-                        <label class="emby-checkbox-label">
-                            <input is="emby-checkbox" type="checkbox" id="ProcessOnLibraryScan" name="ProcessOnLibraryScan" />
-                            <span>Process on Library Scan</span>
-                        </label>
+                        <input is="emby-checkbox" type="checkbox" id="ProcessOnLibraryScan" name="ProcessOnLibraryScan" />
+                        <label for="ProcessOnLibraryScan">Process on Library Scan</label>
                         <div class="fieldDescription">Automatically generate subtitles when library is scanned</div>
                     </div>
 
                     <div class="checkboxContainer checkboxContainer-withDescription">
-                        <label class="emby-checkbox-label">
-                            <input is="emby-checkbox" type="checkbox" id="SkipExisting" name="SkipExisting" />
-                            <span>Skip Existing Subtitles</span>
-                        </label>
+                        <input is="emby-checkbox" type="checkbox" id="SkipExisting" name="SkipExisting" />
+                        <label for="SkipExisting">Skip Existing Subtitles</label>
                         <div class="fieldDescription">Don't process files that already have subtitles</div>
                     </div>
 
                     <div class="checkboxContainer checkboxContainer-withDescription">
-                        <label class="emby-checkbox-label">
-                            <input is="emby-checkbox" type="checkbox" id="RegenerateAI" name="RegenerateAI" />
-                            <span>Regenerate AI Subtitles</span>
-                        </label>
+                        <input is="emby-checkbox" type="checkbox" id="RegenerateAI" name="RegenerateAI" />
+                        <label for="RegenerateAI">Regenerate AI Subtitles</label>
                         <div class="fieldDescription">Re-process files with AI-generated subtitles</div>
                     </div>
 

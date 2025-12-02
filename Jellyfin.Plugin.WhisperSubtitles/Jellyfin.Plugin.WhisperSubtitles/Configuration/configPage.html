@@ -1,21 +1,7 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Whisper Subtitles</title>
-    <style>
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-    </style>
-</head>
-<body>
-    <div id="WhisperSubtitlesConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-select,emby-checkbox">
-        <div data-role="content">
-            <div class="content-primary">
-                <form id="WhisperSubtitlesConfigForm">
+<div id="WhisperSubtitlesConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-select,emby-checkbox">
+    <div data-role="content">
+        <div class="content-primary">
+            <form id="WhisperSubtitlesConfigForm">
                     <h2>Whisper Subtitles Configuration</h2>
                     <p>Automatically generate subtitles for your media using OpenAI's Whisper AI.</p>
                     
@@ -44,44 +30,54 @@
                         <div class="fieldDescription">Language code (e.g., en, es, fr, de, ja)</div>
                     </div>
 
-                    <!-- CRITICAL FIX: Label must NOT wrap the checkbox - they must be siblings! -->
-                    <div class="checkboxContainer checkboxContainer-withDescription">
-                        <input is="emby-checkbox" type="checkbox" id="TranslateToEnglish" name="TranslateToEnglish" />
-                        <label for="TranslateToEnglish">Translate to English</label>
-                        <div class="fieldDescription">Translate audio to English regardless of source language</div>
-                    </div>
-
-                    <div class="inputContainer">
+                <div class="checkboxContainer checkboxContainer-withDescription">
+                    <label class="checkboxContainer emby-checkbox-label">
+                        <input is="emby-checkbox" type="checkbox" id="TranslateToEnglish" name="TranslateToEnglish" class="emby-checkbox" />
+                        <span class="checkboxLabel">Translate to English</span>
+                        <span class="checkboxOutline"><span class="material-icons checkboxIcon checkboxIcon-checked check" aria-hidden="true"></span><span class="material-icons checkboxIcon checkboxIcon-unchecked" aria-hidden="true"></span></span>
+                    </label>
+                    <div class="fieldDescription">Translate audio to English regardless of source language</div>
+                </div>                    <div class="inputContainer">
                         <label class="inputLabel" for="AIIdentifier">AI Identifier:</label>
                         <input is="emby-input" type="text" id="AIIdentifier" name="AIIdentifier" class="emby-input" />
                         <div class="fieldDescription">Added to subtitle filename (e.g., movie.en.whisper.srt). Leave empty to disable.</div>
                     </div>
 
-                    <div class="checkboxContainer checkboxContainer-withDescription">
-                        <input is="emby-checkbox" type="checkbox" id="WordTimestamps" name="WordTimestamps" />
-                        <label for="WordTimestamps">Enable Word-Level Timestamps</label>
-                        <div class="fieldDescription">More precise timing but slower processing</div>
-                    </div>
+                <div class="checkboxContainer checkboxContainer-withDescription">
+                    <label class="checkboxContainer emby-checkbox-label">
+                        <input is="emby-checkbox" type="checkbox" id="WordTimestamps" name="WordTimestamps" class="emby-checkbox" />
+                        <span class="checkboxLabel">Enable Word-Level Timestamps</span>
+                        <span class="checkboxOutline"><span class="material-icons checkboxIcon checkboxIcon-checked check" aria-hidden="true"></span><span class="material-icons checkboxIcon checkboxIcon-unchecked" aria-hidden="true"></span></span>
+                    </label>
+                    <div class="fieldDescription">More precise timing but slower processing</div>
+                </div>
 
-                    <div class="checkboxContainer checkboxContainer-withDescription">
-                        <input is="emby-checkbox" type="checkbox" id="ProcessOnLibraryScan" name="ProcessOnLibraryScan" />
-                        <label for="ProcessOnLibraryScan">Process on Library Scan</label>
-                        <div class="fieldDescription">Automatically generate subtitles when library is scanned</div>
-                    </div>
+                <div class="checkboxContainer checkboxContainer-withDescription">
+                    <label class="checkboxContainer emby-checkbox-label">
+                        <input is="emby-checkbox" type="checkbox" id="ProcessOnLibraryScan" name="ProcessOnLibraryScan" class="emby-checkbox" />
+                        <span class="checkboxLabel">Process on Library Scan</span>
+                        <span class="checkboxOutline"><span class="material-icons checkboxIcon checkboxIcon-checked check" aria-hidden="true"></span><span class="material-icons checkboxIcon checkboxIcon-unchecked" aria-hidden="true"></span></span>
+                    </label>
+                    <div class="fieldDescription">Automatically generate subtitles when library is scanned</div>
+                </div>
 
-                    <div class="checkboxContainer checkboxContainer-withDescription">
-                        <input is="emby-checkbox" type="checkbox" id="SkipExisting" name="SkipExisting" />
-                        <label for="SkipExisting">Skip Existing Subtitles</label>
-                        <div class="fieldDescription">Don't process files that already have subtitles</div>
-                    </div>
+                <div class="checkboxContainer checkboxContainer-withDescription">
+                    <label class="checkboxContainer emby-checkbox-label">
+                        <input is="emby-checkbox" type="checkbox" id="SkipExisting" name="SkipExisting" class="emby-checkbox" />
+                        <span class="checkboxLabel">Skip Existing Subtitles</span>
+                        <span class="checkboxOutline"><span class="material-icons checkboxIcon checkboxIcon-checked check" aria-hidden="true"></span><span class="material-icons checkboxIcon checkboxIcon-unchecked" aria-hidden="true"></span></span>
+                    </label>
+                    <div class="fieldDescription">Don't process files that already have subtitles</div>
+                </div>
 
-                    <div class="checkboxContainer checkboxContainer-withDescription">
-                        <input is="emby-checkbox" type="checkbox" id="RegenerateAI" name="RegenerateAI" />
-                        <label for="RegenerateAI">Regenerate AI Subtitles</label>
-                        <div class="fieldDescription">Re-process files with AI-generated subtitles</div>
-                    </div>
-
-                    <br/>
+                <div class="checkboxContainer checkboxContainer-withDescription">
+                    <label class="checkboxContainer emby-checkbox-label">
+                        <input is="emby-checkbox" type="checkbox" id="RegenerateAI" name="RegenerateAI" class="emby-checkbox" />
+                        <span class="checkboxLabel">Regenerate AI Subtitles</span>
+                        <span class="checkboxOutline"><span class="material-icons checkboxIcon checkboxIcon-checked check" aria-hidden="true"></span><span class="material-icons checkboxIcon checkboxIcon-unchecked" aria-hidden="true"></span></span>
+                    </label>
+                    <div class="fieldDescription">Re-process files with AI-generated subtitles</div>
+                </div>                    <br/>
                     <div>
                         <button is="emby-button" type="submit" class="raised button-submit block emby-button">
                             <span>Save</span>
@@ -155,18 +151,21 @@
         function loadConfiguration() {
             console.log('=== CONFIG PAGE LOADING ===');
             
-            // Check if ApiClient is available
-            if (typeof ApiClient === 'undefined') {
+            // Get ApiClient from parent window
+            var apiClient = getApiClient();
+            var dashboard = getDashboard();
+            
+            if (!apiClient) {
                 console.error('ApiClient not available in loadConfiguration');
                 showStatus('Error: Jellyfin API not available. Please refresh the page.', 'error');
                 return;
             }
             
-            if (typeof Dashboard !== 'undefined') {
-                Dashboard.showLoadingMsg();
+            if (dashboard) {
+                dashboard.showLoadingMsg();
             }
             
-            ApiClient.getPluginConfiguration(WhisperSubtitlesConfig.pluginUniqueId).then(function (config) {
+            apiClient.getPluginConfiguration(WhisperSubtitlesConfig.pluginUniqueId).then(function (config) {
                 console.log('=== API CONFIG ===');
                 console.log(JSON.stringify(config, null, 2));
                 
@@ -247,13 +246,15 @@
                     }
                 }, 2000);
                 
-                if (typeof Dashboard !== 'undefined') {
-                    Dashboard.hideLoadingMsg();
+                var dashboard = getDashboard();
+                if (dashboard) {
+                    dashboard.hideLoadingMsg();
                 }
             }).catch(function (error) {
                 console.error('Error loading configuration:', error);
-                if (typeof Dashboard !== 'undefined') {
-                    Dashboard.hideLoadingMsg();
+                var dashboard = getDashboard();
+                if (dashboard) {
+                    dashboard.hideLoadingMsg();
                 }
                 showStatus('Error loading configuration: ' + error.message, 'error');
             });
@@ -265,14 +266,19 @@
                 downloadBtn.addEventListener('click', function() {
                 console.log('=== DOWNLOAD BUTTON CLICKED ===');
                 
+                var apiClient = getApiClient();
+                if (!apiClient) {
+                    console.error('ApiClient not available for download');
+                    return;
+                }
+                
                 var selectedModel = document.getElementById('WhisperModel').value;
                 var downloadStatusDiv = document.getElementById('downloadStatus');
                 var downloadButton = document.getElementById('DownloadModelButton');
                 
                 console.log('Selected model:', selectedModel);
-                console.log('ApiClient available:', typeof ApiClient !== 'undefined');
                 
-                var apiUrl = ApiClient.getUrl('WhisperSubtitles/DownloadModel');
+                var apiUrl = apiClient.getUrl('WhisperSubtitles/DownloadModel');
                 console.log('API URL:', apiUrl);
                 
                 var requestData = { modelName: selectedModel };
@@ -289,7 +295,7 @@
                 
                 console.log('Making API call...');
                 
-                ApiClient.fetch({
+                apiClient.fetch({
                     type: 'POST',
                     url: apiUrl,
                     data: JSON.stringify(requestData),
@@ -339,6 +345,30 @@
             }
         }
         
+        // Get ApiClient from parent window context
+        function getApiClient() {
+            // Try multiple ways to get ApiClient
+            if (typeof ApiClient !== 'undefined') {
+                return ApiClient;
+            } else if (window.parent && typeof window.parent.ApiClient !== 'undefined') {
+                return window.parent.ApiClient;
+            } else if (window.top && typeof window.top.ApiClient !== 'undefined') {
+                return window.top.ApiClient;
+            }
+            return null;
+        }
+        
+        function getDashboard() {
+            if (typeof Dashboard !== 'undefined') {
+                return Dashboard;
+            } else if (window.parent && typeof window.parent.Dashboard !== 'undefined') {
+                return window.parent.Dashboard;
+            } else if (window.top && typeof window.top.Dashboard !== 'undefined') {
+                return window.top.Dashboard;
+            }
+            return null;
+        }
+        
         // Wait for ApiClient to be available before initializing
         function waitForApiClient(callback, maxAttempts) {
             console.log('[waitForApiClient] Starting to wait for ApiClient...');
@@ -347,8 +377,9 @@
             
             function checkApiClient() {
                 attempts++;
-                console.log('[waitForApiClient] Attempt', attempts, '- ApiClient available:', typeof ApiClient !== 'undefined');
-                if (typeof ApiClient !== 'undefined') {
+                var apiClient = getApiClient();
+                console.log('[waitForApiClient] Attempt', attempts, '- ApiClient available:', apiClient !== null);
+                if (apiClient !== null) {
                     console.log('ApiClient found after', attempts, 'attempts');
                     callback();
                 } else if (attempts < maxAttempts) {
@@ -399,18 +430,21 @@
             
             console.log('=== SAVE BUTTON CLICKED ===');
             
-            if (typeof ApiClient === 'undefined') {
+            var apiClient = getApiClient();
+            var dashboard = getDashboard();
+            
+            if (!apiClient) {
                 console.error('ApiClient not available');
                 showStatus('Error: Jellyfin API not available. Please refresh the page.', 'error');
                 return false;
             }
             
-            if (typeof Dashboard !== 'undefined') {
-                Dashboard.showLoadingMsg();
+            if (dashboard) {
+                dashboard.showLoadingMsg();
             }
             document.getElementById('statusMessage').style.display = 'none';
 
-            ApiClient.getPluginConfiguration(WhisperSubtitlesConfig.pluginUniqueId).then(function (config) {
+            apiClient.getPluginConfiguration(WhisperSubtitlesConfig.pluginUniqueId).then(function (config) {
                 // Update config with form values
                 config.WhisperModel = document.getElementById('WhisperModel').value;
                 config.TargetLanguage = document.getElementById('TargetLanguage').value;
@@ -422,17 +456,19 @@
                 config.RegenerateAI = document.getElementById('RegenerateAI').checked;
 
                 console.log('Saving config:', JSON.stringify(config, null, 2));
-                return ApiClient.updatePluginConfiguration(WhisperSubtitlesConfig.pluginUniqueId, config);
+                return apiClient.updatePluginConfiguration(WhisperSubtitlesConfig.pluginUniqueId, config);
             }).then(function () {
                 console.log('=== SAVE SUCCESSFUL ===');
-                if (typeof Dashboard !== 'undefined') {
-                    Dashboard.hideLoadingMsg();
+                var dashboard = getDashboard();
+                if (dashboard) {
+                    dashboard.hideLoadingMsg();
                 }
                 showStatus('Configuration saved successfully!', 'success');
             }).catch(function (error) {
                 console.error('=== SAVE FAILED ===', error);
-                if (typeof Dashboard !== 'undefined') {
-                    Dashboard.hideLoadingMsg();
+                var dashboard = getDashboard();
+                if (dashboard) {
+                    dashboard.hideLoadingMsg();
                 }
                 showStatus('Error saving: ' + error.message, 'error');
             });
@@ -440,5 +476,4 @@
             return false;
         }
     </script>
-</body>
-</html>
+</div>

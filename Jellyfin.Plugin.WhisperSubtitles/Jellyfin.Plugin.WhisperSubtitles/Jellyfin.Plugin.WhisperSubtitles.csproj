@@ -29,15 +29,32 @@
     <EmbeddedResource Include="Configuration\configPage.html" />
   </ItemGroup>
 
-  <!-- Exclude wrong-platform runtime libraries after publish -->
-  <Target Name="RemoveWrongRuntimeLibraries" AfterTargets="Publish">
+  <!-- Exclude non-Linux runtime libraries after publish for Jellyfin Docker deployment -->
+  <Target Name="RemoveNonLinuxRuntimes" AfterTargets="Publish">
     <ItemGroup>
-      <RuntimeFoldersToRemove Include="$(PublishDir)runtimes\win-*" Condition="'$(OS)' != 'Windows_NT'" />
-      <RuntimeFoldersToRemove Include="$(PublishDir)runtimes\linux-*" Condition="'$(OS)' == 'Windows_NT'" />
-      <RuntimeFoldersToRemove Include="$(PublishDir)runtimes\osx-*" Condition="'$(OS)' != 'Unix' OR '$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::OSX)))' != 'true'" />
+      <!-- Remove Windows runtime folders -->
+      <WinRuntimes Include="$(PublishDir)runtimes\win-arm64\**\*.*" />
+      <WinRuntimes Include="$(PublishDir)runtimes\win-x86\**\*.*" />
+      <WinRuntimes Include="$(PublishDir)runtimes\win-x64\**\*.*" />
+      <!-- Remove macOS runtime folders -->
+      <MacRuntimes Include="$(PublishDir)runtimes\macos-x64\**\*.*" />
+      <MacRuntimes Include="$(PublishDir)runtimes\macos-arm64\**\*.*" />
+      <MacRuntimes Include="$(PublishDir)runtimes\osx-x64\**\*.*" />
+      <MacRuntimes Include="$(PublishDir)runtimes\osx-arm64\**\*.*" />
     </ItemGroup>
-    <RemoveDir Directories="@(RuntimeFoldersToRemove)" />
-    <Message Text="Removed platform-specific runtime folders: @(RuntimeFoldersToRemove)" Importance="high" />
+    
+    <Delete Files="@(WinRuntimes)" />
+    <Delete Files="@(MacRuntimes)" />
+    
+    <RemoveDir Directories="$(PublishDir)runtimes\win-arm64" />
+    <RemoveDir Directories="$(PublishDir)runtimes\win-x86" />
+    <RemoveDir Directories="$(PublishDir)runtimes\win-x64" />
+    <RemoveDir Directories="$(PublishDir)runtimes\macos-x64" />
+    <RemoveDir Directories="$(PublishDir)runtimes\macos-arm64" />
+    <RemoveDir Directories="$(PublishDir)runtimes\osx-x64" />
+    <RemoveDir Directories="$(PublishDir)runtimes\osx-arm64" />
+    
+    <Message Text="Removed non-Linux runtime folders to prevent BadImageFormatException" Importance="high" />
   </Target>
 
 </Project>

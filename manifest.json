@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/zakattack02/Whisper-Script/feature/jellyfin-plugin/logo.png",
     "versions": [
       {
+        "version": "0.0.0.20",
+        "changelog": "\"Fixed checkbox initialization timing - wait for custom elements before loading config",
+        "targetAbi": "10.11.2.0",
+        "sourceUrl": "https://github.com/zakattack02/Whisper-Script/releases/download/v0.0.0.20/jellyfin-plugin-whispersubtitles_0.0.0.20.zip",
+        "checksum": "6e9805b45db46ee1e1d8dce2f733d57e",
+        "timestamp": "2025-12-02T00:39:47Z"
+      },
+      {
         "version": "0.0.0.19",
         "changelog": "Fixed checkbox label structure to prevent JavaScript errors",
         "targetAbi": "10.11.2.0",

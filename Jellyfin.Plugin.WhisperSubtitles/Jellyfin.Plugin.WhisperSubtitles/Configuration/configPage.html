@@ -140,56 +140,45 @@
         document.getElementById('WhisperSubtitlesConfigPage').addEventListener('pageshow', function () {
             console.log('=== CONFIG PAGE LOADING ===');
             Dashboard.showLoadingMsg();
-            ApiClient.getPluginConfiguration(WhisperSubtitlesConfig.pluginUniqueId).then(function (config) {
-                console.log('Loaded config from API:', JSON.stringify(config, null, 2));
-                
-                // Set text inputs immediately
-                document.getElementById('WhisperModel').value = config.WhisperModel || 'small';
-                document.getElementById('TargetLanguage').value = config.TargetLanguage || 'en';
-                document.getElementById('AIIdentifier').value = config.AIIdentifier || 'whisper';
-                
-                // For emby-checkbox, we need to set the HTML attribute, not just the property
-                // The custom element reads from the attribute during initialization
-                var checkboxConfig = {
-                    'TranslateToEnglish': config.TranslateToEnglish !== undefined ? config.TranslateToEnglish : true,
-                    'WordTimestamps': config.WordTimestamps !== undefined ? config.WordTimestamps : false,
-                    'ProcessOnLibraryScan': config.ProcessOnLibraryScan !== undefined ? config.ProcessOnLibraryScan : false,
-                    'SkipExisting': config.SkipExisting !== undefined ? config.SkipExisting : true,
-                    'RegenerateAI': config.RegenerateAI !== undefined ? config.RegenerateAI : false
-                };
-                
-                for (var id in checkboxConfig) {
-                    var checkbox = document.getElementById(id);
-                    if (checkbox) {
-                        if (checkboxConfig[id]) {
-                            // Set both attribute and property
-                            checkbox.setAttribute('checked', 'checked');
-                            checkbox.checked = true;
-                        } else {
-                            checkbox.removeAttribute('checked');
-                            checkbox.checked = false;
+            
+            // Wait for custom elements to initialize before loading config
+            setTimeout(function() {
+                ApiClient.getPluginConfiguration(WhisperSubtitlesConfig.pluginUniqueId).then(function (config) {
+                    console.log('Loaded config from API:', JSON.stringify(config, null, 2));
+                    
+                    // Set text inputs
+                    document.getElementById('WhisperModel').value = config.WhisperModel || 'small';
+                    document.getElementById('TargetLanguage').value = config.TargetLanguage || 'en';
+                    document.getElementById('AIIdentifier').value = config.AIIdentifier || 'whisper';
+                    
+                    // For checkboxes, use a more robust approach
+                    // Set the checked property directly - Jellyfin will handle the visual state
+                    var checkboxConfig = {
+                        'TranslateToEnglish': config.TranslateToEnglish !== undefined ? config.TranslateToEnglish : true,
+                        'WordTimestamps': config.WordTimestamps !== undefined ? config.WordTimestamps : false,
+                        'ProcessOnLibraryScan': config.ProcessOnLibraryScan !== undefined ? config.ProcessOnLibraryScan : false,
+                        'SkipExisting': config.SkipExisting !== undefined ? config.SkipExisting : true,
+                        'RegenerateAI': config.RegenerateAI !== undefined ? config.RegenerateAI : false
+                    };
+                    
+                    for (var id in checkboxConfig) {
+                        var checkbox = document.getElementById(id);
+                        if (checkbox) {
+                            checkbox.checked = checkboxConfig[id];
+                            // Trigger change event so custom element updates its visual state
+                            checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+                            console.log('Set', id, 'to', checkboxConfig[id], '- checkbox.checked is now:', checkbox.checked);
                         }
-                        console.log('Set', id, 'to', checkboxConfig[id]);
                     }
-                }
-                
-                console.log('=== FORM POPULATED (immediate) ===');
-                console.log('TranslateToEnglish checkbox:', document.getElementById('TranslateToEnglish').checked);
-                console.log('SkipExisting checkbox:', document.getElementById('SkipExisting').checked);
-                
-                // Verify again after a delay to see if custom element resets it
-                setTimeout(function() {
-                    console.log('=== FORM STATE AFTER 500ms ===');
-                    console.log('TranslateToEnglish checkbox:', document.getElementById('TranslateToEnglish').checked);
-                    console.log('SkipExisting checkbox:', document.getElementById('SkipExisting').checked);
-                }, 500);
-                
-                Dashboard.hideLoadingMsg();
-            }).catch(function (error) {
-                console.error('Error loading configuration:', error);
-                Dashboard.hideLoadingMsg();
-                showStatus('Error loading configuration: ' + error.message, 'error');
-            });
+                    
+                    console.log('=== FORM POPULATED ===');
+                    Dashboard.hideLoadingMsg();
+                }).catch(function (error) {
+                    console.error('Error loading configuration:', error);
+                    Dashboard.hideLoadingMsg();
+                    showStatus('Error loading configuration: ' + error.message, 'error');
+                });
+            }, 100); // Wait 100ms for custom elements to be ready
         });
 
         document.getElementById('WhisperSubtitlesConfigForm').addEventListener('submit', function (e) {
@@ -206,7 +195,7 @@
             ApiClient.getPluginConfiguration(WhisperSubtitlesConfig.pluginUniqueId).then(function (config) {
                 console.log('Current config from API:', JSON.stringify(config, null, 2));
                 
-                // Update config with form values
+                // Read checkbox states directly - they should be reliable now
                 config.WhisperModel = document.getElementById('WhisperModel').value;
                 config.TargetLanguage = document.getElementById('TargetLanguage').value;
                 config.TranslateToEnglish = document.getElementById('TranslateToEnglish').checked;
@@ -216,19 +205,19 @@
                 config.SkipExisting = document.getElementById('SkipExisting').checked;
                 config.RegenerateAI = document.getElementById('RegenerateAI').checked;
 
-                console.log('Updated config to save:', JSON.stringify(config, null, 2));
-                console.log('TranslateToEnglish value being saved:', config.TranslateToEnglish, typeof config.TranslateToEnglish);
-                console.log('SkipExisting value being saved:', config.SkipExisting, typeof config.SkipExisting);
+                console.log('Saving config:', JSON.stringify(config, null, 2));
 
                 // Save the updated config
                 return ApiClient.updatePluginConfiguration(WhisperSubtitlesConfig.pluginUniqueId, config);
             }).then(function (result) {
                 console.log('=== SAVE SUCCESSFUL ===');
-                console.log('Configuration saved successfully:', result);
                 Dashboard.hideLoadingMsg();
-                showStatus('✓ Configuration saved successfully!', 'success');
                 
-                // DO NOT reload/navigate - stay on page to show the message
+                // Show success message briefly, then reload to ensure clean state
+                showStatus('✓ Configuration saved successfully!', 'success');
+                setTimeout(function() {
+                    window.location.reload();
+                }, 1000);
             }).catch(function (error) {
                 console.error('=== SAVE FAILED ===');
                 console.error('Error saving configuration:', error);

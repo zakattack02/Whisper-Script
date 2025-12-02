@@ -5,6 +5,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <!-- Exclude runtime-specific native libraries to prevent BadImageFormatException -->
+    <PublishDir>bin\$(Configuration)\$(TargetFramework)\publish\</PublishDir>
   </PropertyGroup>
 
   <ItemGroup>
@@ -26,5 +28,16 @@
   <ItemGroup>
     <EmbeddedResource Include="Configuration\configPage.html" />
   </ItemGroup>
+
+  <!-- Exclude wrong-platform runtime libraries after publish -->
+  <Target Name="RemoveWrongRuntimeLibraries" AfterTargets="Publish">
+    <ItemGroup>
+      <RuntimeFoldersToRemove Include="$(PublishDir)runtimes\win-*" Condition="'$(OS)' != 'Windows_NT'" />
+      <RuntimeFoldersToRemove Include="$(PublishDir)runtimes\linux-*" Condition="'$(OS)' == 'Windows_NT'" />
+      <RuntimeFoldersToRemove Include="$(PublishDir)runtimes\osx-*" Condition="'$(OS)' != 'Unix' OR '$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::OSX)))' != 'true'" />
+    </ItemGroup>
+    <RemoveDir Directories="@(RuntimeFoldersToRemove)" />
+    <Message Text="Removed platform-specific runtime folders: @(RuntimeFoldersToRemove)" Importance="high" />
+  </Target>
 
 </Project>

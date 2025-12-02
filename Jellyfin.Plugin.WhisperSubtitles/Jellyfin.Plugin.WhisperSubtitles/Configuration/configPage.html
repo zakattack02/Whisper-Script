@@ -154,7 +154,17 @@
         // Page load event - UPDATED with aggressive checkbox handling
         function loadConfiguration() {
             console.log('=== CONFIG PAGE LOADING ===');
-            Dashboard.showLoadingMsg();
+            
+            // Check if ApiClient is available
+            if (typeof ApiClient === 'undefined') {
+                console.error('ApiClient not available in loadConfiguration');
+                showStatus('Error: Jellyfin API not available. Please refresh the page.', 'error');
+                return;
+            }
+            
+            if (typeof Dashboard !== 'undefined') {
+                Dashboard.showLoadingMsg();
+            }
             
             ApiClient.getPluginConfiguration(WhisperSubtitlesConfig.pluginUniqueId).then(function (config) {
                 console.log('=== API CONFIG ===');
@@ -237,10 +247,14 @@
                     }
                 }, 2000);
                 
-                Dashboard.hideLoadingMsg();
+                if (typeof Dashboard !== 'undefined') {
+                    Dashboard.hideLoadingMsg();
+                }
             }).catch(function (error) {
                 console.error('Error loading configuration:', error);
-                Dashboard.hideLoadingMsg();
+                if (typeof Dashboard !== 'undefined') {
+                    Dashboard.hideLoadingMsg();
+                }
                 showStatus('Error loading configuration: ' + error.message, 'error');
             });
             
@@ -325,25 +339,75 @@
             }
         }
         
+        // Wait for ApiClient to be available before initializing
+        function waitForApiClient(callback, maxAttempts) {
+            console.log('[waitForApiClient] Starting to wait for ApiClient...');
+            maxAttempts = maxAttempts || 50;
+            var attempts = 0;
+            
+            function checkApiClient() {
+                attempts++;
+                console.log('[waitForApiClient] Attempt', attempts, '- ApiClient available:', typeof ApiClient !== 'undefined');
+                if (typeof ApiClient !== 'undefined') {
+                    console.log('ApiClient found after', attempts, 'attempts');
+                    callback();
+                } else if (attempts < maxAttempts) {
+                    setTimeout(checkApiClient, 100);
+                } else {
+                    console.error('ApiClient not available after', maxAttempts, 'attempts');
+                    showStatus('Error: Jellyfin API not available. Please refresh the page.', 'error');
+                }
+            }
+            
+            checkApiClient();
+        }
+        
+        // Initialize when page is ready and ApiClient is available
+        function initializePage() {
+            console.log('[initializePage] Called');
+            waitForApiClient(function() {
+                console.log('[initializePage] ApiClient ready, loading configuration');
+                loadConfiguration();
+                
+                // Attach form submit handler
+                var form = document.getElementById('WhisperSubtitlesConfigForm');
+                if (form && !form.hasAttribute('data-listener-attached')) {
+                    form.setAttribute('data-listener-attached', 'true');
+                    form.addEventListener('submit', handleFormSubmit);
+                }
+            });
+        }
+        
         // Listen to multiple events to ensure configuration loads
         var configPage = document.getElementById('WhisperSubtitlesConfigPage');
-        configPage.addEventListener('pageshow', loadConfiguration);
-        configPage.addEventListener('viewshow', loadConfiguration);
+        if (configPage) {
+            configPage.addEventListener('pageshow', initializePage);
+            configPage.addEventListener('viewshow', initializePage);
+        }
         
         // Also try to load immediately if already visible
         if (document.readyState === 'complete' || document.readyState === 'interactive') {
-            setTimeout(loadConfiguration, 100);
+            setTimeout(initializePage, 100);
         } else {
-            document.addEventListener('DOMContentLoaded', loadConfiguration);
+            document.addEventListener('DOMContentLoaded', initializePage);
         }
 
-        // Form submit event
-        document.getElementById('WhisperSubtitlesConfigForm').addEventListener('submit', function (e) {
+        // Form submit handler
+        function handleFormSubmit(e) {
             e.preventDefault();
             e.stopPropagation();
             
             console.log('=== SAVE BUTTON CLICKED ===');
-            Dashboard.showLoadingMsg();
+            
+            if (typeof ApiClient === 'undefined') {
+                console.error('ApiClient not available');
+                showStatus('Error: Jellyfin API not available. Please refresh the page.', 'error');
+                return false;
+            }
+            
+            if (typeof Dashboard !== 'undefined') {
+                Dashboard.showLoadingMsg();
+            }
             document.getElementById('statusMessage').style.display = 'none';
 
             ApiClient.getPluginConfiguration(WhisperSubtitlesConfig.pluginUniqueId).then(function (config) {
@@ -361,16 +425,20 @@
                 return ApiClient.updatePluginConfiguration(WhisperSubtitlesConfig.pluginUniqueId, config);
             }).then(function () {
                 console.log('=== SAVE SUCCESSFUL ===');
-                Dashboard.hideLoadingMsg();
+                if (typeof Dashboard !== 'undefined') {
+                    Dashboard.hideLoadingMsg();
+                }
                 showStatus('Configuration saved successfully!', 'success');
             }).catch(function (error) {
                 console.error('=== SAVE FAILED ===', error);
-                Dashboard.hideLoadingMsg();
+                if (typeof Dashboard !== 'undefined') {
+                    Dashboard.hideLoadingMsg();
+                }
                 showStatus('Error saving: ' + error.message, 'error');
             });
 
             return false;
-        });
+        }
     </script>
 </body>
 </html>

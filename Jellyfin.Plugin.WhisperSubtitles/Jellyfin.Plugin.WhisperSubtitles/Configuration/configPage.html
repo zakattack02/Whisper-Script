@@ -99,8 +99,130 @@
     </div>
 
     <script type="text/javascript">
+        // Configuration state management for Jellyfin plugin
         var WhisperSubtitlesConfig = {
-            pluginUniqueId: 'a8b7c6d5-e4f3-4a5b-9c8d-7e6f5a4b3c2d'
+            pluginUniqueId: 'a8b7c6d5-e4f3-4a5b-9c8d-7e6f5a4b3c2d',
+            
+            // Default configuration values
+            defaults: {
+                WhisperModel: 'small',
+                TargetLanguage: 'en',
+                AIIdentifier: 'whisper',
+                TranslateToEnglish: true,
+                WordTimestamps: false,
+                ProcessOnLibraryScan: false,
+                SkipExisting: true,
+                RegenerateAI: false
+            },
+            
+            // Current configuration state (in-memory cache)
+            currentConfig: null,
+            
+            // Load configuration from API
+            async loadConfig() {
+                console.log('=== LOADING CONFIG FROM API ===');
+                try {
+                    const config = await ApiClient.getPluginConfiguration(this.pluginUniqueId);
+                    console.log('API returned:', JSON.stringify(config, null, 2));
+                    
+                    // Merge with defaults to ensure all properties exist
+                    this.currentConfig = { ...this.defaults, ...config };
+                    console.log('Merged config:', JSON.stringify(this.currentConfig, null, 2));
+                    
+                    return this.currentConfig;
+                } catch (error) {
+                    console.error('Failed to load config:', error);
+                    // Fallback to defaults if API fails
+                    this.currentConfig = { ...this.defaults };
+                    return this.currentConfig;
+                }
+            },
+            
+            // Save configuration to API
+            async saveConfig(updates) {
+                console.log('=== SAVING CONFIG TO API ===');
+                console.log('Updates:', JSON.stringify(updates, null, 2));
+                
+                try {
+                    // Merge updates with current config
+                    this.currentConfig = { ...this.currentConfig, ...updates };
+                    console.log('New config:', JSON.stringify(this.currentConfig, null, 2));
+                    
+                    // Save to API
+                    await ApiClient.updatePluginConfiguration(this.pluginUniqueId, this.currentConfig);
+                    console.log('=== SAVE SUCCESSFUL ===');
+                    
+                    return true;
+                } catch (error) {
+                    console.error('=== SAVE FAILED ===');
+                    console.error('Error:', error);
+                    throw error;
+                }
+            },
+            
+            // Populate form with configuration
+            populateForm(config) {
+                console.log('=== POPULATING FORM ===');
+                console.log('Config to populate:', JSON.stringify(config, null, 2));
+                
+                // Set text inputs
+                const textFields = ['WhisperModel', 'TargetLanguage', 'AIIdentifier'];
+                textFields.forEach(field => {
+                    const element = document.getElementById(field);
+                    if (element && config[field] !== undefined) {
+                        element.value = config[field];
+                        console.log(`Set ${field} = ${config[field]}`);
+                    }
+                });
+                
+                // Set checkboxes with proper emby-checkbox handling
+                const checkboxFields = [
+                    'TranslateToEnglish',
+                    'WordTimestamps',
+                    'ProcessOnLibraryScan',
+                    'SkipExisting',
+                    'RegenerateAI'
+                ];
+                
+                checkboxFields.forEach(field => {
+                    const checkbox = document.getElementById(field);
+                    if (checkbox && config[field] !== undefined) {
+                        const value = config[field];
+                        
+                        // Set both the property AND the attribute for emby-checkbox
+                        checkbox.checked = value;
+                        
+                        if (value) {
+                            checkbox.setAttribute('checked', 'checked');
+                        } else {
+                            checkbox.removeAttribute('checked');
+                        }
+                        
+                        console.log(`Set ${field} checkbox = ${value} (checked property: ${checkbox.checked})`);
+                    }
+                });
+                
+                console.log('=== FORM POPULATED ===');
+            },
+            
+            // Read form values into an object
+            readForm() {
+                console.log('=== READING FORM VALUES ===');
+                
+                const formData = {
+                    WhisperModel: document.getElementById('WhisperModel').value,
+                    TargetLanguage: document.getElementById('TargetLanguage').value,
+                    AIIdentifier: document.getElementById('AIIdentifier').value,
+                    TranslateToEnglish: document.getElementById('TranslateToEnglish').checked,
+                    WordTimestamps: document.getElementById('WordTimestamps').checked,
+                    ProcessOnLibraryScan: document.getElementById('ProcessOnLibraryScan').checked,
+                    SkipExisting: document.getElementById('SkipExisting').checked,
+                    RegenerateAI: document.getElementById('RegenerateAI').checked
+                };
+                
+                console.log('Form data:', JSON.stringify(formData, null, 2));
+                return formData;
+            }
         };
 
         // Helper function to show status messages
@@ -132,110 +254,68 @@
             }
         }
 
-        // Verify Jellyfin's theme and API are loaded
-        console.log('Jellyfin Dashboard available:', typeof Dashboard !== 'undefined');
-        console.log('Jellyfin ApiClient available:', typeof ApiClient !== 'undefined');
-        console.log('Current theme applied:', document.querySelector('html').className);
-
-        document.getElementById('WhisperSubtitlesConfigPage').addEventListener('pageshow', function () {
-            console.log('=== CONFIG PAGE LOADING ===');
+        // Page load event
+        document.getElementById('WhisperSubtitlesConfigPage').addEventListener('pageshow', async function () {
+            console.log('=== CONFIG PAGE LOADED ===');
             Dashboard.showLoadingMsg();
             
-            // Wait for custom elements to initialize before loading config
-            setTimeout(function() {
-                ApiClient.getPluginConfiguration(WhisperSubtitlesConfig.pluginUniqueId).then(function (config) {
-                    console.log('Loaded config from API:', JSON.stringify(config, null, 2));
-                    
-                    // Set text inputs
-                    document.getElementById('WhisperModel').value = config.WhisperModel || 'small';
-                    document.getElementById('TargetLanguage').value = config.TargetLanguage || 'en';
-                    document.getElementById('AIIdentifier').value = config.AIIdentifier || 'whisper';
-                    
-                    // For checkboxes, use a more robust approach
-                    // Set the checked property directly - Jellyfin will handle the visual state
-                    var checkboxConfig = {
-                        'TranslateToEnglish': config.TranslateToEnglish !== undefined ? config.TranslateToEnglish : true,
-                        'WordTimestamps': config.WordTimestamps !== undefined ? config.WordTimestamps : false,
-                        'ProcessOnLibraryScan': config.ProcessOnLibraryScan !== undefined ? config.ProcessOnLibraryScan : false,
-                        'SkipExisting': config.SkipExisting !== undefined ? config.SkipExisting : true,
-                        'RegenerateAI': config.RegenerateAI !== undefined ? config.RegenerateAI : false
-                    };
-                    
-                    for (var id in checkboxConfig) {
-                        var checkbox = document.getElementById(id);
-                        if (checkbox) {
-                            checkbox.checked = checkboxConfig[id];
-                            // Trigger change event so custom element updates its visual state
-                            checkbox.dispatchEvent(new Event('change', { bubbles: true }));
-                            console.log('Set', id, 'to', checkboxConfig[id], '- checkbox.checked is now:', checkbox.checked);
-                        }
-                    }
-                    
-                    console.log('=== FORM POPULATED ===');
-                    Dashboard.hideLoadingMsg();
-                }).catch(function (error) {
-                    console.error('Error loading configuration:', error);
-                    Dashboard.hideLoadingMsg();
-                    showStatus('Error loading configuration: ' + error.message, 'error');
-                });
-            }, 100); // Wait 100ms for custom elements to be ready
+            try {
+                // Load config from API
+                const config = await WhisperSubtitlesConfig.loadConfig();
+                
+                // Populate form
+                WhisperSubtitlesConfig.populateForm(config);
+                
+                // Verify checkbox states after a brief delay
+                setTimeout(() => {
+                    console.log('=== VERIFICATION (500ms later) ===');
+                    console.log('TranslateToEnglish:', document.getElementById('TranslateToEnglish').checked);
+                    console.log('SkipExisting:', document.getElementById('SkipExisting').checked);
+                }, 500);
+                
+                Dashboard.hideLoadingMsg();
+            } catch (error) {
+                console.error('Error loading page:', error);
+                Dashboard.hideLoadingMsg();
+                showStatus('Error loading configuration: ' + error.message, 'error');
+            }
         });
 
-        document.getElementById('WhisperSubtitlesConfigForm').addEventListener('submit', function (e) {
+        // Form submit event
+        document.getElementById('WhisperSubtitlesConfigForm').addEventListener('submit', async function (e) {
             e.preventDefault();
             e.stopPropagation();
             
             console.log('=== SAVE BUTTON CLICKED ===');
             Dashboard.showLoadingMsg();
-            
-            // Hide any previous status messages
             document.getElementById('statusMessage').style.display = 'none';
-
-            // Get fresh config, update it, then save
-            ApiClient.getPluginConfiguration(WhisperSubtitlesConfig.pluginUniqueId).then(function (config) {
-                console.log('Current config from API:', JSON.stringify(config, null, 2));
+            
+            try {
+                // Read current form values
+                const formData = WhisperSubtitlesConfig.readForm();
                 
-                // Read checkbox states directly - they should be reliable now
-                config.WhisperModel = document.getElementById('WhisperModel').value;
-                config.TargetLanguage = document.getElementById('TargetLanguage').value;
-                config.TranslateToEnglish = document.getElementById('TranslateToEnglish').checked;
-                config.AIIdentifier = document.getElementById('AIIdentifier').value;
-                config.WordTimestamps = document.getElementById('WordTimestamps').checked;
-                config.ProcessOnLibraryScan = document.getElementById('ProcessOnLibraryScan').checked;
-                config.SkipExisting = document.getElementById('SkipExisting').checked;
-                config.RegenerateAI = document.getElementById('RegenerateAI').checked;
-
-                console.log('Saving config:', JSON.stringify(config, null, 2));
-
-                // Save the updated config
-                return ApiClient.updatePluginConfiguration(WhisperSubtitlesConfig.pluginUniqueId, config);
-            }).then(function (result) {
-                console.log('=== SAVE SUCCESSFUL ===');
+                // Save to API
+                await WhisperSubtitlesConfig.saveConfig(formData);
+                
                 Dashboard.hideLoadingMsg();
-                
-                // Show success message briefly, then reload to ensure clean state
                 showStatus('✓ Configuration saved successfully!', 'success');
-                setTimeout(function() {
-                    window.location.reload();
-                }, 1000);
-            }).catch(function (error) {
-                console.error('=== SAVE FAILED ===');
-                console.error('Error saving configuration:', error);
+            } catch (error) {
+                console.error('Error saving:', error);
                 Dashboard.hideLoadingMsg();
                 showStatus('✗ Error saving configuration: ' + error.message, 'error');
-            });
-
+            }
+            
             return false;
         });
 
         // Download model button handler
-        document.getElementById('DownloadModelButton').addEventListener('click', function() {
+        document.getElementById('DownloadModelButton').addEventListener('click', async function() {
             var selectedModel = document.getElementById('WhisperModel').value;
             var downloadStatusDiv = document.getElementById('downloadStatus');
+            var downloadButton = document.getElementById('DownloadModelButton');
             
-            console.log('=== Download button clicked ===');
-            console.log('Selected model:', selectedModel);
-            console.log('API URL:', ApiClient.getUrl('WhisperSubtitles/DownloadModel'));
+            console.log('=== DOWNLOAD MODEL CLICKED ===');
+            console.log('Model:', selectedModel);
             
             // Show downloading status
             downloadStatusDiv.style.display = 'block';
@@ -244,52 +324,41 @@
             downloadStatusDiv.style.border = '1px solid #00a4dc';
             downloadStatusDiv.innerHTML = '⏳ Downloading model "' + selectedModel + '"... This may take several minutes.';
             
-            // Disable button during download
-            var downloadButton = document.getElementById('DownloadModelButton');
+            // Disable button
             downloadButton.disabled = true;
             downloadButton.querySelector('span').textContent = 'Downloading...';
             
-            console.log('Calling API with data:', JSON.stringify({ modelName: selectedModel }));
-            
-            // Call the API endpoint to download the model
-            ApiClient.fetch({
-                type: 'POST',
-                url: ApiClient.getUrl('WhisperSubtitles/DownloadModel'),
-                data: JSON.stringify({ modelName: selectedModel }),
-                contentType: 'application/json',
-                dataType: 'json'
-            }).then(function(response) {
-                console.log('=== Download SUCCESS ===');
-                console.log('Model download response:', response);
+            try {
+                const response = await ApiClient.fetch({
+                    type: 'POST',
+                    url: ApiClient.getUrl('WhisperSubtitles/DownloadModel'),
+                    data: JSON.stringify({ modelName: selectedModel }),
+                    contentType: 'application/json',
+                    dataType: 'json'
+                });
+                
+                console.log('=== DOWNLOAD SUCCESS ===');
+                console.log('Response:', response);
                 
                 downloadStatusDiv.style.backgroundColor = 'rgba(0, 200, 83, 0.2)';
                 downloadStatusDiv.style.color = '#00c853';
                 downloadStatusDiv.style.border = '1px solid #00c853';
                 downloadStatusDiv.innerHTML = '✓ Model "' + selectedModel + '" downloaded successfully!';
                 
-                // Re-enable button
-                downloadButton.disabled = false;
-                downloadButton.querySelector('span').textContent = 'Download Selected Model';
-                
-                // Auto-hide after 5 seconds
-                setTimeout(function() {
-                    downloadStatusDiv.style.display = 'none';
-                }, 5000);
-            }).catch(function(error) {
-                console.error('=== Download FAILED ===');
-                console.error('Error downloading model:', error);
-                console.error('Error type:', typeof error);
-                console.error('Error keys:', Object.keys(error));
+                setTimeout(() => downloadStatusDiv.style.display = 'none', 5000);
+            } catch (error) {
+                console.error('=== DOWNLOAD FAILED ===');
+                console.error('Error:', error);
                 
                 downloadStatusDiv.style.backgroundColor = 'rgba(220, 0, 0, 0.2)';
                 downloadStatusDiv.style.color = '#dc0000';
                 downloadStatusDiv.style.border = '1px solid #dc0000';
                 downloadStatusDiv.innerHTML = '✗ Error downloading model: ' + (error.message || JSON.stringify(error));
-                
+            } finally {
                 // Re-enable button
                 downloadButton.disabled = false;
                 downloadButton.querySelector('span').textContent = 'Download Selected Model';
-            });
+            }
         });
     </script>
 </body>

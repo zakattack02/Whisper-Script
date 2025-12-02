@@ -4,6 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Whisper Subtitles</title>
+    <style>
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
 </head>
 <body>
     <div id="WhisperSubtitlesConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-select,emby-checkbox">
@@ -16,12 +22,12 @@
                     <div class="selectContainer">
                         <label class="selectLabel" for="WhisperModel">Whisper Model:</label>
                         <select is="emby-select" id="WhisperModel" name="WhisperModel" class="emby-select-withcolor emby-select">
-                            <option value="tiny">Tiny (~10x speed, ~1GB VRAM)</option>
-                            <option value="base">Base (~7x speed, ~1GB VRAM)</option>
-                            <option value="small">Small (~4x speed, ~2GB VRAM) - Recommended</option>
-                            <option value="medium">Medium (~2x speed, ~5GB VRAM)</option>
-                            <option value="turbo">Turbo (~8x speed, ~6GB VRAM)</option>
-                            <option value="large">Large (Best quality, ~10GB VRAM)</option>
+                            <option value="tiny">Tiny (~10x speed, ~1GB VRAM, ~75MB download)</option>
+                            <option value="base">Base (~7x speed, ~1GB VRAM, ~140MB download)</option>
+                            <option value="small">Small (~4x speed, ~2GB VRAM, ~460MB download) - Recommended</option>
+                            <option value="medium">Medium (~2x speed, ~5GB VRAM, ~1.5GB download)</option>
+                            <option value="turbo">Turbo (~8x speed, ~6GB VRAM, ~1.6GB download)</option>
+                            <option value="large">Large (Best quality, ~10GB VRAM, ~3GB download)</option>
                         </select>
                         <div class="fieldDescription">Larger models are more accurate but slower</div>
                         <div style="margin-top: 0.5em;">
@@ -121,24 +127,24 @@
                 return false;
             }
 
-            // Method 1: Set the checked property BEFORE custom element upgrades
+            // Aggressively set the checkbox state multiple ways
             checkbox.checked = shouldBeChecked;
             
-            // Method 2: Set/remove the checked attribute
             if (shouldBeChecked) {
                 checkbox.setAttribute('checked', 'checked');
             } else {
                 checkbox.removeAttribute('checked');
             }
             
-            // Method 3: Wait for custom element, then force again
+            // Force again after custom element initialization
             setTimeout(function() {
                 checkbox.checked = shouldBeChecked;
-                
-                // Dispatch input and change events
-                checkbox.dispatchEvent(new Event('input', { bubbles: true }));
+                if (shouldBeChecked) {
+                    checkbox.setAttribute('checked', 'checked');
+                } else {
+                    checkbox.removeAttribute('checked');
+                }
                 checkbox.dispatchEvent(new Event('change', { bubbles: true }));
-                
                 console.log('[forceCheckboxState] Verified', checkboxId, '=', checkbox.checked);
             }, 100);
             
@@ -146,7 +152,7 @@
         }
 
         // Page load event - UPDATED with aggressive checkbox handling
-        document.getElementById('WhisperSubtitlesConfigPage').addEventListener('pageshow', function () {
+        function loadConfiguration() {
             console.log('=== CONFIG PAGE LOADING ===');
             Dashboard.showLoadingMsg();
             
@@ -194,16 +200,42 @@
                     console.log('TranslateToEnglish:', document.getElementById('TranslateToEnglish').checked);
                     console.log('SkipExisting:', document.getElementById('SkipExisting').checked);
                     
-                    // Final force
+                    // Force again if needed
                     for (var id in checkboxValues) {
                         var cb = document.getElementById(id);
                         if (cb.checked !== checkboxValues[id]) {
-                            console.error('[STILL MISMATCH] Final force for', id);
+                            console.warn('[MISMATCH 1000ms] Forcing', id, 'from', cb.checked, 'to', checkboxValues[id]);
                             cb.checked = checkboxValues[id];
+                            if (checkboxValues[id]) {
+                                cb.setAttribute('checked', 'checked');
+                            } else {
+                                cb.removeAttribute('checked');
+                            }
                             cb.dispatchEvent(new Event('change', { bubbles: true }));
                         }
                     }
                 }, 1000);
+                
+                // FINAL verification and force at 2000ms
+                setTimeout(function() {
+                    console.log('=== FINAL VERIFY 2000ms ===');
+                    for (var id in checkboxValues) {
+                        var cb = document.getElementById(id);
+                        var match = cb.checked === checkboxValues[id];
+                        console.log(id + ':', match ? '✓' : '✗ FORCING', '| Expected:', checkboxValues[id], '| Actual:', cb.checked);
+                        
+                        if (!match) {
+                            console.error('[FINAL FORCE] Setting', id, 'to', checkboxValues[id]);
+                            cb.checked = checkboxValues[id];
+                            if (checkboxValues[id]) {
+                                cb.setAttribute('checked', 'checked');
+                            } else {
+                                cb.removeAttribute('checked');
+                            }
+                            cb.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
+                    }
+                }, 2000);
                 
                 Dashboard.hideLoadingMsg();
             }).catch(function (error) {
@@ -212,8 +244,11 @@
                 showStatus('Error loading configuration: ' + error.message, 'error');
             });
             
-            // Download model button handler - MOVED INSIDE pageshow
-            document.getElementById('DownloadModelButton').addEventListener('click', function() {
+            // Download model button handler - attach once
+            var downloadBtn = document.getElementById('DownloadModelButton');
+            if (downloadBtn && !downloadBtn.hasAttribute('data-listener-attached')) {
+                downloadBtn.setAttribute('data-listener-attached', 'true');
+                downloadBtn.addEventListener('click', function() {
                 console.log('=== DOWNLOAD BUTTON CLICKED ===');
                 
                 var selectedModel = document.getElementById('WhisperModel').value;
@@ -233,7 +268,7 @@
                 downloadStatusDiv.style.backgroundColor = 'rgba(0, 164, 220, 0.2)';
                 downloadStatusDiv.style.color = '#00a4dc';
                 downloadStatusDiv.style.border = '1px solid #00a4dc';
-                downloadStatusDiv.innerHTML = 'Downloading model "' + selectedModel + '"...';
+                downloadStatusDiv.innerHTML = '<span style="display: inline-block; width: 16px; height: 16px; border: 2px solid #00a4dc; border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite; margin-right: 8px; vertical-align: middle;"></span>Downloading model "' + selectedModel + '"... This may take several minutes.';
                 
                 downloadButton.disabled = true;
                 downloadButton.querySelector('span').textContent = 'Downloading...';
@@ -253,11 +288,16 @@
                     downloadStatusDiv.style.backgroundColor = 'rgba(0, 200, 83, 0.2)';
                     downloadStatusDiv.style.color = '#00c853';
                     downloadStatusDiv.style.border = '1px solid #00c853';
-                    downloadStatusDiv.innerHTML = '✓ Model "' + selectedModel + '" downloaded!';
+                    
+                    var successMessage = '✓ Model "' + selectedModel + '" downloaded successfully!';
+                    if (response.ModelPath) {
+                        successMessage += '<br><small style="opacity: 0.8;">Saved to: ' + response.ModelPath + '</small>';
+                    }
+                    downloadStatusDiv.innerHTML = successMessage;
                     
                     downloadButton.disabled = false;
                     downloadButton.querySelector('span').textContent = 'Download Selected Model';
-                    setTimeout(function() { downloadStatusDiv.style.display = 'none'; }, 5000);
+                    setTimeout(function() { downloadStatusDiv.style.display = 'none'; }, 8000);
                 }).catch(function(error) {
                     console.error('=== DOWNLOAD FAILED ===');
                     console.error('Error object:', error);
@@ -269,13 +309,33 @@
                     downloadStatusDiv.style.backgroundColor = 'rgba(220, 0, 0, 0.2)';
                     downloadStatusDiv.style.color = '#dc0000';
                     downloadStatusDiv.style.border = '1px solid #dc0000';
-                    downloadStatusDiv.innerHTML = '✗ Error: ' + (error.message || JSON.stringify(error));
+                    
+                    var errorMessage = '✗ Download failed';
+                    if (error.message) {
+                        errorMessage += ': ' + error.message;
+                    } else if (error.status) {
+                        errorMessage += ' (HTTP ' + error.status + ')';
+                    }
+                    downloadStatusDiv.innerHTML = errorMessage;
                     
                     downloadButton.disabled = false;
                     downloadButton.querySelector('span').textContent = 'Download Selected Model';
                 });
-            });
-        });
+                });
+            }
+        }
+        
+        // Listen to multiple events to ensure configuration loads
+        var configPage = document.getElementById('WhisperSubtitlesConfigPage');
+        configPage.addEventListener('pageshow', loadConfiguration);
+        configPage.addEventListener('viewshow', loadConfiguration);
+        
+        // Also try to load immediately if already visible
+        if (document.readyState === 'complete' || document.readyState === 'interactive') {
+            setTimeout(loadConfiguration, 100);
+        } else {
+            document.addEventListener('DOMContentLoaded', loadConfiguration);
+        }
 
         // Form submit event
         document.getElementById('WhisperSubtitlesConfigForm').addEventListener('submit', function (e) {

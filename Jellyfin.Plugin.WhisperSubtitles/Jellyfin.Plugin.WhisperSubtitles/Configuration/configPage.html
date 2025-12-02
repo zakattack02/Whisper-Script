@@ -38,11 +38,11 @@
                         <div class="fieldDescription">Language code (e.g., en, es, fr, de, ja)</div>
                     </div>
 
-                    <!-- FIXED CHECKBOX STRUCTURE: Use checkboxLabel class on span -->
+                    <!-- CRITICAL FIX: Label must NOT wrap the checkbox - they must be siblings! -->
                     <div class="checkboxContainer checkboxContainer-withDescription">
                         <label class="emby-checkbox-label">
                             <input is="emby-checkbox" type="checkbox" id="TranslateToEnglish" name="TranslateToEnglish" />
-                            <span class="checkboxLabel">Translate to English</span>
+                            <span>Translate to English</span>
                         </label>
                         <div class="fieldDescription">Translate audio to English regardless of source language</div>
                     </div>
@@ -56,7 +56,7 @@
                     <div class="checkboxContainer checkboxContainer-withDescription">
                         <label class="emby-checkbox-label">
                             <input is="emby-checkbox" type="checkbox" id="WordTimestamps" name="WordTimestamps" />
-                            <span class="checkboxLabel">Enable Word-Level Timestamps</span>
+                            <span>Enable Word-Level Timestamps</span>
                         </label>
                         <div class="fieldDescription">More precise timing but slower processing</div>
                     </div>
@@ -64,7 +64,7 @@
                     <div class="checkboxContainer checkboxContainer-withDescription">
                         <label class="emby-checkbox-label">
                             <input is="emby-checkbox" type="checkbox" id="ProcessOnLibraryScan" name="ProcessOnLibraryScan" />
-                            <span class="checkboxLabel">Process on Library Scan</span>
+                            <span>Process on Library Scan</span>
                         </label>
                         <div class="fieldDescription">Automatically generate subtitles when library is scanned</div>
                     </div>
@@ -72,7 +72,7 @@
                     <div class="checkboxContainer checkboxContainer-withDescription">
                         <label class="emby-checkbox-label">
                             <input is="emby-checkbox" type="checkbox" id="SkipExisting" name="SkipExisting" />
-                            <span class="checkboxLabel">Skip Existing Subtitles</span>
+                            <span>Skip Existing Subtitles</span>
                         </label>
                         <div class="fieldDescription">Don't process files that already have subtitles</div>
                     </div>
@@ -80,7 +80,7 @@
                     <div class="checkboxContainer checkboxContainer-withDescription">
                         <label class="emby-checkbox-label">
                             <input is="emby-checkbox" type="checkbox" id="RegenerateAI" name="RegenerateAI" />
-                            <span class="checkboxLabel">Regenerate AI Subtitles</span>
+                            <span>Regenerate AI Subtitles</span>
                         </label>
                         <div class="fieldDescription">Re-process files with AI-generated subtitles</div>
                     </div>
@@ -104,7 +104,6 @@
             pluginUniqueId: 'a8b7c6d5-e4f3-4a5b-9c8d-7e6f5a4b3c2d'
         };
 
-        // Helper function to show status messages
         function showStatus(message, type) {
             var statusDiv = document.getElementById('statusMessage');
             statusDiv.textContent = message;
@@ -114,77 +113,107 @@
                 statusDiv.style.backgroundColor = 'rgba(0, 164, 220, 0.2)';
                 statusDiv.style.color = '#00a4dc';
                 statusDiv.style.border = '1px solid #00a4dc';
+                setTimeout(function() { statusDiv.style.display = 'none'; }, 5000);
             } else if (type === 'error') {
                 statusDiv.style.backgroundColor = 'rgba(220, 0, 0, 0.2)';
                 statusDiv.style.color = '#dc0000';
                 statusDiv.style.border = '1px solid #dc0000';
-            } else {
-                statusDiv.style.backgroundColor = 'rgba(255, 193, 7, 0.2)';
-                statusDiv.style.color = '#ffc107';
-                statusDiv.style.border = '1px solid #ffc107';
-            }
-            
-            if (type === 'success') {
-                setTimeout(function() {
-                    statusDiv.style.display = 'none';
-                }, 5000);
             }
         }
 
-        // CRITICAL: Wait for custom elements to be ready before setting values
-        function setCheckboxValue(checkboxId, value) {
+        // ULTIMATE FIX: Force checkbox state by directly manipulating the DOM
+        function forceCheckboxState(checkboxId, shouldBeChecked) {
+            console.log('[forceCheckboxState] Setting', checkboxId, 'to', shouldBeChecked);
+            
             var checkbox = document.getElementById(checkboxId);
             if (!checkbox) {
-                console.error('Checkbox not found:', checkboxId);
-                return;
+                console.error('[forceCheckboxState] Checkbox not found:', checkboxId);
+                return false;
             }
+
+            // Method 1: Set the checked property BEFORE custom element upgrades
+            checkbox.checked = shouldBeChecked;
             
-            // Set the property AND attribute
-            checkbox.checked = value;
-            if (value) {
+            // Method 2: Set/remove the checked attribute
+            if (shouldBeChecked) {
                 checkbox.setAttribute('checked', 'checked');
             } else {
                 checkbox.removeAttribute('checked');
             }
             
-            // Trigger change event to ensure custom element updates
-            var event = new Event('change', { bubbles: true });
-            checkbox.dispatchEvent(event);
+            // Method 3: Wait for custom element, then force again
+            setTimeout(function() {
+                checkbox.checked = shouldBeChecked;
+                
+                // Dispatch input and change events
+                checkbox.dispatchEvent(new Event('input', { bubbles: true }));
+                checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+                
+                console.log('[forceCheckboxState] Verified', checkboxId, '=', checkbox.checked);
+            }, 100);
             
-            console.log('Set', checkboxId, '=', value, '(verified:', checkbox.checked, ')');
+            return true;
         }
 
-        // Page load event
+        // Page load event - UPDATED with aggressive checkbox handling
         document.getElementById('WhisperSubtitlesConfigPage').addEventListener('pageshow', function () {
             console.log('=== CONFIG PAGE LOADING ===');
             Dashboard.showLoadingMsg();
             
             ApiClient.getPluginConfiguration(WhisperSubtitlesConfig.pluginUniqueId).then(function (config) {
-                console.log('Loaded config from API:', JSON.stringify(config, null, 2));
+                console.log('=== API CONFIG ===');
+                console.log(JSON.stringify(config, null, 2));
                 
-                // Set text inputs
+                // Set text inputs immediately
                 document.getElementById('WhisperModel').value = config.WhisperModel || 'small';
                 document.getElementById('TargetLanguage').value = config.TargetLanguage || 'en';
                 document.getElementById('AIIdentifier').value = config.AIIdentifier || 'whisper';
                 
-                // CRITICAL FIX: Wait for custom elements to initialize
-                // Use setTimeout to ensure custom elements are fully ready
+                // FORCE CHECKBOXES IMMEDIATELY (before custom element upgrade)
+                var checkboxValues = {
+                    'TranslateToEnglish': config.TranslateToEnglish !== undefined ? config.TranslateToEnglish : true,
+                    'WordTimestamps': config.WordTimestamps !== undefined ? config.WordTimestamps : false,
+                    'ProcessOnLibraryScan': config.ProcessOnLibraryScan !== undefined ? config.ProcessOnLibraryScan : false,
+                    'SkipExisting': config.SkipExisting !== undefined ? config.SkipExisting : true,
+                    'RegenerateAI': config.RegenerateAI !== undefined ? config.RegenerateAI : false
+                };
+                
+                console.log('=== SETTING CHECKBOXES ===');
+                for (var id in checkboxValues) {
+                    forceCheckboxState(id, checkboxValues[id]);
+                }
+                
+                // Verify multiple times to catch custom element upgrades
                 setTimeout(function() {
-                    console.log('=== SETTING CHECKBOXES (after delay) ===');
+                    console.log('=== VERIFY 500ms ===');
+                    console.log('TranslateToEnglish:', document.getElementById('TranslateToEnglish').checked);
+                    console.log('SkipExisting:', document.getElementById('SkipExisting').checked);
                     
-                    setCheckboxValue('TranslateToEnglish', config.TranslateToEnglish !== undefined ? config.TranslateToEnglish : true);
-                    setCheckboxValue('WordTimestamps', config.WordTimestamps !== undefined ? config.WordTimestamps : false);
-                    setCheckboxValue('ProcessOnLibraryScan', config.ProcessOnLibraryScan !== undefined ? config.ProcessOnLibraryScan : false);
-                    setCheckboxValue('SkipExisting', config.SkipExisting !== undefined ? config.SkipExisting : true);
-                    setCheckboxValue('RegenerateAI', config.RegenerateAI !== undefined ? config.RegenerateAI : false);
+                    // Force again if needed
+                    for (var id in checkboxValues) {
+                        var cb = document.getElementById(id);
+                        if (cb.checked !== checkboxValues[id]) {
+                            console.warn('[MISMATCH] Forcing', id, 'from', cb.checked, 'to', checkboxValues[id]);
+                            forceCheckboxState(id, checkboxValues[id]);
+                        }
+                    }
+                }, 500);
+                
+                setTimeout(function() {
+                    console.log('=== VERIFY 1000ms ===');
+                    console.log('TranslateToEnglish:', document.getElementById('TranslateToEnglish').checked);
+                    console.log('SkipExisting:', document.getElementById('SkipExisting').checked);
                     
-                    // Verify after another brief delay
-                    setTimeout(function() {
-                        console.log('=== VERIFICATION (1000ms after load) ===');
-                        console.log('TranslateToEnglish:', document.getElementById('TranslateToEnglish').checked);
-                        console.log('SkipExisting:', document.getElementById('SkipExisting').checked);
-                    }, 500);
-                }, 300);
+                    // Final force
+                    for (var id in checkboxValues) {
+                        var cb = document.getElementById(id);
+                        if (cb.checked !== checkboxValues[id]) {
+                            console.error('[STILL MISMATCH] Final force for', id);
+                            cb.checked = checkboxValues[id];
+                            cb.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
+                    }
+                }, 1000);
                 
                 Dashboard.hideLoadingMsg();
             }).catch(function (error) {
@@ -203,10 +232,7 @@
             Dashboard.showLoadingMsg();
             document.getElementById('statusMessage').style.display = 'none';
 
-            // Get fresh config, update it, then save
             ApiClient.getPluginConfiguration(WhisperSubtitlesConfig.pluginUniqueId).then(function (config) {
-                console.log('Current config from API:', JSON.stringify(config, null, 2));
-                
                 // Update config with form values
                 config.WhisperModel = document.getElementById('WhisperModel').value;
                 config.TargetLanguage = document.getElementById('TargetLanguage').value;
@@ -217,19 +243,16 @@
                 config.SkipExisting = document.getElementById('SkipExisting').checked;
                 config.RegenerateAI = document.getElementById('RegenerateAI').checked;
 
-                console.log('Updated config to save:', JSON.stringify(config, null, 2));
-
-                // Save the updated config
+                console.log('Saving config:', JSON.stringify(config, null, 2));
                 return ApiClient.updatePluginConfiguration(WhisperSubtitlesConfig.pluginUniqueId, config);
-            }).then(function (result) {
+            }).then(function () {
                 console.log('=== SAVE SUCCESSFUL ===');
                 Dashboard.hideLoadingMsg();
                 showStatus('✓ Configuration saved successfully!', 'success');
             }).catch(function (error) {
-                console.error('=== SAVE FAILED ===');
-                console.error('Error:', error);
+                console.error('=== SAVE FAILED ===', error);
                 Dashboard.hideLoadingMsg();
-                showStatus('✗ Error saving configuration: ' + error.message, 'error');
+                showStatus('✗ Error saving: ' + error.message, 'error');
             });
 
             return false;
@@ -237,57 +260,63 @@
 
         // Download model button handler
         document.getElementById('DownloadModelButton').addEventListener('click', function() {
+            console.log('=== DOWNLOAD BUTTON CLICKED ===');
+            
             var selectedModel = document.getElementById('WhisperModel').value;
             var downloadStatusDiv = document.getElementById('downloadStatus');
             var downloadButton = document.getElementById('DownloadModelButton');
             
-            console.log('=== Download button clicked ===');
             console.log('Selected model:', selectedModel);
+            console.log('ApiClient available:', typeof ApiClient !== 'undefined');
             
-            // Show downloading status
+            var apiUrl = ApiClient.getUrl('WhisperSubtitles/DownloadModel');
+            console.log('API URL:', apiUrl);
+            
+            var requestData = { modelName: selectedModel };
+            console.log('Request data:', JSON.stringify(requestData));
+            
             downloadStatusDiv.style.display = 'block';
             downloadStatusDiv.style.backgroundColor = 'rgba(0, 164, 220, 0.2)';
             downloadStatusDiv.style.color = '#00a4dc';
             downloadStatusDiv.style.border = '1px solid #00a4dc';
-            downloadStatusDiv.innerHTML = '⏳ Downloading model "' + selectedModel + '"... This may take several minutes.';
+            downloadStatusDiv.innerHTML = '⏳ Downloading model "' + selectedModel + '"...';
             
-            // Disable button during download
             downloadButton.disabled = true;
             downloadButton.querySelector('span').textContent = 'Downloading...';
             
-            // Call the API endpoint to download the model
+            console.log('Making API call...');
+            
             ApiClient.fetch({
                 type: 'POST',
-                url: ApiClient.getUrl('WhisperSubtitles/DownloadModel'),
-                data: JSON.stringify({ modelName: selectedModel }),
+                url: apiUrl,
+                data: JSON.stringify(requestData),
                 contentType: 'application/json',
                 dataType: 'json'
             }).then(function(response) {
-                console.log('=== Download SUCCESS ===');
+                console.log('=== DOWNLOAD SUCCESS ===');
+                console.log('Response:', response);
                 
                 downloadStatusDiv.style.backgroundColor = 'rgba(0, 200, 83, 0.2)';
                 downloadStatusDiv.style.color = '#00c853';
                 downloadStatusDiv.style.border = '1px solid #00c853';
-                downloadStatusDiv.innerHTML = '✓ Model "' + selectedModel + '" downloaded successfully!';
+                downloadStatusDiv.innerHTML = '✓ Model "' + selectedModel + '" downloaded!';
                 
-                // Re-enable button
                 downloadButton.disabled = false;
                 downloadButton.querySelector('span').textContent = 'Download Selected Model';
-                
-                // Auto-hide after 5 seconds
-                setTimeout(function() {
-                    downloadStatusDiv.style.display = 'none';
-                }, 5000);
+                setTimeout(function() { downloadStatusDiv.style.display = 'none'; }, 5000);
             }).catch(function(error) {
-                console.error('=== Download FAILED ===');
-                console.error('Error:', error);
+                console.error('=== DOWNLOAD FAILED ===');
+                console.error('Error object:', error);
+                console.error('Error type:', typeof error);
+                console.error('Error keys:', Object.keys(error));
+                console.error('Error message:', error.message);
+                console.error('Error status:', error.status);
                 
                 downloadStatusDiv.style.backgroundColor = 'rgba(220, 0, 0, 0.2)';
                 downloadStatusDiv.style.color = '#dc0000';
                 downloadStatusDiv.style.border = '1px solid #dc0000';
-                downloadStatusDiv.innerHTML = '✗ Error downloading model: ' + (error.message || JSON.stringify(error));
+                downloadStatusDiv.innerHTML = '✗ Error: ' + (error.message || JSON.stringify(error));
                 
-                // Re-enable button
                 downloadButton.disabled = false;
                 downloadButton.querySelector('span').textContent = 'Download Selected Model';
             });

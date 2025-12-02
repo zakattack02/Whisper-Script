@@ -10,6 +10,14 @@
     "versions": [
       {
         "version": "0.0.0.23",
+        "changelog": "logging to download button for debugging",
+        "targetAbi": "10.11.2.0",
+        "sourceUrl": "https://github.com/zakattack02/Whisper-Script/releases/download/v0.0.0.23/jellyfin-plugin-whispersubtitles_0.0.0.23.zip",
+        "checksum": "d8829c27ff8164cb9fc39f8dc2f156b3",
+        "timestamp": "2025-12-02T01:44:05Z"
+      },
+      {
+        "version": "0.0.0.23",
         "changelog": "Fixed checkbox label structure to use checkboxLabel class for improved styling",
         "targetAbi": "10.11.2.0",
         "sourceUrl": "https://github.com/zakattack02/Whisper-Script/releases/download/v0.0.0.23/jellyfin-plugin-whispersubtitles_0.0.0.23.zip",

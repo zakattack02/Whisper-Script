@@ -96,384 +96,126 @@
             pluginUniqueId: 'a8b7c6d5-e4f3-4a5b-9c8d-7e6f5a4b3c2d'
         };
 
-        function showStatus(message, type) {
-            var statusDiv = document.getElementById('statusMessage');
-            statusDiv.textContent = message;
-            statusDiv.style.display = 'block';
+        // Page initialization
+        document.getElementById('WhisperSubtitlesConfigPage').addEventListener('pageshow', function() {
+            console.log('[WhisperSubtitles] pageshow event - loading configuration');
+            Dashboard.showLoadingMsg();
             
-            if (type === 'success') {
-                statusDiv.style.backgroundColor = 'rgba(0, 164, 220, 0.2)';
-                statusDiv.style.color = '#00a4dc';
-                statusDiv.style.border = '1px solid #00a4dc';
-                setTimeout(function() { statusDiv.style.display = 'none'; }, 5000);
-            } else if (type === 'error') {
-                statusDiv.style.backgroundColor = 'rgba(220, 0, 0, 0.2)';
-                statusDiv.style.color = '#dc0000';
-                statusDiv.style.border = '1px solid #dc0000';
-            }
-        }
-
-        // ULTIMATE FIX: Force checkbox state by directly manipulating the DOM
-        function forceCheckboxState(checkboxId, shouldBeChecked) {
-            console.log('[forceCheckboxState] Setting', checkboxId, 'to', shouldBeChecked);
-            
-            var checkbox = document.getElementById(checkboxId);
-            if (!checkbox) {
-                console.error('[forceCheckboxState] Checkbox not found:', checkboxId);
-                return false;
-            }
-
-            // Aggressively set the checkbox state multiple ways
-            checkbox.checked = shouldBeChecked;
-            
-            if (shouldBeChecked) {
-                checkbox.setAttribute('checked', 'checked');
-            } else {
-                checkbox.removeAttribute('checked');
-            }
-            
-            // Force again after custom element initialization
-            setTimeout(function() {
-                checkbox.checked = shouldBeChecked;
-                if (shouldBeChecked) {
-                    checkbox.setAttribute('checked', 'checked');
-                } else {
-                    checkbox.removeAttribute('checked');
-                }
-                checkbox.dispatchEvent(new Event('change', { bubbles: true }));
-                console.log('[forceCheckboxState] Verified', checkboxId, '=', checkbox.checked);
-            }, 100);
-            
-            return true;
-        }
-
-        // Page load event - UPDATED with aggressive checkbox handling
-        function loadConfiguration() {
-            console.log('=== CONFIG PAGE LOADING ===');
-            
-            // Get ApiClient from parent window
-            var apiClient = getApiClient();
-            var dashboard = getDashboard();
-            
-            if (!apiClient) {
-                console.error('ApiClient not available in loadConfiguration');
-                showStatus('Error: Jellyfin API not available. Please refresh the page.', 'error');
-                return;
-            }
-            
-            if (dashboard) {
-                dashboard.showLoadingMsg();
-            }
-            
-            apiClient.getPluginConfiguration(WhisperSubtitlesConfig.pluginUniqueId).then(function (config) {
-                console.log('=== API CONFIG ===');
-                console.log(JSON.stringify(config, null, 2));
+            ApiClient.getPluginConfiguration(WhisperSubtitlesConfig.pluginUniqueId).then(function(config) {
+                console.log('[WhisperSubtitles] Config loaded:', config);
                 
-                // Set text inputs immediately
+                // Set text inputs
                 document.getElementById('WhisperModel').value = config.WhisperModel || 'small';
                 document.getElementById('TargetLanguage').value = config.TargetLanguage || 'en';
                 document.getElementById('AIIdentifier').value = config.AIIdentifier || 'whisper';
                 
-                // FORCE CHECKBOXES IMMEDIATELY (before custom element upgrade)
-                var checkboxValues = {
-                    'TranslateToEnglish': config.TranslateToEnglish !== undefined ? config.TranslateToEnglish : true,
-                    'WordTimestamps': config.WordTimestamps !== undefined ? config.WordTimestamps : false,
-                    'ProcessOnLibraryScan': config.ProcessOnLibraryScan !== undefined ? config.ProcessOnLibraryScan : false,
-                    'SkipExisting': config.SkipExisting !== undefined ? config.SkipExisting : true,
-                    'RegenerateAI': config.RegenerateAI !== undefined ? config.RegenerateAI : false
-                };
+                // Set checkboxes
+                document.getElementById('TranslateToEnglish').checked = config.TranslateToEnglish !== undefined ? config.TranslateToEnglish : true;
+                document.getElementById('WordTimestamps').checked = config.WordTimestamps || false;
+                document.getElementById('ProcessOnLibraryScan').checked = config.ProcessOnLibraryScan || false;
+                document.getElementById('SkipExisting').checked = config.SkipExisting !== undefined ? config.SkipExisting : true;
+                document.getElementById('RegenerateAI').checked = config.RegenerateAI || false;
                 
-                console.log('=== SETTING CHECKBOXES ===');
-                for (var id in checkboxValues) {
-                    forceCheckboxState(id, checkboxValues[id]);
-                }
-                
-                // Verify multiple times to catch custom element upgrades
-                setTimeout(function() {
-                    console.log('=== VERIFY 500ms ===');
-                    console.log('TranslateToEnglish:', document.getElementById('TranslateToEnglish').checked);
-                    console.log('SkipExisting:', document.getElementById('SkipExisting').checked);
-                    
-                    // Force again if needed
-                    for (var id in checkboxValues) {
-                        var cb = document.getElementById(id);
-                        if (cb.checked !== checkboxValues[id]) {
-                            console.warn('[MISMATCH] Forcing', id, 'from', cb.checked, 'to', checkboxValues[id]);
-                            forceCheckboxState(id, checkboxValues[id]);
-                        }
-                    }
-                }, 500);
-                
-                setTimeout(function() {
-                    console.log('=== VERIFY 1000ms ===');
-                    console.log('TranslateToEnglish:', document.getElementById('TranslateToEnglish').checked);
-                    console.log('SkipExisting:', document.getElementById('SkipExisting').checked);
-                    
-                    // Force again if needed
-                    for (var id in checkboxValues) {
-                        var cb = document.getElementById(id);
-                        if (cb.checked !== checkboxValues[id]) {
-                            console.warn('[MISMATCH 1000ms] Forcing', id, 'from', cb.checked, 'to', checkboxValues[id]);
-                            cb.checked = checkboxValues[id];
-                            if (checkboxValues[id]) {
-                                cb.setAttribute('checked', 'checked');
-                            } else {
-                                cb.removeAttribute('checked');
-                            }
-                            cb.dispatchEvent(new Event('change', { bubbles: true }));
-                        }
-                    }
-                }, 1000);
-                
-                // FINAL verification and force at 2000ms
-                setTimeout(function() {
-                    console.log('=== FINAL VERIFY 2000ms ===');
-                    for (var id in checkboxValues) {
-                        var cb = document.getElementById(id);
-                        var match = cb.checked === checkboxValues[id];
-                        console.log(id + ':', match ? '✓' : '✗ FORCING', '| Expected:', checkboxValues[id], '| Actual:', cb.checked);
-                        
-                        if (!match) {
-                            console.error('[FINAL FORCE] Setting', id, 'to', checkboxValues[id]);
-                            cb.checked = checkboxValues[id];
-                            if (checkboxValues[id]) {
-                                cb.setAttribute('checked', 'checked');
-                            } else {
-                                cb.removeAttribute('checked');
-                            }
-                            cb.dispatchEvent(new Event('change', { bubbles: true }));
-                        }
-                    }
-                }, 2000);
-                
-                var dashboard = getDashboard();
-                if (dashboard) {
-                    dashboard.hideLoadingMsg();
-                }
-            }).catch(function (error) {
-                console.error('Error loading configuration:', error);
-                var dashboard = getDashboard();
-                if (dashboard) {
-                    dashboard.hideLoadingMsg();
-                }
-                showStatus('Error loading configuration: ' + error.message, 'error');
+                Dashboard.hideLoadingMsg();
+            }).catch(function(error) {
+                console.error('[WhisperSubtitles] Error loading config:', error);
+                Dashboard.hideLoadingMsg();
             });
-            
-            // Download model button handler - attach once
-            var downloadBtn = document.getElementById('DownloadModelButton');
-            if (downloadBtn && !downloadBtn.hasAttribute('data-listener-attached')) {
-                downloadBtn.setAttribute('data-listener-attached', 'true');
-                downloadBtn.addEventListener('click', function() {
-                console.log('=== DOWNLOAD BUTTON CLICKED ===');
-                
-                var apiClient = getApiClient();
-                if (!apiClient) {
-                    console.error('ApiClient not available for download');
-                    return;
-                }
-                
-                var selectedModel = document.getElementById('WhisperModel').value;
-                var downloadStatusDiv = document.getElementById('downloadStatus');
-                var downloadButton = document.getElementById('DownloadModelButton');
-                
-                console.log('Selected model:', selectedModel);
-                
-                var apiUrl = apiClient.getUrl('WhisperSubtitles/DownloadModel');
-                console.log('API URL:', apiUrl);
-                
-                var requestData = { modelName: selectedModel };
-                console.log('Request data:', JSON.stringify(requestData));
-                
-                downloadStatusDiv.style.display = 'block';
-                downloadStatusDiv.style.backgroundColor = 'rgba(0, 164, 220, 0.2)';
-                downloadStatusDiv.style.color = '#00a4dc';
-                downloadStatusDiv.style.border = '1px solid #00a4dc';
-                downloadStatusDiv.innerHTML = '<span style="display: inline-block; width: 16px; height: 16px; border: 2px solid #00a4dc; border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite; margin-right: 8px; vertical-align: middle;"></span>Downloading model "' + selectedModel + '"... This may take several minutes.';
-                
-                downloadButton.disabled = true;
-                downloadButton.querySelector('span').textContent = 'Downloading...';
-                
-                console.log('Making API call...');
-                
-                apiClient.fetch({
-                    type: 'POST',
-                    url: apiUrl,
-                    data: JSON.stringify(requestData),
-                    contentType: 'application/json',
-                    dataType: 'json'
-                }).then(function(response) {
-                    console.log('=== DOWNLOAD SUCCESS ===');
-                    console.log('Response:', response);
-                    
-                    downloadStatusDiv.style.backgroundColor = 'rgba(0, 200, 83, 0.2)';
-                    downloadStatusDiv.style.color = '#00c853';
-                    downloadStatusDiv.style.border = '1px solid #00c853';
-                    
-                    var successMessage = '✓ Model "' + selectedModel + '" downloaded successfully!';
-                    if (response.ModelPath) {
-                        successMessage += '<br><small style="opacity: 0.8;">Saved to: ' + response.ModelPath + '</small>';
-                    }
-                    downloadStatusDiv.innerHTML = successMessage;
-                    
-                    downloadButton.disabled = false;
-                    downloadButton.querySelector('span').textContent = 'Download Selected Model';
-                    setTimeout(function() { downloadStatusDiv.style.display = 'none'; }, 8000);
-                }).catch(function(error) {
-                    console.error('=== DOWNLOAD FAILED ===');
-                    console.error('Error object:', error);
-                    console.error('Error type:', typeof error);
-                    console.error('Error keys:', Object.keys(error));
-                    console.error('Error message:', error.message);
-                    console.error('Error status:', error.status);
-                    
-                    downloadStatusDiv.style.backgroundColor = 'rgba(220, 0, 0, 0.2)';
-                    downloadStatusDiv.style.color = '#dc0000';
-                    downloadStatusDiv.style.border = '1px solid #dc0000';
-                    
-                    var errorMessage = '✗ Download failed';
-                    if (error.message) {
-                        errorMessage += ': ' + error.message;
-                    } else if (error.status) {
-                        errorMessage += ' (HTTP ' + error.status + ')';
-                    }
-                    downloadStatusDiv.innerHTML = errorMessage;
-                    
-                    downloadButton.disabled = false;
-                    downloadButton.querySelector('span').textContent = 'Download Selected Model';
-                });
-                });
-            }
-        }
-        
-        // Get ApiClient from parent window context
-        function getApiClient() {
-            // Try multiple ways to get ApiClient
-            if (typeof ApiClient !== 'undefined') {
-                return ApiClient;
-            } else if (window.parent && typeof window.parent.ApiClient !== 'undefined') {
-                return window.parent.ApiClient;
-            } else if (window.top && typeof window.top.ApiClient !== 'undefined') {
-                return window.top.ApiClient;
-            }
-            return null;
-        }
-        
-        function getDashboard() {
-            if (typeof Dashboard !== 'undefined') {
-                return Dashboard;
-            } else if (window.parent && typeof window.parent.Dashboard !== 'undefined') {
-                return window.parent.Dashboard;
-            } else if (window.top && typeof window.top.Dashboard !== 'undefined') {
-                return window.top.Dashboard;
-            }
-            return null;
-        }
-        
-        // Wait for ApiClient to be available before initializing
-        function waitForApiClient(callback, maxAttempts) {
-            console.log('[waitForApiClient] Starting to wait for ApiClient...');
-            maxAttempts = maxAttempts || 50;
-            var attempts = 0;
-            
-            function checkApiClient() {
-                attempts++;
-                var apiClient = getApiClient();
-                console.log('[waitForApiClient] Attempt', attempts, '- ApiClient available:', apiClient !== null);
-                if (apiClient !== null) {
-                    console.log('ApiClient found after', attempts, 'attempts');
-                    callback();
-                } else if (attempts < maxAttempts) {
-                    setTimeout(checkApiClient, 100);
-                } else {
-                    console.error('ApiClient not available after', maxAttempts, 'attempts');
-                    showStatus('Error: Jellyfin API not available. Please refresh the page.', 'error');
-                }
-            }
-            
-            checkApiClient();
-        }
-        
-        // Initialize when page is ready and ApiClient is available
-        function initializePage() {
-            console.log('[initializePage] Called');
-            waitForApiClient(function() {
-                console.log('[initializePage] ApiClient ready, loading configuration');
-                loadConfiguration();
-                
-                // Attach form submit handler
-                var form = document.getElementById('WhisperSubtitlesConfigForm');
-                if (form && !form.hasAttribute('data-listener-attached')) {
-                    form.setAttribute('data-listener-attached', 'true');
-                    form.addEventListener('submit', handleFormSubmit);
-                }
-            });
-        }
-        
-        // Listen to multiple events to ensure configuration loads
-        var configPage = document.getElementById('WhisperSubtitlesConfigPage');
-        if (configPage) {
-            configPage.addEventListener('pageshow', initializePage);
-            configPage.addEventListener('viewshow', initializePage);
-        }
-        
-        // Also try to load immediately if already visible
-        if (document.readyState === 'complete' || document.readyState === 'interactive') {
-            setTimeout(initializePage, 100);
-        } else {
-            document.addEventListener('DOMContentLoaded', initializePage);
-        }
+        });
 
         // Form submit handler
-        function handleFormSubmit(e) {
+        document.getElementById('WhisperSubtitlesConfigForm').addEventListener('submit', function(e) {
             e.preventDefault();
-            e.stopPropagation();
+            console.log('[WhisperSubtitles] Saving configuration...');
             
-            console.log('=== SAVE BUTTON CLICKED ===');
+            Dashboard.showLoadingMsg();
             
-            var apiClient = getApiClient();
-            var dashboard = getDashboard();
-            
-            if (!apiClient) {
-                console.error('ApiClient not available');
-                showStatus('Error: Jellyfin API not available. Please refresh the page.', 'error');
-                return false;
-            }
-            
-            if (dashboard) {
-                dashboard.showLoadingMsg();
-            }
-            document.getElementById('statusMessage').style.display = 'none';
-
-            apiClient.getPluginConfiguration(WhisperSubtitlesConfig.pluginUniqueId).then(function (config) {
+            ApiClient.getPluginConfiguration(WhisperSubtitlesConfig.pluginUniqueId).then(function(config) {
                 // Update config with form values
                 config.WhisperModel = document.getElementById('WhisperModel').value;
                 config.TargetLanguage = document.getElementById('TargetLanguage').value;
-                config.TranslateToEnglish = document.getElementById('TranslateToEnglish').checked;
                 config.AIIdentifier = document.getElementById('AIIdentifier').value;
+                config.TranslateToEnglish = document.getElementById('TranslateToEnglish').checked;
                 config.WordTimestamps = document.getElementById('WordTimestamps').checked;
                 config.ProcessOnLibraryScan = document.getElementById('ProcessOnLibraryScan').checked;
                 config.SkipExisting = document.getElementById('SkipExisting').checked;
                 config.RegenerateAI = document.getElementById('RegenerateAI').checked;
-
-                console.log('Saving config:', JSON.stringify(config, null, 2));
-                return apiClient.updatePluginConfiguration(WhisperSubtitlesConfig.pluginUniqueId, config);
-            }).then(function () {
-                console.log('=== SAVE SUCCESSFUL ===');
-                var dashboard = getDashboard();
-                if (dashboard) {
-                    dashboard.hideLoadingMsg();
-                }
-                showStatus('Configuration saved successfully!', 'success');
-            }).catch(function (error) {
-                console.error('=== SAVE FAILED ===', error);
-                var dashboard = getDashboard();
-                if (dashboard) {
-                    dashboard.hideLoadingMsg();
-                }
-                showStatus('Error saving: ' + error.message, 'error');
+                
+                console.log('[WhisperSubtitles] Saving config:', config);
+                
+                return ApiClient.updatePluginConfiguration(WhisperSubtitlesConfig.pluginUniqueId, config);
+            }).then(function() {
+                console.log('[WhisperSubtitles] Config saved successfully');
+                Dashboard.hideLoadingMsg();
+                Dashboard.processPluginConfigurationUpdateResult();
+            }).catch(function(error) {
+                console.error('[WhisperSubtitles] Error saving config:', error);
+                Dashboard.hideLoadingMsg();
             });
-
+            
             return false;
-        }
+        });
+
+        // Download model button handler
+        document.getElementById('DownloadModelButton').addEventListener('click', function() {
+            var selectedModel = document.getElementById('WhisperModel').value;
+            var downloadButton = document.getElementById('DownloadModelButton');
+            var downloadStatusDiv = document.getElementById('downloadStatus');
+            
+            console.log('[WhisperSubtitles] Starting download for model:', selectedModel);
+            
+            downloadButton.disabled = true;
+            downloadButton.querySelector('span').textContent = 'Downloading...';
+            
+            downloadStatusDiv.style.display = 'block';
+            downloadStatusDiv.style.backgroundColor = 'rgba(0, 164, 220, 0.2)';
+            downloadStatusDiv.style.color = '#00a4dc';
+            downloadStatusDiv.style.border = '1px solid #00a4dc';
+            downloadStatusDiv.innerHTML = '⟳ Downloading model "' + selectedModel + '"...<br><small>This may take several minutes depending on model size...</small>';
+            
+            var apiUrl = ApiClient.getUrl('/WhisperSubtitles/DownloadModel');
+            var requestData = { ModelName: selectedModel };
+            
+            ApiClient.fetch({
+                type: 'POST',
+                url: apiUrl,
+                data: JSON.stringify(requestData),
+                contentType: 'application/json',
+                dataType: 'json'
+            }).then(function(response) {
+                console.log('[WhisperSubtitles] Download success:', response);
+                
+                downloadStatusDiv.style.backgroundColor = 'rgba(0, 200, 83, 0.2)';
+                downloadStatusDiv.style.color = '#00c853';
+                downloadStatusDiv.style.border = '1px solid #00c853';
+                
+                var successMessage = '✓ Model "' + selectedModel + '" downloaded successfully!';
+                if (response.ModelPath) {
+                    successMessage += '<br><small style="opacity: 0.8;">Saved to: ' + response.ModelPath + '</small>';
+                }
+                downloadStatusDiv.innerHTML = successMessage;
+                
+                downloadButton.disabled = false;
+                downloadButton.querySelector('span').textContent = 'Download Selected Model';
+                setTimeout(function() { downloadStatusDiv.style.display = 'none'; }, 8000);
+            }).catch(function(error) {
+                console.error('[WhisperSubtitles] Download failed:', error);
+                
+                downloadStatusDiv.style.backgroundColor = 'rgba(220, 0, 0, 0.2)';
+                downloadStatusDiv.style.color = '#dc0000';
+                downloadStatusDiv.style.border = '1px solid #dc0000';
+                
+                var errorMessage = '✗ Download failed';
+                if (error.message) {
+                    errorMessage += ': ' + error.message;
+                } else if (error.status) {
+                    errorMessage += ' (HTTP ' + error.status + ')';
+                }
+                downloadStatusDiv.innerHTML = errorMessage;
+                
+                downloadButton.disabled = false;
+                downloadButton.querySelector('span').textContent = 'Download Selected Model';
+            });
+        });
     </script>
 </div>

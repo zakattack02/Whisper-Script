@@ -1,0 +1,61 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <!-- Exclude runtime-specific native libraries to prevent BadImageFormatException -->
+    <PublishDir>bin\$(Configuration)\$(TargetFramework)\publish\</PublishDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Reference Jellyfin assemblies without copying them (provided by Jellyfin) -->
+    <PackageReference Include="Jellyfin.Controller" Version="10.11.2">
+      <PrivateAssets>All</PrivateAssets>
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </PackageReference>
+    <PackageReference Include="Jellyfin.Model" Version="10.11.2">
+      <PrivateAssets>All</PrivateAssets>
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </PackageReference>
+    
+    <!-- Include Whisper.net assemblies -->
+    <PackageReference Include="Whisper.net" Version="1.8.1" />
+    <PackageReference Include="Whisper.net.Runtime" Version="1.8.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Configuration\configPage.html" />
+    <EmbeddedResource Include="Configuration\Logo.png" />
+  </ItemGroup>
+
+  <!-- Exclude non-Linux runtime libraries after publish for Jellyfin Docker deployment -->
+  <Target Name="RemoveNonLinuxRuntimes" AfterTargets="Publish">
+    <ItemGroup>
+      <!-- Remove Windows runtime folders -->
+      <WinRuntimes Include="$(PublishDir)runtimes\win-arm64\**\*.*" />
+      <WinRuntimes Include="$(PublishDir)runtimes\win-x86\**\*.*" />
+      <WinRuntimes Include="$(PublishDir)runtimes\win-x64\**\*.*" />
+      <!-- Remove macOS runtime folders -->
+      <MacRuntimes Include="$(PublishDir)runtimes\macos-x64\**\*.*" />
+      <MacRuntimes Include="$(PublishDir)runtimes\macos-arm64\**\*.*" />
+      <MacRuntimes Include="$(PublishDir)runtimes\osx-x64\**\*.*" />
+      <MacRuntimes Include="$(PublishDir)runtimes\osx-arm64\**\*.*" />
+    </ItemGroup>
+    
+    <Delete Files="@(WinRuntimes)" />
+    <Delete Files="@(MacRuntimes)" />
+    
+    <RemoveDir Directories="$(PublishDir)runtimes\win-arm64" />
+    <RemoveDir Directories="$(PublishDir)runtimes\win-x86" />
+    <RemoveDir Directories="$(PublishDir)runtimes\win-x64" />
+    <RemoveDir Directories="$(PublishDir)runtimes\macos-x64" />
+    <RemoveDir Directories="$(PublishDir)runtimes\macos-arm64" />
+    <RemoveDir Directories="$(PublishDir)runtimes\osx-x64" />
+    <RemoveDir Directories="$(PublishDir)runtimes\osx-arm64" />
+    
+    <Message Text="Removed non-Linux runtime folders to prevent BadImageFormatException" Importance="high" />
+  </Target>
+
+</Project>

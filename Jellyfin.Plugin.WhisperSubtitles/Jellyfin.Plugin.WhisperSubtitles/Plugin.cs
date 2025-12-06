@@ -77,17 +77,24 @@ namespace Jellyfin.Plugin.WhisperSubtitles
         /// <inheritdoc />
         public IEnumerable<PluginPageInfo> GetPages()
         {
-            var resourcePath = GetType().Namespace + ".Configuration.configPage.html";
-            _logger.LogInformation("GetPages() called - returning configuration page");
-            _logger.LogInformation("  Name: {Name}", Name);
-            _logger.LogInformation("  EmbeddedResourcePath: {Path}", resourcePath);
+            var configPagePath = GetType().Namespace + ".Configuration.configPage.html";
+            var logoPath = GetType().Namespace + ".Configuration.Logo.png";
+            
+            _logger.LogInformation("GetPages() called - returning configuration page and logo");
+            _logger.LogInformation("  Configuration Page: {ConfigPage}", configPagePath);
+            _logger.LogInformation("  Logo: {Logo}", logoPath);
             
             return new[]
             {
                 new PluginPageInfo
                 {
                     Name = Name,
-                    EmbeddedResourcePath = resourcePath
+                    EmbeddedResourcePath = configPagePath
+                },
+                new PluginPageInfo
+                {
+                    Name = Name + " Logo",
+                    EmbeddedResourcePath = logoPath
                 }
             };
         }

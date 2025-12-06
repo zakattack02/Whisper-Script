@@ -100,11 +100,6 @@
         function loadConfiguration() {
             console.log('[WhisperSubtitles] loadConfiguration called');
             
-            if (typeof ApiClient === 'undefined') {
-                console.error('[WhisperSubtitles] ApiClient not available yet');
-                return;
-            }
-            
             Dashboard.showLoadingMsg();
             
             ApiClient.getPluginConfiguration(WhisperSubtitlesConfig.pluginUniqueId).then(function(config) {
@@ -129,32 +124,42 @@
             });
         }
 
-        // Page initialization - try multiple triggers
+        // Page initialization - wait for ApiClient to be available
         var configPage = document.getElementById('WhisperSubtitlesConfigPage');
+        var apiClientReady = false;
         
-        // Method 1: pageshow event
+        // Function to check if ApiClient is ready and load configuration
+        function tryLoadConfiguration() {
+            if (typeof ApiClient !== 'undefined' && typeof Dashboard !== 'undefined') {
+                if (!apiClientReady) {
+                    apiClientReady = true;
+                    console.log('[WhisperSubtitles] ApiClient is ready, loading configuration');
+                    loadConfiguration();
+                }
+            } else {
+                console.log('[WhisperSubtitles] Waiting for ApiClient to be available...');
+                setTimeout(tryLoadConfiguration, 100);
+            }
+        }
+        
+        // Method 1: pageshow event - fires when page becomes visible
         if (configPage) {
             configPage.addEventListener('pageshow', function() {
                 console.log('[WhisperSubtitles] pageshow event fired');
-                loadConfiguration();
+                apiClientReady = false;  // Reset flag when page is shown again
+                tryLoadConfiguration();
             });
         }
         
-        // Method 2: Try immediately if page is visible
-        if (configPage && configPage.offsetParent !== null) {
-            console.log('[WhisperSubtitles] Page is already visible, loading config immediately');
-            setTimeout(loadConfiguration, 100);
-        }
-        
-        // Method 3: Load on DOMContentLoaded
+        // Method 2: Load on DOMContentLoaded
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', function() {
                 console.log('[WhisperSubtitles] DOMContentLoaded fired');
-                setTimeout(loadConfiguration, 100);
+                tryLoadConfiguration();
             });
         } else {
-            console.log('[WhisperSubtitles] DOM already ready, loading config');
-            setTimeout(loadConfiguration, 100);
+            console.log('[WhisperSubtitles] DOM already ready');
+            tryLoadConfiguration();
         }
 
         // Form submit handler

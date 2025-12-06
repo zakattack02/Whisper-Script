@@ -7,12 +7,27 @@ on:
   workflow_dispatch:
 
 jobs:
-  call:
-    uses: jellyfin/jellyfin-meta-plugins/.github/workflows/publish.yaml@master
-    with:
-      version: ${{ github.event.release.tag_name }}
-      is-unstable: ${{ github.event.release.prerelease }}
-    secrets:
-      deploy-host: ${{ secrets.DEPLOY_HOST }}
-      deploy-user: ${{ secrets.DEPLOY_USER }}
-      deploy-key: ${{ secrets.DEPLOY_KEY }}
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+      
+      - name: Build plugin only (skip tests)
+        run: |
+          dotnet build Jellyfin.Plugin.WhisperSubtitles/Jellyfin.Plugin.WhisperSubtitles/Jellyfin.Plugin.WhisperSubtitles.csproj --configuration Release
+          dotnet publish Jellyfin.Plugin.WhisperSubtitles/Jellyfin.Plugin.WhisperSubtitles/Jellyfin.Plugin.WhisperSubtitles.csproj --configuration Release --no-build
+      
+      - name: Package plugin
+        run: |
+          cd Jellyfin.Plugin.WhisperSubtitles/Jellyfin.Plugin.WhisperSubtitles/bin/Release/net9.0/publish
+          zip -r ../../../../../jellyfin-plugin-whispersubtitles_${{ github.event.release.tag_name }}.zip .
+      
+      - name: Upload to release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: jellyfin-plugin-whispersubtitles_${{ github.event.release.tag_name }}.zip

@@ -96,9 +96,15 @@
             pluginUniqueId: 'a8b7c6d5-e4f3-4a5b-9c8d-7e6f5a4b3c2d'
         };
 
-        // Page initialization
-        document.getElementById('WhisperSubtitlesConfigPage').addEventListener('pageshow', function() {
-            console.log('[WhisperSubtitles] pageshow event - loading configuration');
+        // Function to load configuration from the server
+        function loadConfiguration() {
+            console.log('[WhisperSubtitles] loadConfiguration called');
+            
+            if (typeof ApiClient === 'undefined') {
+                console.error('[WhisperSubtitles] ApiClient not available yet');
+                return;
+            }
+            
             Dashboard.showLoadingMsg();
             
             ApiClient.getPluginConfiguration(WhisperSubtitlesConfig.pluginUniqueId).then(function(config) {
@@ -121,16 +127,52 @@
                 console.error('[WhisperSubtitles] Error loading config:', error);
                 Dashboard.hideLoadingMsg();
             });
-        });
+        }
+
+        // Page initialization - try multiple triggers
+        var configPage = document.getElementById('WhisperSubtitlesConfigPage');
+        
+        // Method 1: pageshow event
+        if (configPage) {
+            configPage.addEventListener('pageshow', function() {
+                console.log('[WhisperSubtitles] pageshow event fired');
+                loadConfiguration();
+            });
+        }
+        
+        // Method 2: Try immediately if page is visible
+        if (configPage && configPage.offsetParent !== null) {
+            console.log('[WhisperSubtitles] Page is already visible, loading config immediately');
+            setTimeout(loadConfiguration, 100);
+        }
+        
+        // Method 3: Load on DOMContentLoaded
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function() {
+                console.log('[WhisperSubtitles] DOMContentLoaded fired');
+                setTimeout(loadConfiguration, 100);
+            });
+        } else {
+            console.log('[WhisperSubtitles] DOM already ready, loading config');
+            setTimeout(loadConfiguration, 100);
+        }
 
         // Form submit handler
         document.getElementById('WhisperSubtitlesConfigForm').addEventListener('submit', function(e) {
             e.preventDefault();
-            console.log('[WhisperSubtitles] Saving configuration...');
+            console.log('[WhisperSubtitles] Form submit event fired');
+            
+            if (typeof ApiClient === 'undefined') {
+                console.error('[WhisperSubtitles] ApiClient not available during save');
+                alert('Error: Jellyfin API not available');
+                return false;
+            }
             
             Dashboard.showLoadingMsg();
             
             ApiClient.getPluginConfiguration(WhisperSubtitlesConfig.pluginUniqueId).then(function(config) {
+                console.log('[WhisperSubtitles] Current config fetched for update');
+                
                 // Update config with form values
                 config.WhisperModel = document.getElementById('WhisperModel').value;
                 config.TargetLanguage = document.getElementById('TargetLanguage').value;
@@ -148,9 +190,11 @@
                 console.log('[WhisperSubtitles] Config saved successfully');
                 Dashboard.hideLoadingMsg();
                 Dashboard.processPluginConfigurationUpdateResult();
+                alert('Configuration saved successfully!');
             }).catch(function(error) {
                 console.error('[WhisperSubtitles] Error saving config:', error);
                 Dashboard.hideLoadingMsg();
+                alert('Error saving configuration: ' + (error.message || error));
             });
             
             return false;

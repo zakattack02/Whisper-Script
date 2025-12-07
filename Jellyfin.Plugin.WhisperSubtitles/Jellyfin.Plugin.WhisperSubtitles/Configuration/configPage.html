@@ -21,6 +21,12 @@
                             <option value="Large">Large (Best quality, ~10GB VRAM, ~3GB download)</option>
                         </select>
                         <div class="fieldDescription">Larger models are more accurate but slower</div>
+                        <div class="inputContainer">
+                            <button is="emby-button" type="button" id="DownloadModelButton" class="raised button-submit emby-button">
+                                <span>Download Selected Model</span>
+                            </button>
+                            <div id="downloadStatus" class="fieldDescription" style="display: none; padding: 10px; margin-top: 10px; border-radius: 4px;"></div>
+                        </div>
                     </div>
 
                     <div class="inputContainer">

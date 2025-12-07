@@ -96,7 +96,7 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Tasks
                     await _whisperService.GenerateSubtitleAsync(
                         path,
                         subtitlePath,
-                        config.WhisperModel,
+                        config.WhisperModel.ToString().ToLower(),
                         config.TargetLanguage,
                         config.TranslateToEnglish,
                         config.WordTimestamps,

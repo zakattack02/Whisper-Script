@@ -125,7 +125,7 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Tasks
                     var success = await _whisperService.GenerateSubtitleAsync(
                         videoPath,
                         subtitlePath,
-                        config.WhisperModel,
+                        config.WhisperModel.ToString().ToLower(),
                         config.TargetLanguage,
                         config.TranslateToEnglish,
                         config.WordTimestamps,
@@ -176,25 +176,6 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Tasks
                 IsVirtualItem = false,
                 Recursive = true
             };
-
-            // Filter by library if configured
-            if (config.LibrariesToProcess != null && config.LibrariesToProcess.Length > 0)
-            {
-                var libraryIds = config.LibrariesToProcess
-                    .Select(name => _libraryManager.GetItemList(new InternalItemsQuery
-                    {
-                        Name = name,
-                        IncludeItemTypes = new[] { BaseItemKind.CollectionFolder }
-                    }).FirstOrDefault()?.Id)
-                    .Where(id => id.HasValue)
-                    .Select(id => id!.Value)
-                    .ToArray();
-
-                if (libraryIds.Length > 0)
-                {
-                    query.AncestorIds = libraryIds;
-                }
-            }
 
             var items = _libraryManager.GetItemList(query);
             

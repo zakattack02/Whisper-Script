@@ -18,7 +18,7 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
         private readonly ILogger<WhisperService> _logger;
         private readonly HttpClient _httpClient;
         private readonly string _modelPath;
-        private readonly string? _whisperBinary;
+        private readonly WhisperBinaryManager _binaryManager;
         private bool _disposed;
 
         /// <summary>
@@ -29,6 +29,7 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
         {
             _logger = logger;
             _httpClient = new HttpClient();
+            _binaryManager = new WhisperBinaryManager(logger);
             
             // Model storage path
             var cacheDir = Environment.GetEnvironmentVariable("JELLYFIN_CACHE_DIR");
@@ -45,12 +46,8 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
             
             _modelPath = Path.Combine(cacheDir, "whisper");
             
-            // Try to find whisper.cpp binary
-            _whisperBinary = FindWhisperBinary();
-            
             _logger.LogInformation("WhisperService initialized");
             _logger.LogInformation("Model path: {ModelPath}", _modelPath);
-            _logger.LogInformation("Whisper binary: {WhisperBinary}", _whisperBinary ?? "NOT FOUND");
             
             try
             {
@@ -62,103 +59,50 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to create model directory at {ModelPath}. Whisper models must be pre-installed.", _modelPath);
-                _logger.LogWarning("Using fallback model path");
+                _logger.LogError(ex, "Failed to create model directory at {ModelPath}", _modelPath);
+            }
+
+            // Check binary availability
+            if (!_binaryManager.IsBinaryAvailable())
+            {
+                _logger.LogWarning("Whisper binary not found. Will attempt to download on first use.");
             }
         }
 
         /// <summary>
-        /// Find the whisper.cpp binary in common locations.
+        /// Ensure whisper.cpp binary is available, downloading if necessary.
         /// </summary>
-        /// <returns>Path to whisper binary or null if not found.</returns>
-        private string? FindWhisperBinary()
+        private async Task<bool> EnsureBinaryAvailableAsync(CancellationToken cancellationToken)
         {
-            var possiblePaths = new[]
+            if (_binaryManager.IsBinaryAvailable())
             {
-                "/usr/local/bin/whisper",
-                "/usr/bin/whisper",
-                "/opt/whisper.cpp/main",
-                "/app/whisper",
-                "whisper"  // In PATH
-            };
-
-            foreach (var path in possiblePaths)
-            {
-                try
-                {
-                    if (File.Exists(path) && IsExecutable(path))
-                    {
-                        _logger.LogInformation("Found whisper binary at: {Path}", path);
-                        return path;
-                    }
-                }
-                catch
-                {
-                    // Ignore access errors
-                }
+                return true;
             }
 
-            // Try 'which' command
-            try
-            {
-                var psi = new ProcessStartInfo
-                {
-                    FileName = "which",
-                    Arguments = "whisper",
-                    RedirectStandardOutput = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true
-                };
+            _logger.LogInformation("Whisper binary not found, attempting to download...");
+            var success = await _binaryManager.DownloadBinaryAsync(cancellationToken);
 
-                using var process = Process.Start(psi);
-                if (process != null)
+            if (success)
+            {
+                // Test the binary
+                var testSuccess = await _binaryManager.TestBinaryAsync(cancellationToken);
+                if (!testSuccess)
                 {
-                    var result = process.StandardOutput.ReadToEnd().Trim();
-                    process.WaitForExit();
-                    if (!string.IsNullOrEmpty(result) && File.Exists(result))
-                    {
-                        _logger.LogInformation("Found whisper via which: {Path}", result);
-                        return result;
-                    }
+                    _logger.LogError("Downloaded binary failed test");
+                    return false;
                 }
-            }
-            catch
-            {
-                // Ignore
+
+                _logger.LogInformation("Whisper binary downloaded and verified successfully");
+                return true;
             }
 
-            return null;
+            _logger.LogError("Failed to download whisper binary");
+            return false;
         }
-
-        /// <summary>
-        /// Check if a file is executable.
-        /// </summary>
-        private bool IsExecutable(string filePath)
-        {
-            try
-            {
-                var info = new FileInfo(filePath);
-                // On Unix, check execute bit; on Windows, assume .exe files are executable
-                return info.Exists && (filePath.EndsWith(".exe") || (int)info.Attributes != -1);
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
 
         /// <summary>
         /// Generate subtitles for a video file using whisper.cpp.
         /// </summary>
-        /// <param name="videoPath">Path to video file.</param>
-        /// <param name="outputPath">Path to output SRT file.</param>
-        /// <param name="model">Whisper model to use.</param>
-        /// <param name="language">Target language code.</param>
-        /// <param name="translate">Whether to translate to English.</param>
-        /// <param name="wordTimestamps">Whether to use word-level timestamps.</param>
-        /// <param name="cancellationToken">Cancellation token.</param>
-        /// <returns>True if successful, false otherwise.</returns>
         public async Task<bool> GenerateSubtitleAsync(
             string videoPath,
             string outputPath,
@@ -168,9 +112,10 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
             bool wordTimestamps,
             CancellationToken cancellationToken)
         {
-            if (string.IsNullOrEmpty(_whisperBinary))
+            // Ensure binary is available
+            if (!await EnsureBinaryAvailableAsync(cancellationToken))
             {
-                _logger.LogError("Whisper binary not found. Please install whisper.cpp and ensure it's in PATH or /usr/local/bin/");
+                _logger.LogError("Cannot generate subtitles: whisper.cpp binary not available");
                 return false;
             }
 
@@ -219,11 +164,11 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
 
                 var arguments = args.ToString();
                 
-                _logger.LogInformation("Running: {Binary} {Args}", _whisperBinary, arguments);
+                _logger.LogInformation("Running: {Binary} {Args}", _binaryManager.BinaryPath, arguments);
 
                 var processInfo = new ProcessStartInfo
                 {
-                    FileName = _whisperBinary,
+                    FileName = _binaryManager.BinaryPath,
                     Arguments = arguments,
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
@@ -301,8 +246,6 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
         /// <summary>
         /// Check if a model is available locally.
         /// </summary>
-        /// <param name="modelName">Name of the model.</param>
-        /// <returns>True if model exists, false otherwise.</returns>
         public bool IsModelAvailable(string modelName)
         {
             var modelFile = GetModelPath(modelName);
@@ -317,9 +260,6 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
         /// <summary>
         /// Download a Whisper model if not already available.
         /// </summary>
-        /// <param name="modelName">Name of the model to download.</param>
-        /// <param name="cancellationToken">Cancellation token.</param>
-        /// <returns>True if successful, false otherwise.</returns>
         public async Task<bool> DownloadModelAsync(string modelName, CancellationToken cancellationToken)
         {
             try
@@ -462,7 +402,6 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
         /// <summary>
         /// Dispose of resources.
         /// </summary>
-        /// <param name="disposing">Whether to dispose managed resources.</param>
         protected virtual void Dispose(bool disposing)
         {
             if (_disposed)

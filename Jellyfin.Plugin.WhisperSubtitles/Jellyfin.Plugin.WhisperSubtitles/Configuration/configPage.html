@@ -139,6 +139,7 @@
                 e.preventDefault();
                 WhisperSubtitlesConfigurationPage.saveConfiguration();
             });
+            
         </script>
     </div>
 </body>
@@ -156,6 +157,8 @@
     
     function showMessage(message, isError) {
         var statusDiv = document.getElementById('statusMessage');
+        if (!statusDiv) return;
+        
         statusDiv.textContent = message;
         statusDiv.style.display = 'block';
         statusDiv.style.backgroundColor = isError ? 'rgba(220, 0, 0, 0.2)' : 'rgba(0, 200, 83, 0.2)';
@@ -181,7 +184,7 @@
             console.log('[WhisperSubtitles] Config loaded:', config);
             
             // Set form values
-            document.getElementById('WhisperModel').value = config.WhisperModel || 'small';
+            document.getElementById('WhisperModel').value = config.WhisperModel || 'Small';
             document.getElementById('TargetLanguage').value = config.TargetLanguage || 'en';
             document.getElementById('AIIdentifier').value = config.AIIdentifier || 'whisper';
             
@@ -251,6 +254,17 @@
         
         console.log('[WhisperSubtitles] Starting download for model:', selectedModel);
         
+        // Check if ApiClient is available
+        if (typeof ApiClient === 'undefined') {
+            console.error('[WhisperSubtitles] ApiClient not available');
+            downloadStatusDiv.style.display = 'block';
+            downloadStatusDiv.style.backgroundColor = 'rgba(220, 0, 0, 0.2)';
+            downloadStatusDiv.style.color = '#dc0000';
+            downloadStatusDiv.style.border = '1px solid #dc0000';
+            downloadStatusDiv.innerHTML = '✗ Error: Jellyfin API not ready. Please refresh the page.';
+            return;
+        }
+        
         downloadButton.disabled = true;
         downloadButton.querySelector('span').textContent = 'Downloading...';
         
@@ -260,51 +274,62 @@
         downloadStatusDiv.style.border = '1px solid #00a4dc';
         downloadStatusDiv.innerHTML = '⟳ Downloading model "' + selectedModel + '"...<br><small>This may take several minutes...</small>';
         
-        var apiUrl = ApiClient.getUrl('WhisperSubtitles/DownloadModel');
-        
-        ApiClient.fetch({
-            type: 'POST',
-            url: apiUrl,
-            data: JSON.stringify({ ModelName: selectedModel }),
-            contentType: 'application/json',
-            dataType: 'json'
-        }).then(function(response) {
-            console.log('[WhisperSubtitles] Download success:', response);
+        try {
+            var apiUrl = ApiClient.getUrl('WhisperSubtitles/DownloadModel');
             
-            downloadStatusDiv.style.backgroundColor = 'rgba(0, 200, 83, 0.2)';
-            downloadStatusDiv.style.color = '#00c853';
-            downloadStatusDiv.style.border = '1px solid #00c853';
-            
-            var msg = '✓ Model "' + selectedModel + '" downloaded successfully!';
-            if (response.ModelPath) {
-                msg += '<br><small>Saved to: ' + response.ModelPath + '</small>';
-            }
-            downloadStatusDiv.innerHTML = msg;
-            
-            downloadButton.disabled = false;
-            downloadButton.querySelector('span').textContent = 'Download Selected Model';
-            
-            setTimeout(function() { 
-                downloadStatusDiv.style.display = 'none'; 
-            }, 8000);
-        }).catch(function(error) {
-            console.error('[WhisperSubtitles] Download failed:', error);
-            
+            ApiClient.fetch({
+                type: 'POST',
+                url: apiUrl,
+                data: JSON.stringify({ ModelName: selectedModel }),
+                contentType: 'application/json',
+                dataType: 'json'
+            }).then(function(response) {
+                console.log('[WhisperSubtitles] Download success:', response);
+                
+                downloadStatusDiv.style.backgroundColor = 'rgba(0, 200, 83, 0.2)';
+                downloadStatusDiv.style.color = '#00c853';
+                downloadStatusDiv.style.border = '1px solid #00c853';
+                
+                var msg = '✓ Model "' + selectedModel + '" downloaded successfully!';
+                if (response.ModelPath) {
+                    msg += '<br><small>Saved to: ' + response.ModelPath + '</small>';
+                }
+                downloadStatusDiv.innerHTML = msg;
+                
+                downloadButton.disabled = false;
+                downloadButton.querySelector('span').textContent = 'Download Selected Model';
+                
+                setTimeout(function() { 
+                    downloadStatusDiv.style.display = 'none'; 
+                }, 8000);
+            }).catch(function(error) {
+                console.error('[WhisperSubtitles] Download failed:', error);
+                
+                downloadStatusDiv.style.backgroundColor = 'rgba(220, 0, 0, 0.2)';
+                downloadStatusDiv.style.color = '#dc0000';
+                downloadStatusDiv.style.border = '1px solid #dc0000';
+                
+                var msg = '✗ Download failed';
+                if (error.message) {
+                    msg += ': ' + error.message;
+                } else if (error.status) {
+                    msg += ' (HTTP ' + error.status + ')';
+                }
+                downloadStatusDiv.innerHTML = msg;
+                
+                downloadButton.disabled = false;
+                downloadButton.querySelector('span').textContent = 'Download Selected Model';
+            });
+        } catch (ex) {
+            console.error('[WhisperSubtitles] Exception during download:', ex);
             downloadStatusDiv.style.backgroundColor = 'rgba(220, 0, 0, 0.2)';
             downloadStatusDiv.style.color = '#dc0000';
             downloadStatusDiv.style.border = '1px solid #dc0000';
-            
-            var msg = '✗ Download failed';
-            if (error.message) {
-                msg += ': ' + error.message;
-            } else if (error.status) {
-                msg += ' (HTTP ' + error.status + ')';
-            }
-            downloadStatusDiv.innerHTML = msg;
+            downloadStatusDiv.innerHTML = '✗ Error: ' + ex.message;
             
             downloadButton.disabled = false;
             downloadButton.querySelector('span').textContent = 'Download Selected Model';
-        });
+        }
     }
 
     // Initialize when page is shown

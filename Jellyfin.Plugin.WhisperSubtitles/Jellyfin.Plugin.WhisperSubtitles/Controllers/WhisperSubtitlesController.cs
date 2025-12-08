@@ -8,7 +8,6 @@ using Jellyfin.Plugin.WhisperSubtitles.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
-using Whisper.net.Ggml;
 
 namespace Jellyfin.Plugin.WhisperSubtitles.Controllers
 {
@@ -20,14 +19,17 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Controllers
     public class WhisperSubtitlesController : ControllerBase
     {
         private readonly ILogger<WhisperSubtitlesController> _logger;
+        private readonly IWhisperService _whisperService;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="WhisperSubtitlesController"/> class.
         /// </summary>
         /// <param name="logger">Instance of the <see cref="ILogger{WhisperSubtitlesController}"/> interface.</param>
-        public WhisperSubtitlesController(ILogger<WhisperSubtitlesController> logger)
+        /// <param name="whisperService">Instance of the <see cref="IWhisperService"/> interface.</param>
+        public WhisperSubtitlesController(ILogger<WhisperSubtitlesController> logger, IWhisperService whisperService)
         {
             _logger = logger;
+            _whisperService = whisperService;
             _logger.LogInformation("WhisperSubtitlesController initialized");
         }
 
@@ -74,54 +76,36 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Controllers
 
             try
             {
-                // Parse the model type
-                if (!Enum.TryParse<GgmlType>(request.ModelName, true, out var ggmlType))
+                // Validate model name
+                var validModels = new[] { "tiny", "tiny.en", "base", "base.en", "small", "small.en", 
+                                         "medium", "medium.en", "large", "large-v1", "large-v2", 
+                                         "large-v3", "turbo" };
+                
+                if (!Array.Exists(validModels, m => m.Equals(request.ModelName, StringComparison.OrdinalIgnoreCase)))
                 {
                     return BadRequest($"Invalid model name: {request.ModelName}");
                 }
 
-                // Get model directory
-                var cacheDir = Environment.GetEnvironmentVariable("JELLYFIN_CACHE_DIR");
-                if (string.IsNullOrEmpty(cacheDir))
+                // Download the model using WhisperService
+                _logger.LogInformation("Downloading model {Model}", request.ModelName);
+                
+                var success = await _whisperService.DownloadModelAsync(request.ModelName, cancellationToken);
+                
+                if (!success)
                 {
-                    var homeDir = Environment.GetEnvironmentVariable("HOME");
-                    if (string.IsNullOrEmpty(homeDir))
+                    return StatusCode(500, new ModelDownloadResponse
                     {
-                        homeDir = Path.GetTempPath();
-                    }
-                    cacheDir = Path.Combine(homeDir, ".cache");
+                        Success = false,
+                        Message = $"Failed to download model '{request.ModelName}'"
+                    });
                 }
 
-                var modelPath = Path.Combine(cacheDir, "whisper");
-
-                // Ensure directory exists
-                if (!Directory.Exists(modelPath))
-                {
-                    Directory.CreateDirectory(modelPath);
-                    _logger.LogInformation("Created model directory: {ModelPath}", modelPath);
-                }
-
-                // Download the model using WhisperGgmlDownloader
-                _logger.LogInformation("Downloading model {Model} to {Path}", ggmlType, modelPath);
-                
-                using var httpClient = new HttpClient();
-                var downloader = new WhisperGgmlDownloader(httpClient);
-                await using var modelStream = await downloader.GetGgmlModelAsync(ggmlType, cancellationToken: cancellationToken);
-                
-                var modelFileName = $"ggml-{request.ModelName.ToLowerInvariant()}.bin";
-                var modelFilePath = Path.Combine(modelPath, modelFileName);
-                
-                // Save the model file
-                await using var fileStream = System.IO.File.Create(modelFilePath);
-                await modelStream.CopyToAsync(fileStream, cancellationToken);
-                
-                _logger.LogInformation("Model downloaded successfully: {ModelFile}", modelFilePath);
+                _logger.LogInformation("Model downloaded successfully: {ModelName}", request.ModelName);
 
                 return Ok(new ModelDownloadResponse
                 {
                     Success = true,
-                    Message = $"Model '{request.ModelName}' downloaded successfully",
-                    ModelPath = modelFilePath
+                    Message = $"Model '{request.ModelName}' downloaded successfully"
                 });
             }
             catch (OperationCanceledException)

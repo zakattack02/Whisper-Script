@@ -1,41 +1,42 @@
 using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Net.Http;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using Whisper.net;
-using Whisper.net.Ggml;
 
 namespace Jellyfin.Plugin.WhisperSubtitles.Services
 {
     /// <summary>
-    /// Service for generating subtitles using Whisper.NET.
+    /// Service for generating subtitles using whisper.cpp binary.
+    /// </summary>
     public class WhisperService : IWhisperService
     {
         private readonly ILogger<WhisperService> _logger;
         private readonly HttpClient _httpClient;
         private readonly string _modelPath;
+        private readonly string? _whisperBinary;
         private bool _disposed;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="WhisperService"/> class.
+        /// </summary>
         /// <param name="logger">Logger instance.</param>
         public WhisperService(ILogger<WhisperService> logger)
         {
             _logger = logger;
             _httpClient = new HttpClient();
             
-            // Use appropriate cache directory for different environments
+            // Model storage path
             var cacheDir = Environment.GetEnvironmentVariable("JELLYFIN_CACHE_DIR");
             if (string.IsNullOrEmpty(cacheDir))
             {
-                // Try to use HOME environment variable
                 var homeDir = Environment.GetEnvironmentVariable("HOME");
                 if (string.IsNullOrEmpty(homeDir))
                 {
-                    // Fallback to temp directory if HOME is not available (container environment)
                     homeDir = Path.GetTempPath();
                     _logger.LogWarning("HOME environment variable not set, using temp directory: {TempPath}", homeDir);
                 }
@@ -44,7 +45,13 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
             
             _modelPath = Path.Combine(cacheDir, "whisper");
             
-            // Ensure model directory exists
+            // Try to find whisper.cpp binary
+            _whisperBinary = FindWhisperBinary();
+            
+            _logger.LogInformation("WhisperService initialized");
+            _logger.LogInformation("Model path: {ModelPath}", _modelPath);
+            _logger.LogInformation("Whisper binary: {WhisperBinary}", _whisperBinary ?? "NOT FOUND");
+            
             try
             {
                 if (!Directory.Exists(_modelPath))
@@ -56,13 +63,102 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to create model directory at {ModelPath}. Whisper models must be pre-installed.", _modelPath);
-                // Don't throw - let the service initialize but log the error
-                _modelPath = Path.Combine(Path.GetTempPath(), "whisper");
-                _logger.LogWarning("Using fallback model path: {ModelPath}", _modelPath);
+                _logger.LogWarning("Using fallback model path");
             }
         }
 
-        
+        /// <summary>
+        /// Find the whisper.cpp binary in common locations.
+        /// </summary>
+        /// <returns>Path to whisper binary or null if not found.</returns>
+        private string? FindWhisperBinary()
+        {
+            var possiblePaths = new[]
+            {
+                "/usr/local/bin/whisper",
+                "/usr/bin/whisper",
+                "/opt/whisper.cpp/main",
+                "/app/whisper",
+                "whisper"  // In PATH
+            };
+
+            foreach (var path in possiblePaths)
+            {
+                try
+                {
+                    if (File.Exists(path) && IsExecutable(path))
+                    {
+                        _logger.LogInformation("Found whisper binary at: {Path}", path);
+                        return path;
+                    }
+                }
+                catch
+                {
+                    // Ignore access errors
+                }
+            }
+
+            // Try 'which' command
+            try
+            {
+                var psi = new ProcessStartInfo
+                {
+                    FileName = "which",
+                    Arguments = "whisper",
+                    RedirectStandardOutput = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+
+                using var process = Process.Start(psi);
+                if (process != null)
+                {
+                    var result = process.StandardOutput.ReadToEnd().Trim();
+                    process.WaitForExit();
+                    if (!string.IsNullOrEmpty(result) && File.Exists(result))
+                    {
+                        _logger.LogInformation("Found whisper via which: {Path}", result);
+                        return result;
+                    }
+                }
+            }
+            catch
+            {
+                // Ignore
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Check if a file is executable.
+        /// </summary>
+        private bool IsExecutable(string filePath)
+        {
+            try
+            {
+                var info = new FileInfo(filePath);
+                // On Unix, check execute bit; on Windows, assume .exe files are executable
+                return info.Exists && (filePath.EndsWith(".exe") || (int)info.Attributes != -1);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+
+        /// <summary>
+        /// Generate subtitles for a video file using whisper.cpp.
+        /// </summary>
+        /// <param name="videoPath">Path to video file.</param>
+        /// <param name="outputPath">Path to output SRT file.</param>
+        /// <param name="model">Whisper model to use.</param>
+        /// <param name="language">Target language code.</param>
+        /// <param name="translate">Whether to translate to English.</param>
+        /// <param name="wordTimestamps">Whether to use word-level timestamps.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>True if successful, false otherwise.</returns>
         public async Task<bool> GenerateSubtitleAsync(
             string videoPath,
             string outputPath,
@@ -72,59 +168,122 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
             bool wordTimestamps,
             CancellationToken cancellationToken)
         {
+            if (string.IsNullOrEmpty(_whisperBinary))
+            {
+                _logger.LogError("Whisper binary not found. Please install whisper.cpp and ensure it's in PATH or /usr/local/bin/");
+                return false;
+            }
+
+            if (!File.Exists(videoPath))
+            {
+                _logger.LogError("Video file not found: {VideoPath}", videoPath);
+                return false;
+            }
+
             try
             {
-                if (!File.Exists(videoPath))
+                // Ensure model is downloaded
+                var modelFile = await EnsureModelDownloadedAsync(model, cancellationToken);
+                if (string.IsNullOrEmpty(modelFile))
                 {
-                    _logger.LogError("Video file not found: {VideoPath}", videoPath);
+                    _logger.LogError("Failed to get model file for {Model}", model);
                     return false;
                 }
 
                 _logger.LogInformation(
-                    "Generating subtitles for {VideoPath} using model {Model}, language {Language}, translate: {Translate}",
+                    "Generating subtitles: video={Video}, model={Model}, lang={Lang}, translate={Translate}",
                     videoPath, model, language, translate);
 
-                // Download model
-                if (!IsModelAvailable(model))
+                // Build whisper.cpp command
+                var args = new StringBuilder();
+                args.Append($"-m \"{modelFile}\" ");
+                args.Append($"-f \"{videoPath}\" ");
+                args.Append($"-l {language} ");
+                args.Append("-osrt ");  // Output SRT format
+                args.Append($"-of \"{Path.GetFileNameWithoutExtension(outputPath)}\" ");
+                args.Append($"--output-dir \"{Path.GetDirectoryName(outputPath) ?? "."}\" ");
+
+                if (translate)
                 {
-                    _logger.LogInformation("Model {Model} not found, downloading...", model);
-                    var downloaded = await DownloadModelAsync(model, cancellationToken);
-                    if (!downloaded)
+                    args.Append("-tr ");  // Translate to English
+                }
+
+                if (wordTimestamps)
+                {
+                    args.Append("-ml 1 ");  // Max line length for word timestamps
+                }
+
+                // Use all available threads
+                args.Append($"-t {Environment.ProcessorCount} ");
+                args.Append("-vv ");  // Verbose output
+
+                var arguments = args.ToString();
+                
+                _logger.LogInformation("Running: {Binary} {Args}", _whisperBinary, arguments);
+
+                var processInfo = new ProcessStartInfo
+                {
+                    FileName = _whisperBinary,
+                    Arguments = arguments,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    WorkingDirectory = Path.GetDirectoryName(outputPath) ?? Directory.GetCurrentDirectory()
+                };
+
+                using var process = Process.Start(processInfo);
+                if (process == null)
+                {
+                    _logger.LogError("Failed to start whisper process");
+                    return false;
+                }
+
+                var output = new StringBuilder();
+                var errors = new StringBuilder();
+
+                process.OutputDataReceived += (_, e) =>
+                {
+                    if (!string.IsNullOrEmpty(e.Data))
                     {
-                        _logger.LogError("Failed to download model {Model}", model);
-                        return false;
+                        output.AppendLine(e.Data);
+                        _logger.LogDebug("Whisper: {Output}", e.Data);
                     }
-                }
+                };
 
-                var modelFilePath = GetModelPath(model);
-                
-                // Initialize Whisper
-                using var whisperFactory = WhisperFactory.FromPath(modelFilePath);
-                using var processor = whisperFactory.CreateBuilder()
-                    .WithLanguage(language)
-                    .Build();
-
-                // Process the file
-                await using var fileStream = File.OpenRead(videoPath);
-                
-                var segments = new System.Collections.Generic.List<SegmentData>();
-                
-                await foreach (var segment in processor.ProcessAsync(fileStream, cancellationToken))
+                process.ErrorDataReceived += (_, e) =>
                 {
-                    segments.Add(segment);
-                    
-                    _logger.LogDebug(
-                        "Segment {Start} -> {End}: {Text}",
-                        segment.Start, segment.End, segment.Text);
+                    if (!string.IsNullOrEmpty(e.Data))
+                    {
+                        errors.AppendLine(e.Data);
+                        _logger.LogInformation("Whisper: {Output}", e.Data);
+                    }
+                };
+
+                process.BeginOutputReadLine();
+                process.BeginErrorReadLine();
+
+                await process.WaitForExitAsync(cancellationToken);
+
+                if (process.ExitCode != 0)
+                {
+                    _logger.LogError(
+                        "Whisper failed with exit code {Code}. Error: {Error}",
+                        process.ExitCode,
+                        errors.ToString());
+                    return false;
                 }
 
-                // Write SRT
-                await WriteSrtFileAsync(outputPath, segments, cancellationToken);
-                
-                _logger.LogInformation(
-                    "Successfully generated subtitles: {OutputPath} ({Count} segments)",
-                    outputPath, segments.Count);
+                // Verify output file was created
+                if (!File.Exists(outputPath))
+                {
+                    _logger.LogError("Subtitle file was not created: {OutputPath}", outputPath);
+                    return false;
+                }
 
+                var fileInfo = new FileInfo(outputPath);
+                _logger.LogInformation("Successfully generated subtitles: {OutputPath} ({Size} bytes)", 
+                    outputPath, fileInfo.Length);
                 return true;
             }
             catch (OperationCanceledException)
@@ -139,81 +298,114 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
             }
         }
 
-        
+        /// <summary>
+        /// Check if a model is available locally.
+        /// </summary>
+        /// <param name="modelName">Name of the model.</param>
+        /// <returns>True if model exists, false otherwise.</returns>
         public bool IsModelAvailable(string modelName)
         {
-            var modelPath = GetModelPath(modelName);
-            var exists = File.Exists(modelPath);
+            var modelFile = GetModelPath(modelName);
+            var exists = File.Exists(modelFile);
             
             _logger.LogDebug("Model {ModelName} availability: {Exists} at {Path}", 
-                modelName, exists, modelPath);
+                modelName, exists, modelFile);
             
             return exists;
         }
 
-        
+        /// <summary>
+        /// Download a Whisper model if not already available.
+        /// </summary>
+        /// <param name="modelName">Name of the model to download.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>True if successful, false otherwise.</returns>
         public async Task<bool> DownloadModelAsync(string modelName, CancellationToken cancellationToken)
         {
             try
             {
-                var modelPath = GetModelPath(modelName);
+                var modelFile = GetModelPath(modelName);
                 
-                if (File.Exists(modelPath))
+                if (File.Exists(modelFile))
                 {
-                    _logger.LogInformation("Model {ModelName} already exists at {Path}", modelName, modelPath);
+                    _logger.LogInformation("Model {Model} already exists at {Path}", modelName, modelFile);
                     return true;
                 }
 
-                _logger.LogInformation("Downloading Whisper model: {ModelName}", modelName);
-                
-                // Map model name to GgmlType
-                var ggmlType = modelName.ToLowerInvariant() switch
-                {
-                    "tiny" => GgmlType.Tiny,
-                    "tiny.en" => GgmlType.TinyEn,
-                    "base" => GgmlType.Base,
-                    "base.en" => GgmlType.BaseEn,
-                    "small" => GgmlType.Small,
-                    "small.en" => GgmlType.SmallEn,
-                    "medium" => GgmlType.Medium,
-                    "medium.en" => GgmlType.MediumEn,
-                    "large" => GgmlType.LargeV3,
-                    "large-v1" => GgmlType.LargeV1,
-                    "large-v2" => GgmlType.LargeV2,
-                    "large-v3" => GgmlType.LargeV3,
-                    "turbo" => GgmlType.LargeV3Turbo,
-                    _ => GgmlType.Small // Default to small
-                };
+                _logger.LogInformation("Downloading model {Model}", modelName);
 
-                // Download the model
-                var downloader = new WhisperGgmlDownloader(_httpClient);
-                await using var modelStream = await downloader.GetGgmlModelAsync(ggmlType, cancellationToken: cancellationToken);
-                
-                // Save to file
-                await using var fileStream = File.Create(modelPath);
-                await modelStream.CopyToAsync(fileStream, cancellationToken);
-                
-                _logger.LogInformation("Successfully downloaded model {ModelName} to {Path}", modelName, modelPath);
+                // Download from Hugging Face
+                var modelUrl = GetModelDownloadUrl(modelName);
+                if (string.IsNullOrEmpty(modelUrl))
+                {
+                    _logger.LogError("Unknown model: {Model}", modelName);
+                    return false;
+                }
+
+                using var response = await _httpClient.GetAsync(modelUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+                response.EnsureSuccessStatusCode();
+
+                var totalBytes = response.Content.Headers.ContentLength ?? 0;
+                _logger.LogInformation("Downloading {Size} MB", totalBytes / 1024 / 1024);
+
+                await using var contentStream = await response.Content.ReadAsStreamAsync(cancellationToken);
+                await using var fileStream = new FileStream(modelFile, FileMode.Create, FileAccess.Write, FileShare.None, 8192, useAsync: true);
+
+                var buffer = new byte[65536];  // 64KB buffer
+                long totalRead = 0;
+                int bytesRead;
+                var lastLogTime = DateTime.UtcNow;
+
+                while ((bytesRead = await contentStream.ReadAsync(buffer, 0, buffer.Length, cancellationToken)) > 0)
+                {
+                    await fileStream.WriteAsync(buffer, 0, bytesRead, cancellationToken);
+                    totalRead += bytesRead;
+
+                    // Log progress every 30 seconds
+                    if ((DateTime.UtcNow - lastLogTime).TotalSeconds >= 30)
+                    {
+                        var progress = totalBytes > 0 ? (totalRead * 100.0 / totalBytes) : 0;
+                        _logger.LogInformation("Download progress: {Progress:F1}% ({Downloaded}/{Total} MB)", 
+                            progress, totalRead / 1024 / 1024, totalBytes / 1024 / 1024);
+                        lastLogTime = DateTime.UtcNow;
+                    }
+                }
+
+                _logger.LogInformation("Model {Model} downloaded successfully to {Path}", modelName, modelFile);
                 return true;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to download model {ModelName}", modelName);
+                _logger.LogError(ex, "Failed to download model {Model}", modelName);
                 return false;
             }
         }
 
         /// <summary>
-        /// Get the full path for a model file.
-        /// <param name="modelName">Name of the model.</param>
-        /// <returns>Full path to the model file.</returns>
+        /// Ensure a model is downloaded before use.
+        /// </summary>
+        private async Task<string?> EnsureModelDownloadedAsync(string modelName, CancellationToken cancellationToken)
+        {
+            var modelFile = GetModelPath(modelName);
+
+            if (!File.Exists(modelFile))
+            {
+                var success = await DownloadModelAsync(modelName, cancellationToken);
+                if (!success)
+                {
+                    return null;
+                }
+            }
+
+            return modelFile;
+        }
+
+        /// <summary>
+        /// Get the full path to a model file.
+        /// </summary>
         private string GetModelPath(string modelName)
         {
-            // Normalize model name
-            var normalizedName = modelName.ToLowerInvariant();
-            
-            // Map to expected filename format
-            var fileName = normalizedName switch
+            var fileName = modelName.ToLowerInvariant() switch
             {
                 "tiny" => "ggml-tiny.bin",
                 "tiny.en" => "ggml-tiny.en.bin",
@@ -228,52 +420,36 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
                 "large-v2" => "ggml-large-v2.bin",
                 "large-v3" => "ggml-large-v3.bin",
                 "turbo" => "ggml-large-v3-turbo.bin",
-                _ => $"ggml-{normalizedName}.bin"
+                _ => $"ggml-{modelName}.bin"
             };
 
             return Path.Combine(_modelPath, fileName);
         }
 
         /// <summary>
-        /// Write segments to an SRT subtitle file.
-        /// <param name="outputPath">Path to output file.</param>
-        /// <param name="segments">Subtitle segments.</param>
-        /// <param name="cancellationToken">Cancellation token.</param>
-        /// <returns>Task.</returns>
-        private async Task WriteSrtFileAsync(
-            string outputPath,
-            System.Collections.Generic.List<SegmentData> segments,
-            CancellationToken cancellationToken)
+        /// Get the Hugging Face download URL for a model.
+        /// </summary>
+        private string? GetModelDownloadUrl(string modelName)
         {
-            await using var writer = new StreamWriter(outputPath);
+            var baseUrl = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main";
             
-            for (int i = 0; i < segments.Count; i++)
+            return modelName.ToLowerInvariant() switch
             {
-                var segment = segments[i];
-                
-                // Write segment number
-                await writer.WriteLineAsync($"{i + 1}");
-                
-                // Write timestamps in SRT format (HH:MM:SS,mmm --> HH:MM:SS,mmm)
-                var startTime = FormatSrtTimestamp(segment.Start);
-                var endTime = FormatSrtTimestamp(segment.End);
-                await writer.WriteLineAsync($"{startTime} --> {endTime}");
-                
-                // Write text
-                await writer.WriteLineAsync(segment.Text.Trim());
-                
-                // Write blank line between segments
-                await writer.WriteLineAsync();
-            }
-        }
-
-        /// <summary>
-        /// Format a TimeSpan as SRT timestamp (HH:MM:SS,mmm).
-        /// <param name="time">TimeSpan to format.</param>
-        /// <returns>Formatted timestamp string.</returns>
-        private string FormatSrtTimestamp(TimeSpan time)
-        {
-            return $"{time.Hours:D2}:{time.Minutes:D2}:{time.Seconds:D2},{time.Milliseconds:D3}";
+                "tiny" => $"{baseUrl}/ggml-tiny.bin",
+                "tiny.en" => $"{baseUrl}/ggml-tiny.en.bin",
+                "base" => $"{baseUrl}/ggml-base.bin",
+                "base.en" => $"{baseUrl}/ggml-base.en.bin",
+                "small" => $"{baseUrl}/ggml-small.bin",
+                "small.en" => $"{baseUrl}/ggml-small.en.bin",
+                "medium" => $"{baseUrl}/ggml-medium.bin",
+                "medium.en" => $"{baseUrl}/ggml-medium.en.bin",
+                "large" => $"{baseUrl}/ggml-large-v3.bin",
+                "large-v1" => $"{baseUrl}/ggml-large-v1.bin",
+                "large-v2" => $"{baseUrl}/ggml-large-v2.bin",
+                "large-v3" => $"{baseUrl}/ggml-large-v3.bin",
+                "turbo" => $"{baseUrl}/ggml-large-v3-turbo.bin",
+                _ => null
+            };
         }
 
         /// <inheritdoc />
@@ -285,6 +461,7 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
 
         /// <summary>
         /// Dispose of resources.
+        /// </summary>
         /// <param name="disposing">Whether to dispose managed resources.</param>
         protected virtual void Dispose(bool disposing)
         {

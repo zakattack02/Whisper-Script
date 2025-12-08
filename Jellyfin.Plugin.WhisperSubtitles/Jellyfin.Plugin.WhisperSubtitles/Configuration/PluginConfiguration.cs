@@ -56,6 +56,7 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Configuration
             ProcessOnLibraryScan = false;
             SkipExisting = true;
             RegenerateAI = false;
+            UseGPUAcceleration = true; // Default to GPU if available
         }
 
         /// <summary>
@@ -97,5 +98,11 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Configuration
         /// Gets or sets a value indicating whether to regenerate AI-generated subtitles.
         /// </summary>
         public bool RegenerateAI { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether to use GPU acceleration (CUDA/Vulkan).
+        /// Falls back to CPU if GPU is not available.
+        /// </summary>
+        public bool UseGPUAcceleration { get; set; }
     }
 }

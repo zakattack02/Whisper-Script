@@ -81,6 +81,14 @@
                         <div class="fieldDescription">Re-process files with AI-generated subtitles</div>
                     </div>
 
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label class="emby-checkbox-label">
+                            <input id="UseGPUAcceleration" name="UseGPUAcceleration" type="checkbox" is="emby-checkbox" />
+                            <span>Enable GPU Acceleration</span>
+                        </label>
+                        <div class="fieldDescription">Use CUDA/Vulkan for faster processing (requires compatible GPU)</div>
+                    </div>
+
                     <div>
                         <button is="emby-button" type="submit" class="raised button-submit block emby-button">
                             <span>Save</span>
@@ -106,6 +114,7 @@
                         document.getElementById('ProcessOnLibraryScan').checked = config.ProcessOnLibraryScan;
                         document.getElementById('SkipExisting').checked = config.SkipExisting;
                         document.getElementById('RegenerateAI').checked = config.RegenerateAI;
+                        document.getElementById('UseGPUAcceleration').checked = config.UseGPUAcceleration;
 
                         Dashboard.hideLoadingMsg();
                     });
@@ -123,6 +132,7 @@
                         config.ProcessOnLibraryScan = document.getElementById('ProcessOnLibraryScan').checked;
                         config.SkipExisting = document.getElementById('SkipExisting').checked;
                         config.RegenerateAI = document.getElementById('RegenerateAI').checked;
+                        config.UseGPUAcceleration = document.getElementById('UseGPUAcceleration').checked;
 
                         ApiClient.updatePluginConfiguration(WhisperSubtitlesConfigurationPage.pluginUniqueId, config).then(function (result) {
                             Dashboard.processPluginConfigurationUpdateResult(result);
@@ -195,6 +205,7 @@
                 document.getElementById('ProcessOnLibraryScan').checked = config.ProcessOnLibraryScan || false;
                 document.getElementById('SkipExisting').checked = config.SkipExisting !== false;
                 document.getElementById('RegenerateAI').checked = config.RegenerateAI || false;
+                document.getElementById('UseGPUAcceleration').checked = config.UseGPUAcceleration || false;
                 
                 console.log('[WhisperSubtitles] Form populated successfully');
             }, 100);
@@ -229,6 +240,7 @@
             config.ProcessOnLibraryScan = document.getElementById('ProcessOnLibraryScan').checked;
             config.SkipExisting = document.getElementById('SkipExisting').checked;
             config.RegenerateAI = document.getElementById('RegenerateAI').checked;
+            config.UseGPUAcceleration = document.getElementById('UseGPUAcceleration').checked;
             
             console.log('[WhisperSubtitles] Saving config:', config);
             

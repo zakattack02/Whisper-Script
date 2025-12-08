@@ -19,6 +19,8 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
         private readonly HttpClient _httpClient;
         private readonly string _binaryPath;
         private readonly string _downloadPath;
+        private readonly string _jellyfinFFmpegPath;
+        private string? _detectedGPUType;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="WhisperBinaryManager"/> class.
@@ -28,6 +30,9 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
         {
             _logger = logger;
             _httpClient = new HttpClient();
+            
+            // Find Jellyfin's FFmpeg
+            _jellyfinFFmpegPath = FindJellyfinFFmpeg();
             
             // Determine binary storage location
             var cacheDir = Environment.GetEnvironmentVariable("JELLYFIN_CACHE_DIR");
@@ -49,6 +54,11 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
             _binaryPath = Path.Combine(whisperDir, binaryName);
             
             _logger.LogInformation("Whisper binary path: {BinaryPath}", _binaryPath);
+            _logger.LogInformation("Jellyfin FFmpeg path: {FFmpegPath}", _jellyfinFFmpegPath ?? "Not found");
+            
+            // Detect available GPU
+            _detectedGPUType = DetectGPU();
+            _logger.LogInformation("Detected GPU type: {GPUType}", _detectedGPUType ?? "None (CPU only)");
             
             try
             {
@@ -63,6 +73,182 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
                 _logger.LogError(ex, "Failed to create whisper binary directory");
             }
         }
+
+        /// <summary>
+        /// Find Jellyfin's FFmpeg installation.
+        /// </summary>
+        private string? FindJellyfinFFmpeg()
+        {
+            var possiblePaths = new[]
+            {
+                "/usr/lib/jellyfin-ffmpeg/ffmpeg",           // Jellyfin's bundled FFmpeg
+                "/usr/lib/jellyfin-ffmpeg5/ffmpeg",          // Alternative path
+                "/usr/lib/jellyfin-ffmpeg6/ffmpeg",          // FFmpeg 6.x
+                "/jellyfin/ffmpeg",                          // Docker mount point
+                "/config/ffmpeg/ffmpeg",                     // Custom location
+                "ffmpeg"                                     // System PATH
+            };
+
+            foreach (var path in possiblePaths)
+            {
+                try
+                {
+                    if (File.Exists(path))
+                    {
+                        _logger.LogInformation("Found Jellyfin FFmpeg at: {Path}", path);
+                        return path;
+                    }
+                }
+                catch
+                {
+                    // Ignore access errors
+                }
+            }
+
+            // Try which command
+            try
+            {
+                var psi = new ProcessStartInfo
+                {
+                    FileName = "which",
+                    Arguments = "ffmpeg",
+                    RedirectStandardOutput = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+
+                using var process = Process.Start(psi);
+                if (process != null)
+                {
+                    var result = process.StandardOutput.ReadToEnd().Trim();
+                    process.WaitForExit();
+                    if (!string.IsNullOrEmpty(result) && File.Exists(result))
+                    {
+                        _logger.LogInformation("Found FFmpeg via which: {Path}", result);
+                        return result;
+                    }
+                }
+            }
+            catch
+            {
+                // Ignore
+            }
+
+            _logger.LogWarning("Jellyfin FFmpeg not found, whisper.cpp will use built-in audio handling");
+            return null;
+        }
+
+        /// <summary>
+        /// Detect available GPU type (CUDA, Vulkan, Metal, or None).
+        /// </summary>
+        private string? DetectGPU()
+        {
+            // Check for NVIDIA GPU (CUDA)
+            if (CheckNvidiaGPU())
+            {
+                return "cuda";
+            }
+
+            // Check for Vulkan support (AMD/Intel)
+            if (CheckVulkanGPU())
+            {
+                return "vulkan";
+            }
+
+            // Check for Metal (macOS)
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            {
+                return "metal";
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Check if NVIDIA GPU with CUDA is available.
+        /// </summary>
+        private bool CheckNvidiaGPU()
+        {
+            try
+            {
+                var psi = new ProcessStartInfo
+                {
+                    FileName = "nvidia-smi",
+                    Arguments = "--query-gpu=name --format=csv,noheader",
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+
+                using var process = Process.Start(psi);
+                if (process != null)
+                {
+                    var output = process.StandardOutput.ReadToEnd();
+                    process.WaitForExit();
+                    
+                    if (process.ExitCode == 0 && !string.IsNullOrWhiteSpace(output))
+                    {
+                        _logger.LogInformation("NVIDIA GPU detected: {GPU}", output.Trim());
+                        return true;
+                    }
+                }
+            }
+            catch
+            {
+                // nvidia-smi not available
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Check if Vulkan GPU is available.
+        /// </summary>
+        private bool CheckVulkanGPU()
+        {
+            try
+            {
+                var psi = new ProcessStartInfo
+                {
+                    FileName = "vulkaninfo",
+                    Arguments = "--summary",
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+
+                using var process = Process.Start(psi);
+                if (process != null)
+                {
+                    var output = process.StandardOutput.ReadToEnd();
+                    process.WaitForExit();
+                    
+                    if (process.ExitCode == 0 && output.Contains("deviceName"))
+                    {
+                        _logger.LogInformation("Vulkan GPU detected");
+                        return true;
+                    }
+                }
+            }
+            catch
+            {
+                // vulkaninfo not available
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Gets the detected GPU type.
+        /// </summary>
+        public string? DetectedGPUType => _detectedGPUType;
+
+        /// <summary>
+        /// Gets the path to Jellyfin's FFmpeg.
+        /// </summary>
+        public string? JellyfinFFmpegPath => _jellyfinFFmpegPath;
 
         /// <summary>
         /// Get the path to the whisper binary.
@@ -205,13 +391,35 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
 
         /// <summary>
         /// Get download URL for whisper.cpp binary.
-        /// Uses precompiled binaries from whisper.cpp releases.
+        /// Option 1: Use your own hosted binaries with GPU support
+        /// Option 2: Use official releases (CPU only)
         /// </summary>
         private string GetDownloadUrl(string platform)
         {
-            // Using whisper.cpp releases from GitHub
-            // These are precompiled binaries that don't require compilation
-            var version = "1.7.1"; // Latest stable version
+            // OPTION 1: Use custom-built binaries with GPU support
+            // Host these on your GitHub releases or other CDN
+            // Build instructions:
+            // - CUDA: cmake -B build -DGGML_CUDA=1 -DCMAKE_CUDA_ARCHITECTURES="86" && cmake --build build -j --config Release
+            // - Vulkan: cmake -B build -DGGML_VULKAN=1 && cmake --build build -j --config Release
+            // - FFmpeg: cmake -B build -DWHISPER_FFMPEG=yes && cmake --build build -j --config Release
+            
+            var customBaseUrl = "https://github.com/YOUR_USERNAME/YOUR_REPO/releases/download/v1.0.0";
+            var useCustomBuilds = false; // Set to true once you host your own builds
+            
+            if (useCustomBuilds)
+            {
+                return platform switch
+                {
+                    "linux-x64" => $"{customBaseUrl}/whisper-cuda-linux-x64.zip",     // With CUDA + FFmpeg
+                    "windows-x64" => $"{customBaseUrl}/whisper-cuda-win64.zip",       // With CUDA
+                    "macos-x64" => $"{customBaseUrl}/whisper-vulkan-macos-x64.zip",   // With Vulkan (macOS doesn't support CUDA)
+                    "macos-arm64" => $"{customBaseUrl}/whisper-metal-macos-arm64.zip", // With Metal acceleration
+                    _ => null
+                };
+            }
+            
+            // OPTION 2: Fallback to official CPU-only binaries
+            var version = "1.7.1";
             var baseUrl = $"https://github.com/ggerganov/whisper.cpp/releases/download/v{version}";
 
             return platform switch

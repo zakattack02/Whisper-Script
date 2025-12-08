@@ -112,6 +112,9 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
             bool wordTimestamps,
             CancellationToken cancellationToken)
         {
+            // Get configuration to check GPU setting
+            var config = Plugin.Instance?.Configuration ?? new Configuration.PluginConfiguration();
+            
             // Ensure binary is available
             if (!await EnsureBinaryAvailableAsync(cancellationToken))
             {
@@ -135,9 +138,14 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
                     return false;
                 }
 
+                // Log GPU status
+                var gpuStatus = config.UseGPUAcceleration && !string.IsNullOrEmpty(_binaryManager.DetectedGPUType) 
+                    ? $"GPU ({_binaryManager.DetectedGPUType})" 
+                    : "CPU";
+                
                 _logger.LogInformation(
-                    "Generating subtitles: video={Video}, model={Model}, lang={Lang}, translate={Translate}",
-                    videoPath, model, language, translate);
+                    "Generating subtitles: video={Video}, model={Model}, lang={Lang}, translate={Translate}, acceleration={Acceleration}",
+                    videoPath, model, language, translate, gpuStatus);
 
                 // Build whisper.cpp command
                 var args = new StringBuilder();
@@ -158,8 +166,34 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
                     args.Append("-ml 1 ");  // Max line length for word timestamps
                 }
 
-                // Use all available threads
-                args.Append($"-t {Environment.ProcessorCount} ");
+                // Thread count - use all cores but cap at 16 for efficiency
+                var threads = Math.Min(Environment.ProcessorCount, 16);
+                args.Append($"-t {threads} ");
+                
+                // GPU acceleration flag
+                if (config.UseGPUAcceleration && !string.IsNullOrEmpty(_binaryManager.DetectedGPUType))
+                {
+                    switch (_binaryManager.DetectedGPUType)
+                    {
+                        case "cuda":
+                            args.Append("-ngl 999 ");  // Offload all layers to GPU
+                            _logger.LogInformation("CUDA acceleration enabled");
+                            break;
+                        case "vulkan":
+                            args.Append("-ngl 999 ");  // Offload all layers to GPU
+                            _logger.LogInformation("Vulkan acceleration enabled");
+                            break;
+                        case "metal":
+                            args.Append("-ngl 1 ");    // Metal GPU offloading
+                            _logger.LogInformation("Metal acceleration enabled");
+                            break;
+                    }
+                }
+                else
+                {
+                    _logger.LogInformation("Using CPU-only processing");
+                }
+                
                 args.Append("-vv ");  // Verbose output
 
                 var arguments = args.ToString();
@@ -176,6 +210,17 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
                     CreateNoWindow = true,
                     WorkingDirectory = Path.GetDirectoryName(outputPath) ?? Directory.GetCurrentDirectory()
                 };
+                
+                // Set FFmpeg path if available
+                if (!string.IsNullOrEmpty(_binaryManager.JellyfinFFmpegPath))
+                {
+                    var ffmpegDir = Path.GetDirectoryName(_binaryManager.JellyfinFFmpegPath);
+                    if (!string.IsNullOrEmpty(ffmpegDir))
+                    {
+                        processInfo.EnvironmentVariables["PATH"] = $"{ffmpegDir}:{Environment.GetEnvironmentVariable("PATH")}";
+                        _logger.LogDebug("Added Jellyfin FFmpeg to PATH: {FFmpegDir}", ffmpegDir);
+                    }
+                }
 
                 using var process = Process.Start(processInfo);
                 if (process == null)
@@ -192,7 +237,16 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
                     if (!string.IsNullOrEmpty(e.Data))
                     {
                         output.AppendLine(e.Data);
-                        _logger.LogDebug("Whisper: {Output}", e.Data);
+                        
+                        // Log GPU initialization messages
+                        if (e.Data.Contains("CUDA") || e.Data.Contains("GPU") || e.Data.Contains("Vulkan"))
+                        {
+                            _logger.LogInformation("Whisper GPU: {Output}", e.Data);
+                        }
+                        else
+                        {
+                            _logger.LogDebug("Whisper: {Output}", e.Data);
+                        }
                     }
                 };
 
@@ -201,7 +255,17 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
                     if (!string.IsNullOrEmpty(e.Data))
                     {
                         errors.AppendLine(e.Data);
-                        _logger.LogInformation("Whisper: {Output}", e.Data);
+                        
+                        // Log important messages at info level
+                        if (e.Data.Contains("progress") || e.Data.Contains("processing") || 
+                            e.Data.Contains("CUDA") || e.Data.Contains("GPU"))
+                        {
+                            _logger.LogInformation("Whisper: {Output}", e.Data);
+                        }
+                        else
+                        {
+                            _logger.LogDebug("Whisper: {Output}", e.Data);
+                        }
                     }
                 };
 

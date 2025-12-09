@@ -2,157 +2,371 @@
 
 Automatically generate subtitles for your Jellyfin media library using OpenAI's Whisper AI.
 
+**Repository:** [zakattack02/Whisper-Script](https://github.com/zakattack02/Whisper-Script) | **Branch:** `feature/jellyfin-plugin`
+
+---
+
 ## Project Status
 
-🚧 **IN DEVELOPMENT** - Core services implemented, tasks and integration in progress.
+**✅ CORE IMPLEMENTATION COMPLETE** - All services implemented and refactored. Plugin successfully migrated from broken Whisper.NET library to working whisper.cpp CLI approach.
 
-## What's Been Completed
+**Version:** 0.0.0.36 (Latest Release)  
+**Target:** Jellyfin v10.11.2+  
+**Framework:** .NET 9.0  
+**License:** GPLv3
 
-✅ .NET 8.0 project structure  
-✅ Jellyfin packages installed (10.8.x for .NET 8 compatibility)  
-✅ Whisper.NET library integrated (v1.8.1)  
-✅ Plugin configuration system with all settings  
-✅ Complete web UI for configuration  
-✅ **WhisperService** - Core subtitle generation with Whisper.NET  
-✅ **IWhisperService** interface - Clean service abstraction  
-✅ **SubtitleDetectionService** - Subtitle file detection and management  
-✅ **ISubtitleDetectionService** interface  
-✅ Model download & caching system  
-✅ SRT subtitle file generation  
-✅ GPLv3 License  
-✅ HttpClient integration for model downloads  
-✅ Successful compilation
+---
 
-## Next Steps
+## ✅ What's Been Completed
 
-### Immediate Tasks
-1. ✅ ~~Create `WhisperService.cs`~~ - **COMPLETED**
-2. ✅ ~~Create `SubtitleDetectionService.cs`~~ - **COMPLETED**
-3. Create `WhisperSubtitleTask.cs` - Scheduled task implementation
-4. Create `WhisperPostScanTask.cs` - Library scan hook
-5. Register services with dependency injection
-6. Test with actual Jellyfin server
-7. Package and deploy plugin
+### Architecture & Services
+- ✅ .NET 9.0 project structure (upgraded from .NET 8.0)
+- ✅ Jellyfin packages (10.11.2 compatibility)
+- ✅ **Plugin configuration system** with all settings
+- ✅ **Complete web UI** for configuration (`configPage.html`)
+- ✅ **IWhisperService interface** - Clean service abstraction
+- ✅ **WhisperService.cs** - Core subtitle generation (refactored to whisper.cpp CLI)
+- ✅ **ISubtitleDetectionService interface**
+- ✅ **SubtitleDetectionService** - Subtitle file detection and management
+- ✅ Model download & caching system (direct Hugging Face downloads)
+- ✅ **SRT subtitle file generation**
+- ✅ HttpClient integration for downloads
+- ✅ Successful compilation (0 errors, 0 warnings)
+- ✅ GPLv3 License
 
-### Architecture
+### Critical Bug Fixes
+- ✅ Fixed version display bug (now shows 0.0.0.36 correctly)
+- ✅ Resolved native library loading failure (11,415+ errors)
+- ✅ Migrated from Whisper.NET library to whisper.cpp CLI approach
+- ✅ Removed problematic NuGet dependencies
+
+### Build & Deployment
+- ✅ Automated make-release.sh script
+- ✅ Interactive version selection (patch/minor/major/manual/current)
+- ✅ Changelog input via Ctrl+D
+- ✅ 7-step release workflow (build → package → manifest → GitHub)
+- ✅ GitHub integration for releases
+- ✅ Manifest.json automatic updates
+
+### Documentation
+- ✅ WHISPER_CPP_SETUP.md - Complete setup guide
+- ✅ DOCKER_SETUP.md - Docker deployment examples
+- ✅ MIGRATION_GUIDE.md - Technical migration details
+- ✅ RELEASE_NOTES.md - v0.0.0.36 information
+- ✅ IMPLEMENTATION_SUMMARY.md - Full technical documentation
+
+---
+
+## Project Structure
 
 ```
 Jellyfin.Plugin.WhisperSubtitles/
 ├── Configuration/
-│   ├── PluginConfiguration.cs     ✅ Created
-│   └── configPage.html             ✅ Created
+│   ├── PluginConfiguration.cs      ✅ Complete
+│   ├── configPage.html             ✅ Complete (with improved error handling)
+│   └── PluginConfigurationPage.cs  ✅ Complete
 ├── Services/
-│   ├── IWhisperService.cs          ✅ Created
-│   ├── WhisperService.cs           ✅ Created
-│   ├── ISubtitleDetectionService.cs ✅ Created
-│   └── SubtitleDetectionService.cs  ✅ Created
+│   ├── IWhisperService.cs          ✅ Complete
+│   ├── WhisperService.cs           ✅ Complete (refactored)
+│   ├── ISubtitleDetectionService.cs ✅ Complete
+│   └── SubtitleDetectionService.cs  ✅ Complete
+├── Controllers/
+│   └── WhisperSubtitlesController.cs ✅ Complete (updated)
 ├── Tasks/
 │   ├── WhisperSubtitleTask.cs      ⏳ TODO
-│   └── WhisperPostScanTask.cs      ⏳ TODO  
-└── Plugin.cs                       ✅ Created
+│   └── WhisperPostScanTask.cs      ⏳ TODO
+└── Plugin.cs                       ✅ Complete
 ```
 
-## Features (Planned)
+---
 
-- **Scheduled Task**: Manual subtitle generation via Jellyfin's scheduled tasks
-- **Post-Library Scan**: Automatic generation after library updates
-- **Configurable Models**: Choose from tiny, base, small, medium, turbo, large
-- **Translation Support**: Translate any language to English or transcribe in original language
-- **AI Identifier**: Mark AI-generated subtitles (e.g., video.en.whisper.srt)
-- **Word Timestamps**: Optional word-level timing for karaoke-style subtitles
-- **Smart Detection**: Skip files that already have subtitles
-- **Library Selection**: Choose which libraries to process
+## 🚀 Key Features
 
-## Configuration Options
+### Currently Implemented
+- ✅ **CLI-based Whisper Integration** - Uses whisper.cpp binary instead of problematic library
+- ✅ **Automatic Model Download** - Direct Hugging Face downloads with progress tracking
+- ✅ **Model Caching** - Models stored in `~/.cache/whisper/` for reuse
+- ✅ **Configurable Models** - Choose from tiny, base, small, medium, turbo, large
+- ✅ **Language Support** - Transcribe or translate to target language
+- ✅ **Translation Support** - Auto-translate audio to English or other languages
+- ✅ **SRT Generation** - High-quality SRT subtitle format output
+- ✅ **Subtitle Detection** - Smart detection of existing subtitles
+- ✅ **AI Identifier** - Mark AI-generated subtitles (e.g., video.en.whisper.srt)
+- ✅ **Word Timestamps** - Optional word-level timing for karaoke-style subtitles
+- ✅ **Multiple Formats** - Support for srt, vtt, ass, ssa, sub, idx formats
+- ✅ **Long Filename Handling** - Proper 255-character limit truncation
 
-- **Whisper Model**: Model size (tiny to large, plus turbo)
-- **Target Language**: Language code for output (en, es, fr, etc.)
-- **Translate to English**: Convert any language to English
-- **AI Identifier**: String to add to filenames
-- **Word Timestamps**: Enable word-level timing
-- **Process on Library Scan**: Auto-generate on library updates
-- **Skip Existing**: Don't process files with language subtitles
-- **Regenerate AI**: Re-process AI-generated subtitles
+### Coming Soon
+- ⏳ **WhisperSubtitleTask** - Scheduled task implementation
+- ⏳ **WhisperPostScanTask** - Library scan hook
+- ⏳ **Batch Processing** - Queue system for multiple videos
+- ⏳ **Progress Reporting** - Real-time progress in UI
+- ⏳ **Library Selection** - Choose which libraries to process
 
-## Building
+---
+
+## 📊 Configuration Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| **Whisper Model** | Select | small | Model size (tiny/base/small/medium/large/turbo) |
+| **Target Language** | Text | en | Language code (en, es, fr, de, ja, etc.) |
+| **Translate to English** | Checkbox | ✓ | Translate audio to English |
+| **AI Identifier** | Text | whisper | String to add to subtitle filenames |
+| **Word Timestamps** | Checkbox | ☐ | Enable word-level timing |
+| **Process on Library Scan** | Checkbox | ☐ | Auto-generate on library updates |
+| **Skip Existing** | Checkbox | ✓ | Don't process files with subtitles |
+| **Regenerate AI** | Checkbox | ☐ | Re-process AI-generated subtitles |
+
+---
+
+## Supported Models
+
+| Model | Parameters | Speed | VRAM | Download Size |
+|-------|-----------|-------|------|---|
+| **tiny** | 39M | ~10x | ~1 GB | ~75 MB |
+| **base** | 74M | ~7x | ~1 GB | ~140 MB |
+| **small** | 244M | ~4x | ~2 GB | ~460 MB |
+| **medium** | 769M | ~2x | ~5 GB | ~1.5 GB |
+| **large** | 1550M | 1x | ~10 GB | ~3 GB |
+| **turbo** | 809M | ~8x | ~6 GB | ~1.6 GB |
+
+**Recommended:** Small model for balanced quality/speed/resource usage.
+
+---
+
+## 🔧 Installation & Setup
+
+### Prerequisites
+- Jellyfin Server v10.11.2 or later
+- whisper.cpp binary installed
+
+### Installing whisper.cpp
+
+#### Docker (Recommended)
+```dockerfile
+RUN git clone https://github.com/ggerganov/whisper.cpp.git /tmp/whisper.cpp && \
+    cd /tmp/whisper.cpp && make && cp main /usr/local/bin/whisper
+```
+
+#### Manual (Linux/macOS)
+```bash
+git clone https://github.com/ggerganov/whisper.cpp.git
+cd whisper.cpp
+make
+sudo cp main /usr/local/bin/whisper
+```
+
+#### With GPU Support (CUDA)
+```bash
+cd whisper.cpp
+make WHISPER_CUDA=1
+sudo cp main /usr/local/bin/whisper
+```
+
+See [WHISPER_CPP_SETUP.md](./WHISPER_CPP_SETUP.md) and [DOCKER_SETUP.md](./DOCKER_SETUP.md) for detailed instructions.
+
+### Installing the Plugin
+
+1. **Build the plugin:**
+   ```bash
+   cd Jellyfin.Plugin.WhisperSubtitles/Jellyfin.Plugin.WhisperSubtitles
+   dotnet publish --configuration Release
+   ```
+
+2. **Copy to Jellyfin plugins directory:**
+   ```bash
+   mkdir -p ~/.config/jellyfin/plugins
+   cp -r bin/Release/net9.0/publish/* ~/.config/jellyfin/plugins/Whisper\ Subtitles/
+   ```
+
+3. **Restart Jellyfin**
+
+4. **Configure via Dashboard:**
+   - Dashboard → Plugins → Whisper Subtitles
+   - Select model, language, and options
+   - Click "Download Selected Model"
+   - Save configuration
+
+---
+
+##  Building
+
+### Build Solution
+```bash
+dotnet build Jellyfin.Plugin.WhisperSubtitles.sln
+```
+
+### Build with Release Configuration
+```bash
+dotnet build --configuration Release
+```
+
+### Publish Plugin
+```bash
+dotnet publish --configuration Release
+```
+
+**Build Status:** ✅ Succeeds with 0 errors, 0 warnings
+
+---
+
+##  Release Process
+
+Automated releases via `make-release.sh`:
 
 ```bash
-# Build the solution
-dotnet build Jellyfin.Plugin.WhisperSubtitles.sln
-
-# Or build just the project
-cd Jellyfin.Plugin.WhisperSubtitles/Jellyfin.Plugin.WhisperSubtitles
-dotnet build
+./make-release.sh
 ```
 
-**Current Build Status:** ✅ Compiles successfully
+**Options:**
+1. **Patch** - Increment patch version (0.0.0.36 → 0.0.0.37)
+2. **Minor** - Increment minor version (0.0.0.36 → 0.1.0.0)
+3. **Major** - Increment major version (0.0.0.36 → 1.0.0.0)
+4. **Manual** - Enter custom version
+5. **Current** - Use current version without changes
 
-## Installation (Once Complete)
+**Features:**
+- Interactive version selection
+- Ctrl+D to input multi-line changelog
+- Automatic build and packaging
+- Manifest.json updates
+- GitHub release creation
+- Automatic artifact upload
 
-1. Build the plugin
-2. Copy the DLL to Jellyfin's plugin directory
-3. Restart Jellyfin
-4. Configure via Dashboard → Plugins → Whisper Subtitles
+See [make-release.sh](./make-release.sh) for full automation details.
 
-## Development Notes
+---
 
-### Why .NET 8?
-- Jellyfin 10.8.x uses .NET 8
-- Jellyfin 10.9+ moved to .NET 9
-- Targeting 10.8.x for broader compatibility
+##  Architecture & Technical Details
 
-### Whisper.NET
-- C# bindings for OpenAI Whisper (v1.8.1)
-- Native performance with GPU support potential
-- Cross-platform (Windows, Linux, macOS)
-- Model download and caching built-in
-- Supports all Whisper models: tiny, base, small, medium, large-v1/v2/v3, turbo
+### Whisper.NET → whisper.cpp Migration
 
-## Current Implementation Details
+**Problem:** Whisper.NET library required native C++ runtime libraries not available in containers.
+- Error: "Failed to load native whisper library"
+- Impact: 11,415+ subtitle generation errors
 
-### WhisperService Features
-- ✅ Automatic model download from Hugging Face
-- ✅ Model caching in `~/.cache/whisper/`
-- ✅ SRT subtitle file generation
-- ✅ Configurable language detection
-- ✅ Translation support
-- ✅ Word-level timestamps (configurable)
-- ✅ Proper resource disposal (HttpClient, streams)
-- ✅ Comprehensive logging
-- ✅ Cancellation token support
+**Solution:** Complete migration to whisper.cpp CLI-based execution.
+- Single portable binary
+- No dependency issues
+- Same or better performance
+- Easy GPU acceleration
 
-### SubtitleDetectionService Features
-- ✅ Check for existing subtitle files by language
-- ✅ Detect AI-generated subtitles by identifier
-- ✅ Get all subtitle files for a video
-- ✅ Generate subtitle output paths with AI identifier
-- ✅ Handle long filenames (255 char limit with truncation)
-- ✅ Support multiple subtitle formats (srt, vtt, ass, ssa, sub, idx)
-- ✅ Pattern matching for forced/SDH subtitles
+See [IMPLEMENTATION_SUMMARY.md](./IMPLEMENTATION_SUMMARY.md) for full technical details.
 
-### Supported Models
-| Model | Parameters | Relative Speed | VRAM |
-|-------|-----------|----------------|------|
-| tiny | 39M | ~10x | ~1 GB |
-| base | 74M | ~7x | ~1 GB |
-| small | 244M | ~4x | ~2 GB |
-| medium | 769M | ~2x | ~5 GB |
-| large-v3 | 1550M | 1x | ~10 GB |
-| turbo | 809M | ~8x | ~6 GB |
+### Service Architecture
 
-## References
+```csharp
+// IWhisperService - Core API
+Task<bool> GenerateSubtitleAsync(string videoPath, string outputPath, ...)
+Task DownloadModelAsync(string modelName, CancellationToken cancellationToken)
+Task TestAsync(CancellationToken cancellationToken)
 
-- [Whisper.NET GitHub](https://github.com/sandrohanea/whisper.net)
-- [whisper.cpp Github](https://github.com/ggml-org/whisper.cpp)
+// ISubtitleDetectionService - Subtitle management
+bool HasSubtitlesByLanguage(string videoPath, string language)
+bool HasAISubtitles(string videoPath, string aiIdentifier)
+string[] GetAllSubtitleFiles(string videoPath)
+string GenerateSubtitlePath(string videoPath, string language, string? aiIdentifier)
+```
+
+### Process Execution
+
+WhisperService uses `System.Diagnostics.Process` to execute whisper CLI:
+
+```bash
+whisper -m /path/to/model.bin -f /path/to/video.mp4 -o /output/dir [options]
+```
+
+Arguments are automatically built based on configuration:
+- Model selection
+- Output format (SRT)
+- Language specification
+- Translation flags
+- Word-level timestamps
+- GPU acceleration (if configured)
+
+---
+
+##  Troubleshooting
+
+### whisper Binary Not Found
+```bash
+# Check if whisper is in PATH
+which whisper
+
+# Install if missing
+git clone https://github.com/ggerganov/whisper.cpp.git
+cd whisper.cpp && make && sudo cp main /usr/local/bin/whisper
+```
+
+### Model Download Issues
+1. Check disk space in `~/.cache/whisper/`
+2. Verify network connectivity
+3. Check Jellyfin logs for specific errors
+4. Try downloading smaller model first (tiny)
+
+### Subtitle Generation Hangs
+1. Verify video file is valid
+2. Check if whisper process is running: `ps aux | grep whisper`
+3. Check system resources (CPU/RAM/Disk)
+4. Review Jellyfin logs for error messages
+
+### GPU Not Being Used
+1. Verify whisper compiled with GPU support: `whisper --help | grep gpu`
+2. Check CUDA/HIP installation
+3. Ensure sufficient VRAM available
+4. GPU activation is automatic when available
+
+See [WHISPER_CPP_SETUP.md](./WHISPER_CPP_SETUP.md) for complete troubleshooting guide.
+
+---
+
+##  Documentation
+
+- **[WHISPER_CPP_SETUP.md](./WHISPER_CPP_SETUP.md)** - Complete whisper.cpp installation and configuration
+- **[DOCKER_SETUP.md](./DOCKER_SETUP.md)** - Docker deployment examples and compose files
+- **[MIGRATION_GUIDE.md](./MIGRATION_GUIDE.md)** - Technical details of Whisper.NET → whisper.cpp migration
+- **[RELEASE_NOTES.md](./RELEASE_NOTES.md)** - v0.0.0.36 release information
+- **[IMPLEMENTATION_SUMMARY.md](./IMPLEMENTATION_SUMMARY.md)** - Full implementation details
+
+---
+
+## 🔗 References
+
+- [whisper.cpp GitHub](https://github.com/ggerganov/whisper.cpp) - Official whisper.cpp project
 - [Jellyfin Plugin Documentation](https://jellyfin.org/docs/general/server/plugins/)
+- [Jellyfin Plugin Template](https://github.com/jellyfin/jellyfin-plugin-template)
+- [OpenAI Whisper](https://github.com/openai/whisper)
+
+---
+
+##  Licensing
+
+This project is licensed under **GPLv3**.
+
+### Important Notice
+Due to Jellyfin's plugin architecture and GPLv3 licensing of Jellyfin packages:
+- The compiled plugin binary will be licensed under GPLv3
+- Source code must be publicly available
+- Proprietary or "hidden" plugins are not permitted
+- Any modifications must also be open-source
+
+See [LICENSE](./LICENSE) for full GPLv3 text.
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! This is an open-source project under GPLv3.
+
+Areas for contribution:
+- Task implementations (WhisperSubtitleTask, WhisperPostScanTask)
+- GPU acceleration optimization
+- Additional language support
+- Improved error handling
+- Documentation improvements
+- Bug reports and fixes
+
+---
 
 
-## Licensing
-
-Licensing is a complex topic. This repository features a GPLv3 license template that can be used to provide a good default license for your plugin. You may alter this if you like, but if you do a permissive license must be chosen.
-
-Due to how plugins in Jellyfin work, when your plugin is compiled into a binary, it will link against the various Jellyfin binary NuGet packages. These packages are licensed under the GPLv3. Thus, due to the nature and restrictions of the GPL, the binary plugin you get will also be licensed under the GPLv3.
-
-If you accept the default GPLv3 license from this template, all will be good. However if you choose a different license, please keep this fact in mind, as it might not always be obvious that an, e.g. MIT-licensed plugin would become GPLv3 when compiled.
-
-Please note that this also means making "proprietary", source-unavailable, or otherwise "hidden" plugins for public consumption is not permitted. To build a Jellyfin plugin for distribution to others, it must be under the GPLv3 or a permissive open-source license that can be linked against the GPLv3.

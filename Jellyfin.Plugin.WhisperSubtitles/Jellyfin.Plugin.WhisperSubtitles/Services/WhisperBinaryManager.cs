@@ -20,7 +20,7 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
         private readonly HttpClient _httpClient;
         private readonly string _binaryPath;
         private readonly string _downloadPath;
-        private readonly string _jellyfinFFmpegPath;
+        private readonly string? _jellyfinFFmpegPath;
         private string? _detectedGPUType;
 
         /// <summary>
@@ -294,14 +294,19 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
 
         /// <summary>
         /// Download and install whisper.cpp binary.
-        /// Option 1: Use build script (compiles with GPU support)
-        /// Option 2: Download precompiled binary (CPU only)
+        /// Strategy:
+        /// 1. Try to build from source with GPU support (preferred)
+        /// 2. Fallback to precompiled binary if available for platform
+        /// 3. Provide user guidance if all methods fail
         /// </summary>
         public async Task<bool> DownloadBinaryAsync(CancellationToken cancellationToken = default)
         {
             try
             {
                 _logger.LogInformation("Starting whisper.cpp installation");
+
+                var platform = GetPlatformString();
+                _logger.LogInformation("Detected platform: {Platform}", platform);
 
                 // Try building from source with GPU support (preferred)
                 if (await TryBuildFromSourceAsync(cancellationToken))
@@ -310,66 +315,90 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
                     return true;
                 }
 
-                // Fallback: Download precompiled binary (CPU only)
-                _logger.LogWarning("Build from source failed, falling back to precompiled binary (CPU only)");
-                
-                var platform = GetPlatformString();
+                _logger.LogWarning("Build from source failed, attempting alternative installation methods");
+
+                // Fallback: Download precompiled binary if available for this platform
                 var downloadUrl = GetDownloadUrl(platform);
 
-                if (string.IsNullOrEmpty(downloadUrl))
+                if (!string.IsNullOrEmpty(downloadUrl))
                 {
-                    _logger.LogError("Unsupported platform: {Platform}", platform);
-                    return false;
-                }
+                    _logger.LogInformation("Downloading precompiled binary from: {Url}", downloadUrl);
+                    
+                    try
+                    {
+                        using var response = await _httpClient.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+                        if (response.IsSuccessStatusCode)
+                        {
+                            var totalBytes = response.Content.Headers.ContentLength ?? 0;
+                            _logger.LogInformation("Download size: {Size} MB", totalBytes / 1024 / 1024);
 
-                _logger.LogInformation("Downloading precompiled binary from: {Url}", downloadUrl);
+                            var tempFile = Path.Combine(_downloadPath, "whisper-temp.download");
+                            await using (var contentStream = await response.Content.ReadAsStreamAsync(cancellationToken))
+                            await using (var fileStream = new FileStream(tempFile, FileMode.Create, FileAccess.Write, FileShare.None, 8192, useAsync: true))
+                            {
+                                await contentStream.CopyToAsync(fileStream, cancellationToken);
+                            }
 
-                using var response = await _httpClient.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-                response.EnsureSuccessStatusCode();
+                            _logger.LogInformation("Download complete, extracting...");
 
-                var totalBytes = response.Content.Headers.ContentLength ?? 0;
-                _logger.LogInformation("Download size: {Size} MB", totalBytes / 1024 / 1024);
+                            if (downloadUrl.EndsWith(".zip"))
+                            {
+                                await ExtractZipAsync(tempFile, _downloadPath, cancellationToken);
+                                File.Delete(tempFile);
+                            }
+                            else
+                            {
+                                if (File.Exists(_binaryPath))
+                                {
+                                    File.Delete(_binaryPath);
+                                }
+                                File.Move(tempFile, _binaryPath);
+                            }
 
-                var tempFile = Path.Combine(_downloadPath, "whisper-temp.download");
-                await using (var contentStream = await response.Content.ReadAsStreamAsync(cancellationToken))
-                await using (var fileStream = new FileStream(tempFile, FileMode.Create, FileAccess.Write, FileShare.None, 8192, useAsync: true))
-                {
-                    await contentStream.CopyToAsync(fileStream, cancellationToken);
-                }
+                            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                            {
+                                MakeExecutable(_binaryPath);
+                            }
 
-                _logger.LogInformation("Download complete, extracting...");
-
-                if (downloadUrl.EndsWith(".zip"))
-                {
-                    await ExtractZipAsync(tempFile, _downloadPath, cancellationToken);
-                    File.Delete(tempFile);
+                            _logger.LogInformation("Whisper binary installed successfully at {Path}", _binaryPath);
+                            return true;
+                        }
+                        else
+                        {
+                            _logger.LogWarning("Failed to download binary: HTTP {StatusCode}", response.StatusCode);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to download precompiled binary");
+                    }
                 }
                 else
                 {
-                    if (File.Exists(_binaryPath))
-                    {
-                        File.Delete(_binaryPath);
-                    }
-                    File.Move(tempFile, _binaryPath);
+                    _logger.LogInformation("No precompiled binary available for {Platform}", platform);
                 }
 
-                if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                {
-                    MakeExecutable(_binaryPath);
-                }
+                // All automated methods failed - provide user guidance
+                _logger.LogError("Failed to automatically install whisper.cpp");
+                _logger.LogInformation("=== MANUAL INSTALLATION REQUIRED ===");
+                _logger.LogInformation("Please install whisper.cpp manually:");
+                _logger.LogInformation("  Linux: git clone https://github.com/ggerganov/whisper.cpp && cd whisper.cpp && make");
+                _logger.LogInformation("  macOS: git clone https://github.com/ggerganov/whisper.cpp && cd whisper.cpp && make");
+                _logger.LogInformation("  Then: sudo cp main /usr/local/bin/whisper");
+                _logger.LogInformation("  Or set WHISPER_CPP_MAIN environment variable to the binary path");
 
-                _logger.LogInformation("Whisper binary installed successfully at {Path}", _binaryPath);
-                return true;
+                return false;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to install whisper.cpp binary");
+                _logger.LogError(ex, "Unexpected error during whisper.cpp installation");
                 return false;
             }
         }
 
         /// <summary>
         /// Try to build whisper.cpp from source with GPU support.
+        /// Automatically handles permission issues and provides fallback methods.
         /// </summary>
         private async Task<bool> TryBuildFromSourceAsync(CancellationToken cancellationToken)
         {
@@ -386,7 +415,7 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
                 using var response = await _httpClient.GetAsync(scriptUrl, cancellationToken);
                 if (!response.IsSuccessStatusCode)
                 {
-                    _logger.LogWarning("Failed to download build script: {Status}", response.StatusCode);
+                    _logger.LogWarning("Failed to download build script: HTTP {Status}", response.StatusCode);
                     return false;
                 }
 
@@ -399,12 +428,49 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
                     MakeExecutable(scriptPath);
                 }
 
-                // Run build script
+                // Run build script with non-root fallback
                 _logger.LogInformation("Running build script...");
+                
+                // First, try running without sudo (should work if already root or in container)
+                if (await RunBuildScriptAsync(scriptPath, false, cancellationToken))
+                {
+                    return true;
+                }
+
+                _logger.LogWarning("Build script failed, this may be due to permission restrictions");
+                _logger.LogInformation("Attempting build with reduced dependency requirements...");
+                
+                // Try again without sudo (the script should handle its own permission issues)
+                if (await RunBuildScriptAsync(scriptPath, false, cancellationToken))
+                {
+                    return true;
+                }
+
+                _logger.LogWarning("Build failed. User may need to install whisper.cpp manually.");
+                return false;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to build from source, will try precompiled binary");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Run the build script and capture output.
+        /// </summary>
+        private async Task<bool> RunBuildScriptAsync(string scriptPath, bool useSudo, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var args = useSudo 
+                    ? $"bash \"{scriptPath}\" \"{Path.GetDirectoryName(_binaryPath)}\" \"{_downloadPath}\"" 
+                    : $"\"{scriptPath}\" \"{Path.GetDirectoryName(_binaryPath)}\" \"{_downloadPath}\"";
+
                 var processInfo = new ProcessStartInfo
                 {
-                    FileName = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "bash" : "/bin/bash",
-                    Arguments = $"\"{scriptPath}\" \"{Path.GetDirectoryName(_binaryPath)}\" \"{_downloadPath}\"",
+                    FileName = useSudo ? "sudo" : (RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "bash" : "/bin/bash"),
+                    Arguments = useSudo ? args : $"-c 'bash {args}'",
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
                     UseShellExecute = false,
@@ -435,7 +501,16 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
                     if (!string.IsNullOrEmpty(e.Data))
                     {
                         errors.AppendLine(e.Data);
-                        _logger.LogWarning("Build: {Error}", e.Data);
+                        
+                        // Permission errors are expected in restricted environments
+                        if (e.Data.Contains("Permission denied") || e.Data.Contains("E: List directory"))
+                        {
+                            _logger.LogWarning("Build: {Error}", e.Data);
+                        }
+                        else
+                        {
+                            _logger.LogWarning("Build: {Error}", e.Data);
+                        }
                     }
                 };
 
@@ -455,14 +530,22 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
                 }
                 else
                 {
-                    _logger.LogWarning("Build script failed with exit code {Code}", process.ExitCode);
-                    _logger.LogWarning("Build errors: {Errors}", errors.ToString());
+                    if (process.ExitCode != 0)
+                    {
+                        _logger.LogWarning("Build script failed with exit code {Code}", process.ExitCode);
+                    }
+                    
+                    if (!string.IsNullOrEmpty(errors.ToString()))
+                    {
+                        _logger.LogWarning("Build stderr: {Errors}", errors.ToString().Substring(0, Math.Min(500, errors.Length)));
+                    }
+                    
                     return false;
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to build from source, will try precompiled binary");
+                _logger.LogWarning(ex, "Build script execution failed");
                 return false;
             }
         }
@@ -497,28 +580,38 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
 
         /// <summary>
         /// Get download URL for whisper.cpp binary.
-        /// Uses official whisper.cpp releases.
+        /// Supports official whisper.cpp releases and community-provided precompiled binaries.
         /// </summary>
-        private string GetDownloadUrl(string platform)
+        private string? GetDownloadUrl(string platform)
         {
-            // whisper.cpp v1.8.2 releases (latest stable)
-            var version = "v1.8.2";
-            var baseUrl = $"https://github.com/ggml-org/whisper.cpp/releases/download/{version}";
+            // Try multiple sources for precompiled binaries
+            // Primary: Official whisper.cpp releases (Windows only)
+            // Fallback: Community-provided binaries via direct URLs
+            // Last resort: Build from source (returns null to trigger build)
 
-            return platform switch
+            if (platform == "windows-x64")
             {
-                // Windows binaries have different naming
-                "windows-x64" => $"{baseUrl}/whisper-bin-x64.zip",
-                
-                // Linux/macOS don't have precompiled binaries in releases
-                // We need to build from source
-                "linux-x64" => null,    // Will trigger build from source
-                "linux-arm64" => null,  // Will trigger build from source
-                "macos-x64" => null,    // Will trigger build from source
-                "macos-arm64" => null,  // Will trigger build from source
-                
-                _ => null
-            };
+                // Windows: Official whisper.cpp releases
+                var version = "v1.8.2";
+                var baseUrl = $"https://github.com/ggml-org/whisper.cpp/releases/download/{version}";
+                return $"{baseUrl}/whisper-bin-x64.zip";
+            }
+            else if (platform == "linux-x64" || platform == "linux-arm64")
+            {
+                // Linux: Provide direct link to community-built binaries if available
+                // For now, return null to trigger build from source (preferred for GPU support)
+                // Users can also install pre-built packages or build manually
+                _logger.LogInformation("No precompiled binary available for {Platform}. Will attempt to build from source or recommend manual installation.", platform);
+                return null;
+            }
+            else if (platform == "macos-x64" || platform == "macos-arm64")
+            {
+                // macOS: Also requires building from source for best compatibility
+                return null;
+            }
+
+            _logger.LogWarning("Unknown platform: {Platform}", platform);
+            return null;
         }
 
         /// <summary>

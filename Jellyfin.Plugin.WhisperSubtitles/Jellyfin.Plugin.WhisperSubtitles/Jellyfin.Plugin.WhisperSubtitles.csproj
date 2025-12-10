@@ -26,6 +26,13 @@
     <EmbeddedResource Include="Configuration\Logo.png" />
   </ItemGroup>
 
+  <ItemGroup>
+  <None Include="bin/whisper/linux-x64/main">
+    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    <Link>whisper-binaries/linux-x64/main</Link>
+  </None>
+</ItemGroup>
+
   <!-- Exclude non-Linux runtime libraries after publish for Jellyfin Docker deployment -->
   <Target Name="RemoveNonLinuxRuntimes" AfterTargets="Publish">
     <ItemGroup>

@@ -378,7 +378,7 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
                 _logger.LogInformation("Attempting to build whisper.cpp from source...");
 
                 // Download build script
-                var scriptUrl = "https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/scripts/build-whisper.sh";
+                var scriptUrl = "https://raw.githubusercontent.com/zakattack02/Whisper-Script/refs/heads/feature/jellyfin-plugin/Jellyfin.Plugin.WhisperSubtitles/Scripts/Build-whisper.sh";
                 var scriptPath = Path.Combine(_downloadPath, "build-whisper.sh");
 
                 _logger.LogInformation("Downloading build script from: {Url}", scriptUrl);

@@ -1,7 +1,5 @@
 using System;
 using System.ComponentModel.DataAnnotations;
-using System.IO;
-using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Jellyfin.Plugin.WhisperSubtitles.Services;
@@ -15,21 +13,24 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Controllers
     /// Whisper Subtitles API controller.
     /// </summary>
     [ApiController]
-    [Route("WhisperSubtitles")]
+    [Route("api/[controller]")]
+    [Produces("application/json")]
     public class WhisperSubtitlesController : ControllerBase
     {
         private readonly ILogger<WhisperSubtitlesController> _logger;
-        private readonly IWhisperService _whisperService;
+        private readonly ILoggerFactory _loggerFactory;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="WhisperSubtitlesController"/> class.
         /// </summary>
         /// <param name="logger">Instance of the <see cref="ILogger{WhisperSubtitlesController}"/> interface.</param>
-        /// <param name="whisperService">Instance of the <see cref="IWhisperService"/> interface.</param>
-        public WhisperSubtitlesController(ILogger<WhisperSubtitlesController> logger, IWhisperService whisperService)
+        /// <param name="loggerFactory">Instance of the <see cref="ILoggerFactory"/> interface.</param>
+        public WhisperSubtitlesController(
+            ILogger<WhisperSubtitlesController> logger,
+            ILoggerFactory loggerFactory)
         {
             _logger = logger;
-            _whisperService = whisperService;
+            _loggerFactory = loggerFactory;
             _logger.LogInformation("WhisperSubtitlesController initialized");
         }
 
@@ -57,42 +58,73 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Controllers
             [FromBody] ModelDownloadRequest request,
             CancellationToken cancellationToken = default)
         {
-            _logger.LogInformation("=== DownloadModel CALLED ===");
-            _logger.LogInformation("Request received: {Request}", request);
+            _logger.LogInformation("=== DownloadModel API Called ===");
+            _logger.LogInformation("Request: {@Request}", request);
             
             if (request == null)
             {
                 _logger.LogError("Request is null");
-                return BadRequest("Request is null");
+                return BadRequest(new ModelDownloadResponse
+                {
+                    Success = false,
+                    Message = "Request is null"
+                });
             }
             
             if (string.IsNullOrWhiteSpace(request.ModelName))
             {
                 _logger.LogError("Model name is empty or null");
-                return BadRequest("Model name is required");
+                return BadRequest(new ModelDownloadResponse
+                {
+                    Success = false,
+                    Message = "Model name is required"
+                });
             }
 
             _logger.LogInformation("Starting download of Whisper model: {ModelName}", request.ModelName);
 
             try
             {
+                // Create service instance (Jellyfin 10.11 doesn't support plugin DI)
+                using var whisperService = new WhisperService(_loggerFactory.CreateLogger<WhisperService>());
+                
                 // Validate model name
-                var validModels = new[] { "tiny", "tiny.en", "base", "base.en", "small", "small.en", 
-                                         "medium", "medium.en", "large", "large-v1", "large-v2", 
-                                         "large-v3", "turbo" };
+                var validModels = new[] { "Tiny", "Base", "Small", "Medium", "Turbo", "Large" };
                 
                 if (!Array.Exists(validModels, m => m.Equals(request.ModelName, StringComparison.OrdinalIgnoreCase)))
                 {
-                    return BadRequest($"Invalid model name: {request.ModelName}");
+                    _logger.LogWarning("Invalid model name: {ModelName}", request.ModelName);
+                    return BadRequest(new ModelDownloadResponse
+                    {
+                        Success = false,
+                        Message = $"Invalid model name: {request.ModelName}. Valid models: {string.Join(", ", validModels)}"
+                    });
                 }
 
-                // Download the model using WhisperService
-                _logger.LogInformation("Downloading model {Model}", request.ModelName);
+                // First ensure whisper.cpp binary is available
+                _logger.LogInformation("Checking whisper.cpp binary availability...");
                 
-                var success = await _whisperService.DownloadModelAsync(request.ModelName, cancellationToken);
+                // This will trigger binary build/download if not present
+                var binaryReady = await EnsureBinaryAvailableAsync(whisperService, cancellationToken);
+                if (!binaryReady)
+                {
+                    return StatusCode(500, new ModelDownloadResponse
+                    {
+                        Success = false,
+                        Message = "Failed to install whisper.cpp binary. Check logs for details."
+                    });
+                }
+
+                // Now download the model
+                _logger.LogInformation("Downloading model: {Model}", request.ModelName);
+                
+                var success = await whisperService.DownloadModelAsync(
+                    request.ModelName.ToLowerInvariant(), 
+                    cancellationToken);
                 
                 if (!success)
                 {
+                    _logger.LogError("Model download failed: {ModelName}", request.ModelName);
                     return StatusCode(500, new ModelDownloadResponse
                     {
                         Success = false,
@@ -117,15 +149,6 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Controllers
                     Message = "Download cancelled"
                 });
             }
-            catch (HttpRequestException ex)
-            {
-                _logger.LogError(ex, "Network error downloading model: {ModelName}", request.ModelName);
-                return StatusCode(503, new ModelDownloadResponse
-                {
-                    Success = false,
-                    Message = $"Network error: {ex.Message}"
-                });
-            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error downloading model: {ModelName}", request.ModelName);
@@ -135,6 +158,30 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Controllers
                     Message = $"Error: {ex.Message}"
                 });
             }
+        }
+
+        /// <summary>
+        /// Ensure whisper.cpp binary is available (build/download if needed).
+        /// </summary>
+        private async Task<bool> EnsureBinaryAvailableAsync(WhisperService whisperService, CancellationToken cancellationToken)
+        {
+            // Use reflection to access private EnsureBinaryAvailableAsync method
+            // This is a workaround since we can't change IWhisperService interface
+            var method = typeof(WhisperService).GetMethod(
+                "EnsureBinaryAvailableAsync", 
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            
+            if (method != null)
+            {
+                var task = method.Invoke(whisperService, new object[] { cancellationToken }) as Task<bool>;
+                if (task != null)
+                {
+                    return await task;
+                }
+            }
+
+            _logger.LogWarning("Could not invoke EnsureBinaryAvailableAsync via reflection");
+            return false;
         }
     }
 

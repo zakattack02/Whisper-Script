@@ -21,12 +21,16 @@
                             <option value="Large">Large (Best quality, ~10GB VRAM, ~3GB download)</option>
                         </select>
                         <div class="fieldDescription">Larger models are more accurate but slower</div>
-                        <div class="inputContainer">
+                        <div class="inputContainer" style="margin-top: 15px;">
+                            <button is="emby-button" type="button" id="InstallBinaryButton" class="raised emby-button" style="margin-right: 10px;">
+                                <span>Install/Build Whisper.cpp</span>
+                            </button>
                             <button is="emby-button" type="button" id="DownloadModelButton" class="raised button-submit emby-button">
                                 <span>Download Selected Model</span>
                             </button>
-                            <div id="downloadStatus" class="fieldDescription" style="display: none; padding: 10px; margin-top: 10px; border-radius: 4px;"></div>
                         </div>
+                        <div id="binaryStatus" class="fieldDescription" style="display: none; padding: 10px; margin-top: 10px; border-radius: 4px;"></div>
+                        <div id="downloadStatus" class="fieldDescription" style="display: none; padding: 10px; margin-top: 10px; border-radius: 4px;"></div>
                     </div>
 
                     <div class="inputContainer">
@@ -259,6 +263,93 @@
         return false;
     }
 
+    function handleBinaryInstall() {
+        var installButton = document.getElementById('InstallBinaryButton');
+        var binaryStatusDiv = document.getElementById('binaryStatus');
+        
+        console.log('[WhisperSubtitles] Starting binary installation...');
+        
+        // Check if ApiClient is available
+        if (typeof ApiClient === 'undefined') {
+            console.error('[WhisperSubtitles] ApiClient not available');
+            binaryStatusDiv.style.display = 'block';
+            binaryStatusDiv.style.backgroundColor = 'rgba(220, 0, 0, 0.2)';
+            binaryStatusDiv.style.color = '#dc0000';
+            binaryStatusDiv.style.border = '1px solid #dc0000';
+            binaryStatusDiv.innerHTML = '✗ Error: Jellyfin API not ready. Please refresh the page.';
+            return;
+        }
+        
+        installButton.disabled = true;
+        installButton.querySelector('span').textContent = 'Installing...';
+        
+        binaryStatusDiv.style.display = 'block';
+        binaryStatusDiv.style.backgroundColor = 'rgba(0, 164, 220, 0.2)';
+        binaryStatusDiv.style.color = '#00a4dc';
+        binaryStatusDiv.style.border = '1px solid #00a4dc';
+        binaryStatusDiv.innerHTML = '⟳ Building whisper.cpp binary...<br><small>This may take 5-10 minutes on first run...</small>';
+        
+        try {
+            var apiUrl = ApiClient.getUrl('api/WhisperSubtitles/InstallBinary');
+            
+            console.log('[WhisperSubtitles] API URL:', apiUrl);
+            
+            ApiClient.fetch({
+                type: 'POST',
+                url: apiUrl,
+                contentType: 'application/json'
+            }).then(function(response) {
+                console.log('[WhisperSubtitles] Install success:', response);
+                
+                binaryStatusDiv.style.backgroundColor = 'rgba(0, 200, 83, 0.2)';
+                binaryStatusDiv.style.color = '#00c853';
+                binaryStatusDiv.style.border = '1px solid #00c853';
+                
+                var gpuType = response.GpuType || 'cpu';
+                var msg = '✓ Whisper.cpp installed successfully!<br>';
+                msg += '<small>Acceleration: ' + gpuType.toUpperCase() + '</small>';
+                if (response.BinaryPath) {
+                    msg += '<br><small>Path: ' + response.BinaryPath + '</small>';
+                }
+                binaryStatusDiv.innerHTML = msg;
+                
+                installButton.disabled = false;
+                installButton.querySelector('span').textContent = 'Install/Build Whisper.cpp';
+                
+                setTimeout(function() { 
+                    binaryStatusDiv.style.display = 'none'; 
+                }, 10000);
+            }).catch(function(error) {
+                console.error('[WhisperSubtitles] Install failed:', error);
+                
+                binaryStatusDiv.style.backgroundColor = 'rgba(220, 0, 0, 0.2)';
+                binaryStatusDiv.style.color = '#dc0000';
+                binaryStatusDiv.style.border = '1px solid #dc0000';
+                
+                var msg = '✗ Installation failed';
+                if (error.message) {
+                    msg += ': ' + error.message;
+                } else if (error.status) {
+                    msg += ' (HTTP ' + error.status + ')';
+                }
+                msg += '<br><small>Check Jellyfin logs for details</small>';
+                binaryStatusDiv.innerHTML = msg;
+                
+                installButton.disabled = false;
+                installButton.querySelector('span').textContent = 'Install/Build Whisper.cpp';
+            });
+        } catch (ex) {
+            console.error('[WhisperSubtitles] Exception during install:', ex);
+            binaryStatusDiv.style.backgroundColor = 'rgba(220, 0, 0, 0.2)';
+            binaryStatusDiv.style.color = '#dc0000';
+            binaryStatusDiv.style.border = '1px solid #dc0000';
+            binaryStatusDiv.innerHTML = '✗ Error: ' + ex.message;
+            
+            installButton.disabled = false;
+            installButton.querySelector('span').textContent = 'Install/Build Whisper.cpp';
+        }
+    }
+
     function handleModelDownload() {
         var selectedModel = document.getElementById('WhisperModel').value;
         var downloadButton = document.getElementById('DownloadModelButton');
@@ -287,7 +378,9 @@
         downloadStatusDiv.innerHTML = '⟳ Downloading model "' + selectedModel + '"...<br><small>This may take several minutes...</small>';
         
         try {
-            var apiUrl = ApiClient.getUrl('WhisperSubtitles/DownloadModel');
+            var apiUrl = ApiClient.getUrl('api/WhisperSubtitles/DownloadModel');
+            
+            console.log('[WhisperSubtitles] API URL:', apiUrl);
             
             ApiClient.fetch({
                 type: 'POST',
@@ -377,6 +470,11 @@
     var downloadBtn = document.getElementById('DownloadModelButton');
     if (downloadBtn) {
         downloadBtn.addEventListener('click', handleModelDownload);
+    }
+    
+    var installBtn = document.getElementById('InstallBinaryButton');
+    if (installBtn) {
+        installBtn.addEventListener('click', handleBinaryInstall);
     }
 })();
 </script>

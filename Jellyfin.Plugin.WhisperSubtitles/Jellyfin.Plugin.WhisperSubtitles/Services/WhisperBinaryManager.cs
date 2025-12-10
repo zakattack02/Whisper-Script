@@ -457,98 +457,114 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
         }
 
         /// <summary>
-        /// Run the build script and capture output.
-        /// </summary>
-        private async Task<bool> RunBuildScriptAsync(string scriptPath, bool useSudo, CancellationToken cancellationToken)
+/// Run the build script and capture output.
+/// </summary>
+private async Task<bool> RunBuildScriptAsync(string scriptPath, bool useSudo, CancellationToken cancellationToken)
+{
+    try
+    {
+        var installPath = Path.GetDirectoryName(_binaryPath);
+        var downloadPath = _downloadPath;
+        
+        ProcessStartInfo processInfo;
+        
+        if (useSudo)
         {
-            try
+            processInfo = new ProcessStartInfo
             {
-                var args = useSudo 
-                    ? $"bash \"{scriptPath}\" \"{Path.GetDirectoryName(_binaryPath)}\" \"{_downloadPath}\"" 
-                    : $"\"{scriptPath}\" \"{Path.GetDirectoryName(_binaryPath)}\" \"{_downloadPath}\"";
+                FileName = "sudo",
+                Arguments = $"bash {scriptPath} {installPath} {downloadPath}",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+        }
+        else
+        {
+            processInfo = new ProcessStartInfo
+            {
+                FileName = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "bash" : "/bin/bash",
+                Arguments = $"{scriptPath} {installPath} {downloadPath}",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+        }
 
-                var processInfo = new ProcessStartInfo
+        using var process = Process.Start(processInfo);
+        if (process == null)
+        {
+            _logger.LogError("Failed to start build script");
+            return false;
+        }
+
+        var output = new StringBuilder();
+        var errors = new StringBuilder();
+
+        process.OutputDataReceived += (_, e) =>
+        {
+            if (!string.IsNullOrEmpty(e.Data))
+            {
+                output.AppendLine(e.Data);
+                _logger.LogInformation("Build: {Output}", e.Data);
+            }
+        };
+
+        process.ErrorDataReceived += (_, e) =>
+        {
+            if (!string.IsNullOrEmpty(e.Data))
+            {
+                errors.AppendLine(e.Data);
+                
+                // Permission errors are expected in restricted environments
+                if (e.Data.Contains("Permission denied") || e.Data.Contains("E: List directory"))
                 {
-                    FileName = useSudo ? "sudo" : (RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "bash" : "/bin/bash"),
-                    Arguments = useSudo ? args : $"-c 'bash {args}'",
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true
-                };
-
-                using var process = Process.Start(processInfo);
-                if (process == null)
-                {
-                    _logger.LogError("Failed to start build script");
-                    return false;
-                }
-
-                var output = new StringBuilder();
-                var errors = new StringBuilder();
-
-                process.OutputDataReceived += (_, e) =>
-                {
-                    if (!string.IsNullOrEmpty(e.Data))
-                    {
-                        output.AppendLine(e.Data);
-                        _logger.LogInformation("Build: {Output}", e.Data);
-                    }
-                };
-
-                process.ErrorDataReceived += (_, e) =>
-                {
-                    if (!string.IsNullOrEmpty(e.Data))
-                    {
-                        errors.AppendLine(e.Data);
-                        
-                        // Permission errors are expected in restricted environments
-                        if (e.Data.Contains("Permission denied") || e.Data.Contains("E: List directory"))
-                        {
-                            _logger.LogWarning("Build: {Error}", e.Data);
-                        }
-                        else
-                        {
-                            _logger.LogWarning("Build: {Error}", e.Data);
-                        }
-                    }
-                };
-
-                process.BeginOutputReadLine();
-                process.BeginErrorReadLine();
-
-                await process.WaitForExitAsync(cancellationToken);
-
-                if (process.ExitCode == 0 && File.Exists(_binaryPath))
-                {
-                    _logger.LogInformation("Build completed successfully");
-                    
-                    // Clean up script
-                    try { File.Delete(scriptPath); } catch { /* Ignore */ }
-                    
-                    return true;
+                    _logger.LogWarning("Build: {Error}", e.Data);
                 }
                 else
                 {
-                    if (process.ExitCode != 0)
-                    {
-                        _logger.LogWarning("Build script failed with exit code {Code}", process.ExitCode);
-                    }
-                    
-                    if (!string.IsNullOrEmpty(errors.ToString()))
-                    {
-                        _logger.LogWarning("Build stderr: {Errors}", errors.ToString().Substring(0, Math.Min(500, errors.Length)));
-                    }
-                    
-                    return false;
+                    _logger.LogWarning("Build: {Error}", e.Data);
                 }
             }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Build script execution failed");
-                return false;
-            }
+        };
+
+        process.BeginOutputReadLine();
+        process.BeginErrorReadLine();
+
+        await process.WaitForExitAsync(cancellationToken);
+
+        if (process.ExitCode == 0 && File.Exists(_binaryPath))
+        {
+            _logger.LogInformation("Build completed successfully");
+            
+            // Clean up script
+            try { File.Delete(scriptPath); } catch { /* Ignore */ }
+            
+            return true;
         }
+        else
+        {
+            if (process.ExitCode != 0)
+            {
+                _logger.LogWarning("Build script failed with exit code {Code}", process.ExitCode);
+            }
+            
+            if (!string.IsNullOrEmpty(errors.ToString()))
+            {
+                _logger.LogWarning("Build stderr: {Errors}", errors.ToString().Substring(0, Math.Min(500, errors.Length)));
+            }
+            
+            return false;
+        }
+    }
+    catch (Exception ex)
+    {
+        _logger.LogWarning(ex, "Build script execution failed");
+        return false;
+    }
+}
 
         /// <summary>
         /// Get platform string for download URL.

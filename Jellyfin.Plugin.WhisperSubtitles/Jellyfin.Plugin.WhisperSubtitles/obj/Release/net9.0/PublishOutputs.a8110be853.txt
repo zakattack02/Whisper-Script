@@ -1,0 +1,4 @@
+/home/kanucks/Documents/Whisper/Jellyfin.Plugin.WhisperSubtitles/Jellyfin.Plugin.WhisperSubtitles/bin/Release/net9.0/publish/whisper-binaries/linux-x64/main
+/home/kanucks/Documents/Whisper/Jellyfin.Plugin.WhisperSubtitles/Jellyfin.Plugin.WhisperSubtitles/bin/Release/net9.0/publish/Jellyfin.Plugin.WhisperSubtitles.dll
+/home/kanucks/Documents/Whisper/Jellyfin.Plugin.WhisperSubtitles/Jellyfin.Plugin.WhisperSubtitles/bin/Release/net9.0/publish/Jellyfin.Plugin.WhisperSubtitles.pdb
+/home/kanucks/Documents/Whisper/Jellyfin.Plugin.WhisperSubtitles/Jellyfin.Plugin.WhisperSubtitles/bin/Release/net9.0/publish/Jellyfin.Plugin.WhisperSubtitles.deps.json

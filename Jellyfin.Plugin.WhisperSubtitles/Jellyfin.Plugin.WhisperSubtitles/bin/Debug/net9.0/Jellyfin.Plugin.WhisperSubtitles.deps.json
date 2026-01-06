@@ -1,0 +1,23 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v9.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v9.0": {
+      "Jellyfin.Plugin.WhisperSubtitles/0.0.0.46": {
+        "runtime": {
+          "Jellyfin.Plugin.WhisperSubtitles.dll": {}
+        }
+      }
+    }
+  },
+  "libraries": {
+    "Jellyfin.Plugin.WhisperSubtitles/0.0.0.46": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}

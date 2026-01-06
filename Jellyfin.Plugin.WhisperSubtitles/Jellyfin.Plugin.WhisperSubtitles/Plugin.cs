@@ -27,7 +27,7 @@ namespace Jellyfin.Plugin.WhisperSubtitles
         /// <summary>
         /// Gets the current plugin instance.
         /// </summary>
-        public static Plugin Instance { get; private set; }
+        public static Plugin? Instance { get; private set; }
 
         /// <inheritdoc />
         public override string Name => "Whisper Subtitles";
@@ -43,8 +43,7 @@ namespace Jellyfin.Plugin.WhisperSubtitles
                 new PluginPageInfo
                 {
                     Name = "Whisper Subtitles",
-                    EmbeddedResourcePath = GetType().Namespace + ".Configuration.configPage.html",
-                    IsMainConfigurationPage = true
+                    EmbeddedResourcePath = GetType().Namespace + ".Configuration.configPage.html"
                 }
             };
         }

@@ -27,7 +27,6 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Configuration\configPage.html" />
-    <EmbeddedResource Include="Configuration\Logo.png" />
   </ItemGroup>
 
   <!-- Exclude non-Linux runtime libraries after publish for Jellyfin Docker deployment -->

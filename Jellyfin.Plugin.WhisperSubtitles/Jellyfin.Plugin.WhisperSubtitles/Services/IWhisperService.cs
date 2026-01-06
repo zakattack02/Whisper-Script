@@ -30,7 +30,7 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
         Task<bool> GenerateSubtitleAsync(
             string videoPath,
             string subtitlePath,
-            object modelName,
+            string modelName,
             string language,
             bool translate,
             bool wordTimestamps,

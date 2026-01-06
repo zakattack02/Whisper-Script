@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Jellyfin.Plugin.WhisperSubtitles.Configuration;
 using Jellyfin.Plugin.WhisperSubtitles.Services;
+using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Library;
 using MediaBrowser.Model.Tasks;
 using Microsoft.Extensions.Logging;
@@ -101,7 +102,7 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Tasks
                     await _whisperService.GenerateSubtitleAsync(
                         path,
                         subtitlePath,
-                        config.WhisperModel,
+                        config.WhisperModel.ToString(),
                         config.TargetLanguage,
                         config.TranslateToEnglish,
                         config.WordTimestamps,

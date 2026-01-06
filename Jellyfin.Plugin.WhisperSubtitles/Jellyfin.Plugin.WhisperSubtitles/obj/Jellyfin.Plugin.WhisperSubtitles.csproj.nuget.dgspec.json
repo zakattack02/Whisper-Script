@@ -5,7 +5,7 @@
   },
   "projects": {
     "/home/kanucks/Documents/Whisper/Jellyfin.Plugin.WhisperSubtitles/Jellyfin.Plugin.WhisperSubtitles/Jellyfin.Plugin.WhisperSubtitles.csproj": {
-      "version": "0.0.0.48",
+      "version": "0.0.0.47",
       "restore": {
         "projectUniqueName": "/home/kanucks/Documents/Whisper/Jellyfin.Plugin.WhisperSubtitles/Jellyfin.Plugin.WhisperSubtitles/Jellyfin.Plugin.WhisperSubtitles.csproj",
         "projectName": "Jellyfin.Plugin.WhisperSubtitles",
@@ -55,6 +55,14 @@
               "suppressParent": "All",
               "target": "Package",
               "version": "[10.11.2, )"
+            },
+            "Whisper.net": {
+              "target": "Package",
+              "version": "[1.8.1, )"
+            },
+            "Whisper.net.Runtime": {
+              "target": "Package",
+              "version": "[1.8.1, )"
             }
           },
           "imports": [

@@ -1,0 +1,82 @@
+[2025-12-13 08:36:20.536 -05:00] [INF] [28] Jellyfin.Plugin.WhisperSubtitles.Plugin: GetPages() called - returning configuration page and logo
+[2025-12-13 08:36:20.537 -05:00] [INF] [28] Jellyfin.Plugin.WhisperSubtitles.Plugin:   Configuration Page: "Jellyfin.Plugin.WhisperSubtitles.Configuration.configPage.html"
+[2025-12-13 08:36:20.537 -05:00] [INF] [28] Jellyfin.Plugin.WhisperSubtitles.Plugin:   Logo: "Jellyfin.Plugin.WhisperSubtitles.Configuration.Logo.png"
+[2025-12-13 08:36:50.437 -05:00] [INF] [3] Jellyfin.Plugin.WhisperSubtitles.Plugin: GetPages() called - returning configuration page and logo
+[2025-12-13 08:36:50.442 -05:00] [INF] [3] Jellyfin.Plugin.WhisperSubtitles.Plugin:   Configuration Page: "Jellyfin.Plugin.WhisperSubtitles.Configuration.configPage.html"
+[2025-12-13 08:36:50.442 -05:00] [INF] [3] Jellyfin.Plugin.WhisperSubtitles.Plugin:   Logo: "Jellyfin.Plugin.WhisperSubtitles.Configuration.Logo.png"
+[2025-12-13 08:36:53.037 -05:00] [INF] [28] Jellyfin.Plugin.WhisperSubtitles.Plugin: GetPages() called - returning configuration page and logo
+[2025-12-13 08:36:53.037 -05:00] [INF] [28] Jellyfin.Plugin.WhisperSubtitles.Plugin:   Configuration Page: "Jellyfin.Plugin.WhisperSubtitles.Configuration.configPage.html"
+[2025-12-13 08:36:53.037 -05:00] [INF] [28] Jellyfin.Plugin.WhisperSubtitles.Plugin:   Logo: "Jellyfin.Plugin.WhisperSubtitles.Configuration.Logo.png"
+[2025-12-13 08:37:24.772 -05:00] [INF] [50] Jellyfin.Plugin.WhisperSubtitles.Plugin: Configuration updated
+[2025-12-13 08:37:24.772 -05:00] [INF] [50] Jellyfin.Plugin.WhisperSubtitles.Plugin:   Whisper Model: Turbo -> Turbo
+[2025-12-13 08:37:24.772 -05:00] [INF] [50] Jellyfin.Plugin.WhisperSubtitles.Plugin:   Target Language: "en" -> "en"
+[2025-12-13 08:37:24.772 -05:00] [INF] [50] Jellyfin.Plugin.WhisperSubtitles.Plugin:   Translate to English: True -> True
+[2025-12-13 08:37:24.772 -05:00] [INF] [50] Jellyfin.Plugin.WhisperSubtitles.Plugin:   AI Identifier: "whisper-test" -> "whisper-test"
+[2025-12-13 08:37:24.772 -05:00] [INF] [50] Jellyfin.Plugin.WhisperSubtitles.Plugin:   Word Timestamps: True -> True
+[2025-12-13 08:37:24.772 -05:00] [INF] [50] Jellyfin.Plugin.WhisperSubtitles.Plugin:   Process on Library Scan: False -> False
+[2025-12-13 08:37:24.772 -05:00] [INF] [50] Jellyfin.Plugin.WhisperSubtitles.Plugin:   Skip Existing: True -> True
+[2025-12-13 08:37:24.772 -05:00] [INF] [50] Jellyfin.Plugin.WhisperSubtitles.Plugin:   Regenerate AI: True -> True
+[2025-12-13 08:37:34.178 -05:00] [INF] [50] Jellyfin.Plugin.WhisperSubtitles.Plugin: GetPages() called - returning configuration page and logo
+[2025-12-13 08:37:34.178 -05:00] [INF] [50] Jellyfin.Plugin.WhisperSubtitles.Plugin:   Configuration Page: "Jellyfin.Plugin.WhisperSubtitles.Configuration.configPage.html"
+[2025-12-13 08:37:34.178 -05:00] [INF] [50] Jellyfin.Plugin.WhisperSubtitles.Plugin:   Logo: "Jellyfin.Plugin.WhisperSubtitles.Configuration.Logo.png"
+[2025-12-13 08:37:51.137 -05:00] [INF] [50] Jellyfin.Plugin.WhisperSubtitles.Tasks.WhisperSubtitleTask: Starting Whisper subtitle generation task
+[2025-12-13 08:37:51.137 -05:00] [INF] [50] Jellyfin.Plugin.WhisperSubtitles.Tasks.WhisperSubtitleTask: Configuration: Model=Turbo, Language="en", Translate=True, AIIdentifier="whisper-test"
+[2025-12-13 08:37:54.862 -05:00] [INF] [50] Jellyfin.Plugin.WhisperSubtitles.Tasks.WhisperSubtitleTask: Found 12778 videos to process
+[2025-12-13 08:37:54.862 -05:00] [INF] [50] Jellyfin.Plugin.WhisperSubtitles.Tasks.WhisperSubtitleTask: Processing: "/Media/Linus Media Group/Floatplane/videos/Linus Tech Tips/Linus Tech Tips - S2018E0923 - A Gaming SD card $h!t manufacturers say.mp4"
+[2025-12-13 08:37:54.868 -05:00] [INF] [50] Jellyfin.Plugin.WhisperSubtitles.Tasks.WhisperSubtitleTask: Generating subtitles: "/Media/Linus Media Group/Floatplane/videos/Linus Tech Tips/Linus Tech Tips - S2018E0923 - A Gaming SD card $h!t manufacturers say.en.whisper-test.srt"
+[2025-12-13 08:37:54.876 -05:00] [INF] [50] Jellyfin.Plugin.WhisperSubtitles.Services.WhisperService: Whisper binary not found, attempting to download...
+[2025-12-13 08:37:54.883 -05:00] [INF] [50] Jellyfin.Plugin.WhisperSubtitles.Services.WhisperService: Starting whisper.cpp installation
+[2025-12-13 08:37:54.883 -05:00] [INF] [50] Jellyfin.Plugin.WhisperSubtitles.Services.WhisperService: Detected platform: "linux-x64"
+[2025-12-13 08:37:54.887 -05:00] [INF] [50] Jellyfin.Plugin.WhisperSubtitles.Services.WhisperService: Attempting to build whisper.cpp from source...
+[2025-12-13 08:37:54.887 -05:00] [INF] [50] Jellyfin.Plugin.WhisperSubtitles.Services.WhisperService: Downloading build script from: "https://raw.githubusercontent.com/zakattack02/Whisper-Script/refs/heads/feature/jellyfin-plugin/Jellyfin.Plugin.WhisperSubtitles/Scripts/Build-whisper.sh"
+[2025-12-13 08:37:55.129 -05:00] [INF] [50] Jellyfin.Plugin.WhisperSubtitles.Services.WhisperService: Made "/cache/whisper-cpp/build-whisper.sh" executable
+[2025-12-13 08:37:55.130 -05:00] [INF] [50] Jellyfin.Plugin.WhisperSubtitles.Services.WhisperService: Running build script...
+[2025-12-13 08:37:55.225 -05:00] [INF] [50] Jellyfin.Plugin.WhisperSubtitles.Services.WhisperService: Build: "=================================================="
+[2025-12-13 08:37:55.225 -05:00] [INF] [50] Jellyfin.Plugin.WhisperSubtitles.Services.WhisperService: Build: "Whisper.cpp Automatic Build Script"
+[2025-12-13 08:37:55.225 -05:00] [INF] [50] Jellyfin.Plugin.WhisperSubtitles.Services.WhisperService: Build: "Install Dir: /cache/whisper-cpp"
+[2025-12-13 08:37:55.225 -05:00] [INF] [50] Jellyfin.Plugin.WhisperSubtitles.Services.WhisperService: Build: "Cache Dir: /cache/whisper-cpp"
+[2025-12-13 08:37:55.225 -05:00] [INF] [50] Jellyfin.Plugin.WhisperSubtitles.Services.WhisperService: Build: "=================================================="
+[2025-12-13 08:37:55.286 -05:00] [INF] [35] Jellyfin.Plugin.WhisperSubtitles.Services.WhisperService: Build: "Detected GPU type: cuda"
+[2025-12-13 08:37:55.286 -05:00] [INF] [35] Jellyfin.Plugin.WhisperSubtitles.Services.WhisperService: Build: "Installing build dependencies..."
+[2025-12-13 08:37:55.663 -05:00] [INF] [35] Jellyfin.Plugin.WhisperSubtitles.Services.WhisperService: Build: "Warning: Could not install dependencies. Proceeding anyway - build may fail if dependencies missing."
+[2025-12-13 08:37:55.663 -05:00] [INF] [35] Jellyfin.Plugin.WhisperSubtitles.Services.WhisperService: Build: "Building whisper.cpp for: cuda"
+[2025-12-13 08:37:55.676 -05:00] [INF] [35] Jellyfin.Plugin.WhisperSubtitles.Services.WhisperService: Build: "Cloning repository..."
+[2025-12-13 08:37:55.693 -05:00] [INF] [35] Jellyfin.Plugin.WhisperSubtitles.Services.WhisperService: Build: "/cache/whisper-cpp/build-whisper.sh: line 105: git: command not found"
+[2025-12-13 08:37:55.693 -05:00] [INF] [35] Jellyfin.Plugin.WhisperSubtitles.Services.WhisperService: Build: "Configuring for NVIDIA CUDA..."
+[2025-12-13 08:37:55.712 -05:00] [INF] [35] Jellyfin.Plugin.WhisperSubtitles.Services.WhisperService: Build: "Detected compute capability: 86"
+[2025-12-13 08:37:55.712 -05:00] [INF] [35] Jellyfin.Plugin.WhisperSubtitles.Services.WhisperService: Build: "Running cmake..."
+[2025-12-13 08:37:55.712 -05:00] [INF] [35] Jellyfin.Plugin.WhisperSubtitles.Services.WhisperService: Build: "Error: CMake configuration failed"
+[2025-12-13 08:37:55.712 -05:00] [INF] [35] Jellyfin.Plugin.WhisperSubtitles.Services.WhisperService: Build: "Build failed!"
+[2025-12-13 08:37:55.725 -05:00] [WRN] [50] Jellyfin.Plugin.WhisperSubtitles.Services.WhisperService: Build script failed with exit code 1
+[2025-12-13 08:37:55.726 -05:00] [WRN] [50] Jellyfin.Plugin.WhisperSubtitles.Services.WhisperService: Build script failed, this may be due to permission restrictions
+[2025-12-13 08:37:55.726 -05:00] [INF] [50] Jellyfin.Plugin.WhisperSubtitles.Services.WhisperService: Attempting build with reduced dependency requirements...
+[2025-12-13 08:37:55.732 -05:00] [INF] [35] Jellyfin.Plugin.WhisperSubtitles.Services.WhisperService: Build: "=================================================="
+[2025-12-13 08:37:55.743 -05:00] [INF] [35] Jellyfin.Plugin.WhisperSubtitles.Services.WhisperService: Build: "Whisper.cpp Automatic Build Script"
+[2025-12-13 08:37:55.743 -05:00] [INF] [35] Jellyfin.Plugin.WhisperSubtitles.Services.WhisperService: Build: "Install Dir: /cache/whisper-cpp"
+[2025-12-13 08:37:55.743 -05:00] [INF] [35] Jellyfin.Plugin.WhisperSubtitles.Services.WhisperService: Build: "Cache Dir: /cache/whisper-cpp"
+[2025-12-13 08:37:55.743 -05:00] [INF] [35] Jellyfin.Plugin.WhisperSubtitles.Services.WhisperService: Build: "=================================================="
+[2025-12-13 08:37:55.761 -05:00] [INF] [35] Jellyfin.Plugin.WhisperSubtitles.Services.WhisperService: Build: "Detected GPU type: cuda"
+[2025-12-13 08:37:55.761 -05:00] [INF] [35] Jellyfin.Plugin.WhisperSubtitles.Services.WhisperService: Build: "Installing build dependencies..."
+[2025-12-13 08:37:55.773 -05:00] [INF] [35] Jellyfin.Plugin.WhisperSubtitles.Services.WhisperService: Build: "Warning: Could not install dependencies. Proceeding anyway - build may fail if dependencies missing."
+[2025-12-13 08:37:55.773 -05:00] [INF] [35] Jellyfin.Plugin.WhisperSubtitles.Services.WhisperService: Build: "Building whisper.cpp for: cuda"
+[2025-12-13 08:37:55.779 -05:00] [INF] [36] Jellyfin.Plugin.WhisperSubtitles.Services.WhisperService: Build: "Cloning repository..."
+[2025-12-13 08:37:55.782 -05:00] [INF] [36] Jellyfin.Plugin.WhisperSubtitles.Services.WhisperService: Build: "/cache/whisper-cpp/build-whisper.sh: line 105: git: command not found"
+[2025-12-13 08:37:55.783 -05:00] [INF] [36] Jellyfin.Plugin.WhisperSubtitles.Services.WhisperService: Build: "Configuring for NVIDIA CUDA..."
+[2025-12-13 08:37:55.802 -05:00] [INF] [36] Jellyfin.Plugin.WhisperSubtitles.Services.WhisperService: Build: "Detected compute capability: 86"
+[2025-12-13 08:37:55.802 -05:00] [INF] [36] Jellyfin.Plugin.WhisperSubtitles.Services.WhisperService: Build: "Running cmake..."
+[2025-12-13 08:37:55.802 -05:00] [INF] [35] Jellyfin.Plugin.WhisperSubtitles.Services.WhisperService: Build: "Error: CMake configuration failed"
+[2025-12-13 08:37:55.802 -05:00] [INF] [35] Jellyfin.Plugin.WhisperSubtitles.Services.WhisperService: Build: "Build failed!"
+[2025-12-13 08:37:55.803 -05:00] [WRN] [35] Jellyfin.Plugin.WhisperSubtitles.Services.WhisperService: Build script failed with exit code 1
+[2025-12-13 08:37:55.803 -05:00] [WRN] [35] Jellyfin.Plugin.WhisperSubtitles.Services.WhisperService: Build failed. User may need to install whisper.cpp manually.
+[2025-12-13 08:37:55.804 -05:00] [WRN] [35] Jellyfin.Plugin.WhisperSubtitles.Services.WhisperService: Build from source failed, attempting alternative installation methods
+[2025-12-13 08:37:55.806 -05:00] [INF] [35] Jellyfin.Plugin.WhisperSubtitles.Services.WhisperService: No precompiled binary available for "linux-x64". Will attempt to build from source or recommend manual installation.
+[2025-12-13 08:37:55.806 -05:00] [INF] [35] Jellyfin.Plugin.WhisperSubtitles.Services.WhisperService: No precompiled binary available for "linux-x64"
+[2025-12-13 08:37:55.806 -05:00] [ERR] [35] Jellyfin.Plugin.WhisperSubtitles.Services.WhisperService: Failed to automatically install whisper.cpp
+[2025-12-13 08:37:55.806 -05:00] [INF] [35] Jellyfin.Plugin.WhisperSubtitles.Services.WhisperService: === MANUAL INSTALLATION REQUIRED ===
+[2025-12-13 08:37:55.806 -05:00] [INF] [35] Jellyfin.Plugin.WhisperSubtitles.Services.WhisperService: Please install whisper.cpp manually:
+[2025-12-13 08:37:55.806 -05:00] [INF] [35] Jellyfin.Plugin.WhisperSubtitles.Services.WhisperService:   Linux: git clone https://github.com/ggerganov/whisper.cpp && cd whisper.cpp && make
+[2025-12-13 08:37:55.806 -05:00] [INF] [35] Jellyfin.Plugin.WhisperSubtitles.Services.WhisperService:   macOS: git clone https://github.com/ggerganov/whisper.cpp && cd whisper.cpp && make
+[2025-12-13 08:37:55.806 -05:00] [INF] [35] Jellyfin.Plugin.WhisperSubtitles.Services.WhisperService:   Then: sudo cp main /usr/local/bin/whisper
+[2025-12-13 08:37:55.806 -05:00] [INF] [35] Jellyfin.Plugin.WhisperSubtitles.Services.WhisperService:   Or set WHISPER_CPP_MAIN environment variable to the binary path
+[2025-12-13 08:37:55.807 -05:00] [ERR] [35] Jellyfin.Plugin.WhisperSubtitles.Services.WhisperService: Failed to download whisper binary
+[2025-12-13 08:37:55.808 -05:00] [ERR] [35] Jellyfin.Plugin.WhisperSubtitles.Services.WhisperService: Cannot generate subtitles: whisper.cpp binary not available

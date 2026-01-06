@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="utf-8" />
+    <title>Whisper Subtitles</title>
+</head>
+<body>
+    <div id="WhisperSubtitlesConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-select,emby-checkbox">
+        <div data-role="content">
+            <div class="content-primary">
+                <form id="WhisperSubtitlesConfigForm">
+                    <div class="selectContainer">
+                        <label class="selectLabel" for="WhisperModel">Whisper Model</label>
+                        <select is="emby-select" id="WhisperModel" name="WhisperModel" class="emby-select-withcolor emby-select">
+                            <option value="Tiny">Tiny (~10x speed, ~1GB VRAM, ~75MB download)</option>
+                            <option value="Base">Base (~7x speed, ~1GB VRAM, ~140MB download)</option>
+                            <option value="Small">Small (~4x speed, ~2GB VRAM, ~460MB download) - Recommended</option>
+                            <option value="Medium">Medium (~2x speed, ~5GB VRAM, ~1.5GB download)</option>
+                            <option value="Turbo">Turbo (~8x speed, ~6GB VRAM, ~1.6GB download)</option>
+                            <option value="Large">Large (Best quality, ~10GB VRAM, ~3GB download)</option>
+                        </select>
+                        <div class="fieldDescription">Larger models are more accurate but slower</div>
+                        <div class="inputContainer" style="margin-top: 15px;">
+                            <button is="emby-button" type="button" id="InstallBinaryButton" class="raised emby-button" style="margin-right: 10px;">
+                                <span>Install/Build Whisper.cpp</span>
+                            </button>
+                            <button is="emby-button" type="button" id="DownloadModelButton" class="raised button-submit emby-button">
+                                <span>Download Selected Model</span>
+                            </button>
+                        </div>
+                        <div id="binaryStatus" class="fieldDescription" style="display: none; padding: 10px; margin-top: 10px; border-radius: 4px;"></div>
+                        <div id="downloadStatus" class="fieldDescription" style="display: none; padding: 10px; margin-top: 10px; border-radius: 4px;"></div>
+                    </div>
+
+                    <div class="inputContainer">
+                        <label class="inputLabel" for="TargetLanguage">Target Language</label>
+                        <input is="emby-input" type="text" id="TargetLanguage" name="TargetLanguage" class="emby-input" />
+                        <div class="fieldDescription">Language code (e.g., en, es, fr, de, ja)</div>
+                    </div>
+
+                    <div class="inputContainer">
+                        <label class="inputLabel" for="AIIdentifier">AI Identifier</label>
+                        <input is="emby-input" type="text" id="AIIdentifier" name="AIIdentifier" class="emby-input" />
+                        <div class="fieldDescription">Added to subtitle filename (e.g., movie.en.whisper.srt). Leave empty to disable.</div>
+                    </div>
+
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label class="emby-checkbox-label">
+                            <input id="TranslateToEnglish" name="TranslateToEnglish" type="checkbox" is="emby-checkbox" />
+                            <span>Translate to English</span>
+                        </label>
+                        <div class="fieldDescription">Translate audio to English regardless of source language</div>
+                    </div>
+
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label class="emby-checkbox-label">
+                            <input id="WordTimestamps" name="WordTimestamps" type="checkbox" is="emby-checkbox" />
+                            <span>Enable Word-Level Timestamps</span>
+                        </label>
+                        <div class="fieldDescription">More precise timing but slower processing</div>
+                    </div>
+
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label class="emby-checkbox-label">
+                            <input id="ProcessOnLibraryScan" name="ProcessOnLibraryScan" type="checkbox" is="emby-checkbox" />
+                            <span>Process on Library Scan</span>
+                        </label>
+                        <div class="fieldDescription">Automatically generate subtitles when library is scanned</div>
+                    </div>
+
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label class="emby-checkbox-label">
+                            <input id="SkipExisting" name="SkipExisting" type="checkbox" is="emby-checkbox" />
+                            <span>Skip Existing Subtitles</span>
+                        </label>
+                        <div class="fieldDescription">Don't process files that already have subtitles</div>
+                    </div>
+
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label class="emby-checkbox-label">
+                            <input id="RegenerateAI" name="RegenerateAI" type="checkbox" is="emby-checkbox" />
+                            <span>Regenerate AI Subtitles</span>
+                        </label>
+                        <div class="fieldDescription">Re-process files with AI-generated subtitles</div>
+                    </div>
+
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label class="emby-checkbox-label">
+                            <input id="UseGPUAcceleration" name="UseGPUAcceleration" type="checkbox" is="emby-checkbox" />
+                            <span>Enable GPU Acceleration</span>
+                        </label>
+                        <div class="fieldDescription">Use CUDA/Vulkan for faster processing (requires compatible GPU)</div>
+                    </div>
+
+                    <div>
+                        <button is="emby-button" type="submit" class="raised button-submit block emby-button">
+                            <span>Save</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <script type="text/javascript">
+            (function() {
+                'use strict';
+                
+                var WhisperSubtitlesConfig = {
+                    pluginUniqueId: 'a8b7c6d5-e4f3-4a5b-9c8d-7e6f5a4b3c2d'
+                };
+
+                var configPage = document.getElementById('WhisperSubtitlesConfigPage');
+                
+                function loadConfig() {
+                    console.log('[WhisperSubtitles] Loading configuration...');
+                    
+                    if (typeof ApiClient === 'undefined') {
+                        console.error('[WhisperSubtitles] ApiClient not available');
+                        return;
+                    }
+                    
+                    Dashboard.showLoadingMsg();
+                    
+                    ApiClient.getPluginConfiguration(WhisperSubtitlesConfig.pluginUniqueId).then(function(config) {
+                        console.log('[WhisperSubtitles] Config loaded:', config);
+                        
+                        document.getElementById('WhisperModel').value = config.WhisperModel || 'Small';
+                        document.getElementById('TargetLanguage').value = config.TargetLanguage || 'en';
+                        document.getElementById('AIIdentifier').value = config.AIIdentifier || 'whisper';
+                        document.getElementById('TranslateToEnglish').checked = config.TranslateToEnglish !== false;
+                        document.getElementById('WordTimestamps').checked = config.WordTimestamps || false;
+                        document.getElementById('ProcessOnLibraryScan').checked = config.ProcessOnLibraryScan || false;
+                        document.getElementById('SkipExisting').checked = config.SkipExisting !== false;
+                        document.getElementById('RegenerateAI').checked = config.RegenerateAI || false;
+                        document.getElementById('UseGPUAcceleration').checked = config.UseGPUAcceleration || false;
+                        
+                        Dashboard.hideLoadingMsg();
+                    }).catch(function(error) {
+                        console.error('[WhisperSubtitles] Error loading config:', error);
+                        Dashboard.hideLoadingMsg();
+                    });
+                }
+
+                function saveConfig(e) {
+                    e.preventDefault();
+                    console.log('[WhisperSubtitles] Saving configuration...');
+                    
+                    if (typeof ApiClient === 'undefined') {
+                        console.error('[WhisperSubtitles] ApiClient not available');
+                        return false;
+                    }
+                    
+                    Dashboard.showLoadingMsg();
+                    
+                    ApiClient.getPluginConfiguration(WhisperSubtitlesConfig.pluginUniqueId).then(function(config) {
+                        config.WhisperModel = document.getElementById('WhisperModel').value;
+                        config.TargetLanguage = document.getElementById('TargetLanguage').value;
+                        config.AIIdentifier = document.getElementById('AIIdentifier').value;
+                        config.TranslateToEnglish = document.getElementById('TranslateToEnglish').checked;
+                        config.WordTimestamps = document.getElementById('WordTimestamps').checked;
+                        config.ProcessOnLibraryScan = document.getElementById('ProcessOnLibraryScan').checked;
+                        config.SkipExisting = document.getElementById('SkipExisting').checked;
+                        config.RegenerateAI = document.getElementById('RegenerateAI').checked;
+                        config.UseGPUAcceleration = document.getElementById('UseGPUAcceleration').checked;
+                        
+                        return ApiClient.updatePluginConfiguration(WhisperSubtitlesConfig.pluginUniqueId, config);
+                    }).then(function() {
+                        console.log('[WhisperSubtitles] Config saved successfully');
+                        Dashboard.hideLoadingMsg();
+                        Dashboard.processPluginConfigurationUpdateResult();
+                    }).catch(function(error) {
+                        console.error('[WhisperSubtitles] Error saving config:', error);
+                        Dashboard.hideLoadingMsg();
+                    });
+                    
+                    return false;
+                }
+
+                if (configPage) {
+                    configPage.addEventListener('pageshow', function() {
+                        console.log('[WhisperSubtitles] Page shown, loading config');
+                        
+                        var attempts = 0;
+                        var maxAttempts = 50;
+                        
+                        function tryLoad() {
+                            attempts++;
+                            if (typeof ApiClient !== 'undefined' && typeof Dashboard !== 'undefined') {
+                                loadConfig();
+                            } else if (attempts < maxAttempts) {
+                                setTimeout(tryLoad, 100);
+                            } else {
+                                console.error('[WhisperSubtitles] Timeout waiting for ApiClient');
+                            }
+                        }
+                        
+                        tryLoad();
+                    });
+                }
+
+                var form = document.getElementById('WhisperSubtitlesConfigForm');
+                if (form) {
+                    form.addEventListener('submit', saveConfig);
+                }
+                
+                var downloadBtn = document.getElementById('DownloadModelButton');
+                if (downloadBtn) {
+                    downloadBtn.addEventListener('click', function() {
+                        var selectedModel = document.getElementById('WhisperModel').value;
+                        var downloadStatusDiv = document.getElementById('downloadStatus');
+                        
+                        console.log('[WhisperSubtitles] Starting download for model:', selectedModel);
+                        
+                        downloadStatusDiv.style.display = 'block';
+                        downloadStatusDiv.style.backgroundColor = 'rgba(0, 164, 220, 0.2)';
+                        downloadStatusDiv.style.color = '#00a4dc';
+                        downloadStatusDiv.innerHTML = '⟳ Downloading model "' + selectedModel + '"...';
+                        
+                        if (typeof ApiClient !== 'undefined') {
+                            ApiClient.fetch({
+                                type: 'POST',
+                                url: ApiClient.getUrl('api/WhisperSubtitles/DownloadModel'),
+                                data: JSON.stringify({ ModelName: selectedModel }),
+                                contentType: 'application/json'
+                            }).then(function(response) {
+                                downloadStatusDiv.style.backgroundColor = 'rgba(0, 200, 83, 0.2)';
+                                downloadStatusDiv.style.color = '#00c853';
+                                downloadStatusDiv.innerHTML = '✓ Model downloaded successfully';
+                                setTimeout(function() { downloadStatusDiv.style.display = 'none'; }, 5000);
+                            }).catch(function(error) {
+                                downloadStatusDiv.style.backgroundColor = 'rgba(220, 0, 0, 0.2)';
+                                downloadStatusDiv.style.color = '#dc0000';
+                                downloadStatusDiv.innerHTML = '✗ Download failed';
+                            });
+                        }
+                    });
+                }
+                
+                var installBtn = document.getElementById('InstallBinaryButton');
+                if (installBtn) {
+                    installBtn.addEventListener('click', function() {
+                        var binaryStatusDiv = document.getElementById('binaryStatus');
+                        
+                        console.log('[WhisperSubtitles] Starting binary installation...');
+                        
+                        binaryStatusDiv.style.display = 'block';
+                        binaryStatusDiv.style.backgroundColor = 'rgba(0, 164, 220, 0.2)';
+                        binaryStatusDiv.style.color = '#00a4dc';
+                        binaryStatusDiv.innerHTML = '⟳ Installing whisper.cpp binary...';
+                        
+                        if (typeof ApiClient !== 'undefined') {
+                            ApiClient.fetch({
+                                type: 'POST',
+                                url: ApiClient.getUrl('api/WhisperSubtitles/InstallBinary'),
+                                contentType: 'application/json'
+                            }).then(function(response) {
+                                binaryStatusDiv.style.backgroundColor = 'rgba(0, 200, 83, 0.2)';
+                                binaryStatusDiv.style.color = '#00c853';
+                                binaryStatusDiv.innerHTML = '✓ Whisper.cpp installed successfully';
+                                setTimeout(function() { binaryStatusDiv.style.display = 'none'; }, 10000);
+                            }).catch(function(error) {
+                                binaryStatusDiv.style.backgroundColor = 'rgba(220, 0, 0, 0.2)';
+                                binaryStatusDiv.style.color = '#dc0000';
+                                binaryStatusDiv.innerHTML = '✗ Installation failed';
+                            });
+                        }
+                    });
+                }
+            })();
+        </script>
+    </div>
+</body>
+</html>

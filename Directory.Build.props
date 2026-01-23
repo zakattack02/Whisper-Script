@@ -1,8 +1,8 @@
 <Project>
   <PropertyGroup>
-    <Version>0.0.0.47</Version>
-    <AssemblyVersion>0.0.0.47</AssemblyVersion>
-    <FileVersion>0.0.0.47</FileVersion>
+    <Version>0.0.0.48</Version>
+    <AssemblyVersion>0.0.0.48</AssemblyVersion>
+    <FileVersion>0.0.0.48</FileVersion>
     <PluginName>Jellyfin.Plugin.WhisperSubtitles</PluginName>
     <Authors>Whisper Plugin Contributors</Authors>
     <Description>Automatic subtitle generation for Jellyfin using OpenAI's Whisper</Description>

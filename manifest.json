@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/zakattack02/Whisper-Script/feature/jellyfin-plugin/logo.png",
     "versions": [
       {
+        "version": "0.0.0.54",
+        "changelog": "Fixed FindBundledBinary logic",
+        "targetAbi": "10.11.2.0",
+        "sourceUrl": "https://github.com/zakattack02/Whisper-Script/releases/download/v0.0.0.54/jellyfin-plugin-whispersubtitles_0.0.0.54.zip",
+        "checksum": "6cd4dfc5915e9f1cf6246fd70bcb1df6",
+        "timestamp": "2026-04-29T20:08:40Z"
+      },
+      {
         "version": "0.0.0.53",
         "changelog": "Bug fixes and improvements",
         "targetAbi": "10.11.2.0",

@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/zakattack02/Whisper-Script/feature/jellyfin-plugin/logo.png",
     "versions": [
       {
+        "version": "0.0.0.55",
+        "changelog": "logic to check if the response is an array. not my awful selfies",
+        "targetAbi": "10.11.2.0",
+        "sourceUrl": "https://github.com/zakattack02/Whisper-Script/releases/download/v0.0.0.55/jellyfin-plugin-whispersubtitles_0.0.0.55.zip",
+        "checksum": "55ed264b7bca669e3f4b458fae51463b",
+        "timestamp": "2026-04-29T20:33:58Z"
+      },
+      {
         "version": "0.0.0.54",
         "changelog": "Fixed FindBundledBinary logic",
         "targetAbi": "10.11.2.0",

@@ -22,12 +22,18 @@ namespace Jellyfin.Plugin.WhisperSubtitles
             : base(applicationPaths, xmlSerializer)
         {
             Instance = this;
+            ApplicationPaths = applicationPaths;
         }
 
         /// <summary>
         /// Gets the current plugin instance.
         /// </summary>
         public static Plugin? Instance { get; private set; }
+
+        /// <summary>
+        /// Gets the application paths.
+        /// </summary>
+        public IApplicationPaths ApplicationPaths { get; private set; }
 
         /// <inheritdoc />
         public override string Name => "Whisper Subtitles";

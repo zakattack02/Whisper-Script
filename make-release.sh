@@ -118,42 +118,28 @@ echo -e "${GREEN}✓ Cleaned${NC}"
 echo ""
 
 # ── Step 3: Build whisper.cpp ─────────────────────────────────────────────────
-echo -e "${YELLOW}[3/8] Building whisper.cpp (CPU only)...${NC}"
+echo -e "${YELLOW}[3/8] Building whisper.cpp using Build-whisper.sh...${NC}"
 
-if [ -d "$WHISPER_REPO" ]; then
-    echo "  Updating existing clone..."
-    git -C "$WHISPER_REPO" pull --quiet
-else
-    echo "  Cloning whisper.cpp..."
-    git clone --depth=1 --quiet https://github.com/ggerganov/whisper.cpp "$WHISPER_REPO"
-fi
+# Create output directory for the binary
+WHISPER_OUTPUT="$WHISPER_BINARY_DIR"
+mkdir -p "$WHISPER_OUTPUT"
 
-cmake -S "$WHISPER_REPO" -B "$WHISPER_REPO/build" \
-    -DWHISPER_BUILD_TESTS=OFF \
-    -DWHISPER_BUILD_EXAMPLES=ON \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_VERBOSE_MAKEFILE=OFF \
-    2>&1 | tail -5
+# Call the build script with the plugin directory as output
+bash "${PLUGIN_FOLDER}/../Scripts/Build-whisper.sh" "$WHISPER_OUTPUT" "/tmp/whisper-cache" || {
+    error_exit "whisper.cpp build failed"
+}
 
-cmake --build "$WHISPER_REPO/build" \
-    --config Release \
-    --target main \
-    -j"$(nproc)" \
-    2>&1 | tail -5
-
-# Verify binary was actually built
-WHISPER_BUILT_BINARY="$WHISPER_REPO/build/bin/main"
-[ ! -f "$WHISPER_BUILT_BINARY" ] && error_exit "whisper.cpp build produced no binary at $WHISPER_BUILT_BINARY"
+# Verify binary was built
+[ ! -f "$WHISPER_OUTPUT/whisper-cli" ] && error_exit "whisper binary not found at $WHISPER_OUTPUT/whisper-cli"
 
 echo -e "${GREEN}✓ whisper.cpp built${NC}"
 echo ""
 
-# ── Step 4: Stage whisper binary ──────────────────────────────────────────────
-echo -e "${YELLOW}[4/8] Staging whisper binary...${NC}"
-mkdir -p "$WHISPER_BINARY_DIR"
-cp "$WHISPER_BUILT_BINARY" "$WHISPER_BINARY_DIR/main"
-chmod +x "$WHISPER_BINARY_DIR/main"
-echo -e "${GREEN}✓ Binary staged: $WHISPER_BINARY_DIR/main${NC}"
+# ── Step 4: Verify binary ────────────────────────────────────────────────────
+echo -e "${YELLOW}[4/8] Verifying whisper binary...${NC}"
+[ -f "$WHISPER_BINARY_DIR/whisper-cli" ] || error_exit "Binary not found at $WHISPER_BINARY_DIR/whisper-cli"
+chmod +x "$WHISPER_BINARY_DIR/whisper-cli"
+echo -e "${GREEN}✓ Binary verified: $WHISPER_BINARY_DIR/whisper-cli${NC}"
 echo ""
 
 # ── Step 5: Build C# plugin ───────────────────────────────────────────────────
@@ -169,8 +155,8 @@ dotnet publish \
 # Copy whisper binary into publish output so it ends up in the zip
 echo "  Copying whisper binary into publish output..."
 mkdir -p "$BUILD_OUTPUT/whisper/linux-x64"
-cp "$WHISPER_BINARY_DIR/main" "$BUILD_OUTPUT/whisper/linux-x64/main"
-chmod +x "$BUILD_OUTPUT/whisper/linux-x64/main"
+cp "$WHISPER_BINARY_DIR/whisper-cli" "$BUILD_OUTPUT/whisper/linux-x64/whisper-cli"
+chmod +x "$BUILD_OUTPUT/whisper/linux-x64/whisper-cli"
 
 echo -e "${GREEN}✓ C# plugin built${NC}"
 echo ""

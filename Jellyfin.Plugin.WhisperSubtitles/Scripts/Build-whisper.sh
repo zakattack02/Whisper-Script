@@ -127,7 +127,7 @@ case $GPU_TYPE in
 
         cmake --build build \
             --config Release \
-            --target whisper-cli \
+            --target main \
             -j"$(nproc)" || {
             echo "Error: CMake build failed"
             exit 1
@@ -144,7 +144,7 @@ case $GPU_TYPE in
             -DWHISPER_BUILD_EXAMPLES=ON || {
             echo "Error: CMake configuration failed"; exit 1
         }
-        cmake --build build --config Release --target whisper-cli -j"$(nproc)" || {
+        cmake --build build --config Release --target main -j"$(nproc)" || {
             echo "Error: CMake build failed"; exit 1
         }
         copy_binary
@@ -158,7 +158,7 @@ case $GPU_TYPE in
             -DWHISPER_BUILD_EXAMPLES=ON || {
             echo "Error: CMake configuration failed"; exit 1
         }
-        cmake --build build --config Release --target whisper-cli \
+        cmake --build build --config Release --target main \
             -j"$(sysctl -n hw.ncpu)" || {
             echo "Error: CMake build failed"; exit 1
         }
@@ -173,7 +173,7 @@ case $GPU_TYPE in
             -DCMAKE_BUILD_TYPE=Release || {
             echo "Error: CMake configuration failed"; exit 1
         }
-        cmake --build build --config Release --target whisper-cli \
+        cmake --build build --config Release --target main \
             -j"$(nproc 2>/dev/null || echo 2)" || {
             echo "Error: CMake build failed"; exit 1
         }
@@ -183,11 +183,11 @@ esac
 
 chmod +x "$INSTALL_DIR/whisper-cli"
 
-[ ! -f "$INSTALL_DIR/main" ] && { echo "Error: Binary not found after build"; exit 1; }
+[ ! -f "$INSTALL_DIR/whisper-cli" ] && { echo "Error: Binary not found after build"; exit 1; }
 
 echo "=================================================="
 echo "Build complete!"
-echo "Binary: $INSTALL_DIR/main"
+echo "Binary: $INSTALL_DIR/whisper-cli"
 echo "GPU:    $GPU_TYPE"
 echo "=================================================="
 exit 0

@@ -21,6 +21,7 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
         private readonly string _binaryPath;
         private readonly string _downloadPath;
         private readonly string? _jellyfinFFmpegPath;
+        private readonly string? _pluginPath;
         private string? _detectedGPUType;
         private bool _disposed;
 
@@ -28,9 +29,11 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
         /// Initializes a new instance of the <see cref="WhisperBinaryManager"/> class.
         /// </summary>
         /// <param name="logger">Logger instance.</param>
-        public WhisperBinaryManager(ILogger logger)
+        /// <param name="pluginPath">Optional path to the plugin directory containing bundled binary.</param>
+        public WhisperBinaryManager(ILogger logger, string? pluginPath = null)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _pluginPath = pluginPath;
             _httpClient = new HttpClient(new SocketsHttpHandler { AutomaticDecompression = System.Net.DecompressionMethods.GZip })
             {
                 Timeout = TimeSpan.FromMinutes(30) // 30-minute timeout for large downloads
@@ -301,16 +304,96 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
 
         /// <summary>
         /// Download and install whisper.cpp binary.
+        /// Extracts the bundled binary from the plugin directory to the cache.
         /// </summary>
-        public Task<bool> DownloadBinaryAsync(CancellationToken cancellationToken = default)
+        public async Task<bool> DownloadBinaryAsync(CancellationToken cancellationToken = default)
         {
-            _logger.LogError(
-                "Whisper binary not found at {Path}. " +
-                "Please reinstall the plugin from the releases page — " +
-                "the zip includes the pre-built whisper-cli binary. " +
-                "Releases: https://github.com/zakattack02/Whisper-Script/releases",
-                _binaryPath);
-            return Task.FromResult(false);
+            try
+            {
+                _logger.LogInformation("Attempting to extract bundled whisper-cli binary...");
+
+                // Check if binary already exists in cache
+                if (File.Exists(_binaryPath))
+                {
+                    _logger.LogInformation("Binary already exists at {Path}", _binaryPath);
+                    return true;
+                }
+
+                // Look for bundled binary in plugin directory
+                var bundledBinaryPath = FindBundledBinary();
+                if (string.IsNullOrEmpty(bundledBinaryPath))
+                {
+                    _logger.LogError(
+                        "Whisper binary not found. " +
+                        "Please reinstall the plugin from the releases page — " +
+                        "the zip must include the pre-built whisper-cli binary. " +
+                        "Releases: https://github.com/zakattack02/Whisper-Script/releases");
+                    return false;
+                }
+
+                // Create cache directory if it doesn't exist
+                var binDir = Path.GetDirectoryName(_binaryPath);
+                if (!Directory.Exists(binDir))
+                {
+                    Directory.CreateDirectory(binDir);
+                    _logger.LogInformation("Created binary directory: {BinaryDir}", binDir);
+                }
+
+                // Copy binary to cache
+                _logger.LogInformation("Copying binary from {Source} to {Destination}", bundledBinaryPath, _binaryPath);
+                File.Copy(bundledBinaryPath, _binaryPath, overwrite: true);
+
+                // Make executable on Unix
+                if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                {
+                    MakeExecutable(_binaryPath);
+                }
+
+                _logger.LogInformation("Binary extracted successfully to {Path}", _binaryPath);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to extract bundled whisper binary");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Find the bundled whisper binary in the plugin directory.
+        /// </summary>
+        private string? FindBundledBinary()
+        {
+            if (string.IsNullOrEmpty(_pluginPath) || !Directory.Exists(_pluginPath))
+            {
+                _logger.LogDebug("Plugin path not available: {PluginPath}", _pluginPath);
+                return null;
+            }
+
+            // Determine platform-specific subdirectory
+            var platform = GetPlatformString();
+            var whisperDir = Path.Combine(_pluginPath, "whisper", platform);
+
+            _logger.LogDebug("Looking for bundled binary in: {WhisperDir}", whisperDir);
+
+            // Try whisper-cli first (new name)
+            var whisperCliBinary = Path.Combine(whisperDir, RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "whisper-cli.exe" : "whisper-cli");
+            if (File.Exists(whisperCliBinary))
+            {
+                _logger.LogInformation("Found bundled whisper-cli binary at {Path}", whisperCliBinary);
+                return whisperCliBinary;
+            }
+
+            // Fallback to old name (main) for backward compatibility
+            var mainBinary = Path.Combine(whisperDir, RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "main.exe" : "main");
+            if (File.Exists(mainBinary))
+            {
+                _logger.LogInformation("Found bundled main binary at {Path} (old name, will rename to whisper-cli)", mainBinary);
+                return mainBinary;
+            }
+
+            _logger.LogWarning("No bundled binary found in {WhisperDir}", whisperDir);
+            return null;
         }
 
         /// <summary>
@@ -406,8 +489,22 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
                 {
                     cancellationToken.ThrowIfCancellationRequested();
 
-                    // Look for the main executable
-                    if (entry.FullName.Contains("main") && 
+                    // Look for the executable in the archive (e.g., whisper-cli or main)
+                    if (entry.FullName.Contains("whisper-cli") && 
+                        (entry.FullName.EndsWith("whisper-cli") || entry.FullName.EndsWith("whisper-cli.exe")))
+                    {
+                        var destinationPath = Path.Combine(extractPath, Path.GetFileName(entry.FullName));
+                        
+                        _logger.LogInformation("Extracting {Entry} to {Destination}", entry.FullName, destinationPath);
+                        
+                        if (File.Exists(destinationPath))
+                        {
+                            File.Delete(destinationPath);
+                        }
+                        
+                        entry.ExtractToFile(destinationPath, true);
+                    }    
+                    else if (entry.FullName.Contains("main") && 
                         (entry.FullName.EndsWith("main") || entry.FullName.EndsWith("main.exe")))
                     {
                         var destinationPath = Path.Combine(extractPath, Path.GetFileName(entry.FullName));

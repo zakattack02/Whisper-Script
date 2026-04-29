@@ -1737,7 +1737,7 @@
     "/home/kanucks/.nuget/packages/": {}
   },
   "project": {
-    "version": "0.0.0.49",
+    "version": "0.0.0.51",
     "restore": {
       "projectUniqueName": "/home/kanucks/Documents/Whisper/Jellyfin.Plugin.WhisperSubtitles/Jellyfin.Plugin.WhisperSubtitles/Jellyfin.Plugin.WhisperSubtitles.csproj",
       "projectName": "Jellyfin.Plugin.WhisperSubtitles",

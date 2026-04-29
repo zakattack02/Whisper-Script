@@ -29,7 +29,11 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _httpClient = new HttpClient();
-            _binaryManager = new WhisperBinaryManager(logger);
+            
+            // Pass the plugin's data directory so we can access bundled binaries
+            var pluginPath = Plugin.Instance?.ApplicationPaths?.PluginsPath;
+            var whisperPluginPath = !string.IsNullOrEmpty(pluginPath) ? Path.Combine(pluginPath, "WhisperSubtitles") : null;
+            _binaryManager = new WhisperBinaryManager(logger, whisperPluginPath);
             
             // Model storage path
             var cacheDir = Environment.GetEnvironmentVariable("JELLYFIN_CACHE_DIR");

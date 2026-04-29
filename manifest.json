@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/zakattack02/Whisper-Script/feature/jellyfin-plugin/logo.png",
     "versions": [
       {
+        "version": "0.0.0.56",
+        "changelog": "https://tenor.com/ujsi9n6f2u6.gif",
+        "targetAbi": "10.11.2.0",
+        "sourceUrl": "https://github.com/zakattack02/Whisper-Script/releases/download/v0.0.0.56/jellyfin-plugin-whispersubtitles_0.0.0.56.zip",
+        "checksum": "edcdfd373b34fb884b0324f8294ae6b7",
+        "timestamp": "2026-04-29T22:04:32Z"
+      },
+      {
         "version": "0.0.0.55",
         "changelog": "logic to check if the response is an array. not my awful selfies",
         "targetAbi": "10.11.2.0",

@@ -56,7 +56,9 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
             _downloadPath = whisperDir;
             
             // Binary name depends on platform
-            var binaryName = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "main.exe" : "main";
+            var binaryName = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) 
+                ? "whisper-cli.exe" 
+                : "whisper-cli";
             _binaryPath = Path.Combine(whisperDir, binaryName);
             
             _logger.LogInformation("Whisper binary path: {BinaryPath}", _binaryPath);

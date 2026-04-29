@@ -1,0 +1,61 @@
+name: '🏗️ Build Plugin with Whisper Binary'
+
+on:
+  push:
+    branches: [master]
+    paths-ignore: ['**/*.md']
+  pull_request:
+    branches: [master]
+    paths-ignore: ['**/*.md']
+  workflow_dispatch:
+
+jobs:
+  build-whisper:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git cmake build-essential
+
+      - name: Build whisper.cpp
+        run: |
+          git clone --depth=1 https://github.com/ggerganov/whisper.cpp /tmp/whisper.cpp
+          cd /tmp/whisper.cpp
+          cmake -B build -DWHISPER_BUILD_TESTS=OFF -DWHISPER_BUILD_EXAMPLES=ON
+          cmake --build build --config Release -j$(nproc) --target main
+
+      - name: Stage binary
+        run: |
+          mkdir -p Jellyfin.Plugin.WhisperSubtitles/Jellyfin.Plugin.WhisperSubtitles/bin/whisper/linux-x64
+          cp /tmp/whisper.cpp/build/bin/main \
+             Jellyfin.Plugin.WhisperSubtitles/Jellyfin.Plugin.WhisperSubtitles/bin/whisper/linux-x64/main
+          chmod +x Jellyfin.Plugin.WhisperSubtitles/Jellyfin.Plugin.WhisperSubtitles/bin/whisper/linux-x64/main
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Build C# plugin
+        run: |
+          dotnet publish \
+            Jellyfin.Plugin.WhisperSubtitles/Jellyfin.Plugin.WhisperSubtitles/Jellyfin.Plugin.WhisperSubtitles.csproj \
+            --configuration Release \
+            /property:GenerateFullPaths=true \
+            /consoleloggerparameters:NoSummary
+
+      - name: Package zip
+        run: |
+          VERSION=$(grep -oP '<Version>\K[^<]+' Directory.Build.props)
+          cd Jellyfin.Plugin.WhisperSubtitles/Jellyfin.Plugin.WhisperSubtitles/bin/Release/net9.0/publish
+          zip -r "$GITHUB_WORKSPACE/jellyfin-plugin-whispersubtitles_${VERSION}.zip" .
+          echo "PLUGIN_VERSION=${VERSION}" >> $GITHUB_ENV
+
+      - name: Upload plugin zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: jellyfin-plugin-whispersubtitles
+          path: jellyfin-plugin-whispersubtitles_*.zip

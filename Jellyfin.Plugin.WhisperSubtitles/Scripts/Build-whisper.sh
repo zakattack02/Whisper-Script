@@ -1,12 +1,11 @@
 #!/bin/bash
 # Whisper.cpp Build Script for Jellyfin Plugin
-# Automatically detects GPU and builds with appropriate acceleration
 
 set -e
 
-# Arguments
-INSTALL_DIR="${1:-/cache/whisper-cpp}"
-CACHE_DIR="${2:-/cache/whisper-cpp}"
+# Arguments - use local paths by default, not /cache (that's the container path)
+INSTALL_DIR="${1:-/tmp/whisper-out}"
+CACHE_DIR="${2:-/tmp/whisper-cache}"
 
 echo "=================================================="
 echo "Whisper.cpp Automatic Build Script"
@@ -16,9 +15,9 @@ echo "=================================================="
 
 # Detect GPU type
 detect_gpu() {
-    if command -v nvidia-smi &> /dev/null && nvidia-smi &> /dev/null 2>&1; then
+    if command -v nvidia-smi &>/dev/null && nvidia-smi &>/dev/null 2>&1; then
         echo "cuda"
-    elif command -v vulkaninfo &> /dev/null && vulkaninfo --summary &> /dev/null 2>&1; then
+    elif command -v vulkaninfo &>/dev/null && vulkaninfo --summary &>/dev/null 2>&1; then
         echo "vulkan"
     elif [[ "$OSTYPE" == "darwin"* ]]; then
         echo "metal"
@@ -30,169 +29,169 @@ detect_gpu() {
 GPU_TYPE=$(detect_gpu)
 echo "Detected GPU type: $GPU_TYPE"
 
-# Install dependencies (best effort, may fail in restricted environments)
+# Find CUDA toolkit root — handles non-standard install paths like /opt/cuda
+find_cuda_root() {
+    # Check common locations
+    for candidate in \
+        "$(dirname "$(command -v nvcc 2>/dev/null)")/.." \
+        /opt/cuda \
+        /usr/local/cuda \
+        /usr/cuda; do
+        if [ -f "$candidate/bin/nvcc" ]; then
+            echo "$(realpath "$candidate")"
+            return 0
+        fi
+    done
+    return 1
+}
+
+# Install dependencies (best effort)
 install_dependencies() {
     echo "Installing build dependencies..."
-    
-    if command -v apt-get &> /dev/null; then
+    if command -v apt-get &>/dev/null; then
         apt-get update -qq 2>/dev/null || true
         apt-get install -y -qq git build-essential cmake 2>/dev/null || true
-    elif command -v yum &> /dev/null; then
+    elif command -v yum &>/dev/null; then
         yum install -y -q git gcc gcc-c++ make cmake 2>/dev/null || true
-    elif command -v apk &> /dev/null; then
+    elif command -v apk &>/dev/null; then
         apk add --quiet git build-base cmake 2>/dev/null || true
     fi
-    
-    # Check if installation succeeded
-    if ! command -v git &> /dev/null || ! command -v make &> /dev/null; then
-        echo "Warning: Could not install dependencies. Proceeding anyway - build may fail if dependencies missing."
+
+    if ! command -v git &>/dev/null || ! command -v cmake &>/dev/null; then
+        echo "Warning: Could not install dependencies."
         return 1
     fi
-    
     return 0
 }
 
-# Try to install dependencies (may fail in restricted environments)
 install_dependencies || true
 
-# Create directories
-mkdir -p "$CACHE_DIR"
-mkdir -p "$INSTALL_DIR"
+mkdir -p "$CACHE_DIR" "$INSTALL_DIR"
 
 echo "Building whisper.cpp for: $GPU_TYPE"
 
-# Clone whisper.cpp
+# Clone or update repo
 REPO_DIR="$CACHE_DIR/whisper.cpp"
 if [ ! -d "$REPO_DIR" ]; then
     echo "Cloning repository..."
-    if ! git clone https://github.com/ggerganov/whisper.cpp "$REPO_DIR" 2>/dev/null; then
-        echo "Error: Failed to clone repository"
-        exit 1
-    fi
+    git clone --depth=1 https://github.com/ggerganov/whisper.cpp "$REPO_DIR"
 else
     echo "Repository already exists, pulling latest..."
-    cd "$REPO_DIR"
-    git pull 2>/dev/null || true
+    git -C "$REPO_DIR" pull || true
 fi
 
 cd "$REPO_DIR"
 
-# Build based on GPU type
+# Helper: copy binary from either cmake output location
+# whisper.cpp renamed main -> whisper-cli in recent versions
+copy_binary() {
+    for candidate in \
+        "build/bin/whisper-cli" \
+        "build/bin/main" \
+        "build/whisper-cli" \
+        "build/main"; do
+        if [ -f "$candidate" ]; then
+            cp "$candidate" "$INSTALL_DIR/whisper-cli"
+            echo "Copied $candidate → $INSTALL_DIR/whisper-cli"
+            return 0
+        fi
+    done
+
+    echo "Error: Binary not found. Searched:"
+    find build/ -type f -executable 2>/dev/null | head -20
+    exit 1
+}
+
 case $GPU_TYPE in
     cuda)
         echo "Configuring for NVIDIA CUDA..."
-        
-        # Detect CUDA compute capability
-        if command -v nvidia-smi &> /dev/null; then
-            COMPUTE_CAP=$(nvidia-smi --query-gpu=compute_cap --format=csv,noheader | head -n1 | tr -d '.')
-            echo "Detected compute capability: $COMPUTE_CAP"
-        else
-            COMPUTE_CAP="75"  # Default to Turing
-            echo "Using default compute capability: $COMPUTE_CAP"
-        fi
-        
-        # Try CMake build first
-        if command -v cmake &> /dev/null; then
-            echo "Running cmake..."
-            cmake -B build -DGGML_CUDA=ON -DCUDA_ARCHITECTURES="$COMPUTE_CAP" 2>/dev/null || {
-                echo "Error: CMake configuration failed"
-                exit 1
-            }
-            cmake --build build --config Release --target main -j$(nproc) 2>/dev/null || {
-                echo "Error: CMake build failed"
-                exit 1
-            }
-            cp build/bin/main "$INSTALL_DIR/main" 2>/dev/null || cp build/main "$INSTALL_DIR/main"
-        else
-            # Fallback to make
-            echo "Running make with CUDA..."
-            GGML_CUDA=1 make -j$(nproc) main 2>/dev/null || {
-                echo "Error: Make build failed"
-                exit 1
-            }
-            cp main "$INSTALL_DIR/main"
-        fi
+
+        COMPUTE_CAP=$(nvidia-smi --query-gpu=compute_cap --format=csv,noheader \
+            | head -n1 | tr -d '.')
+        echo "Detected compute capability: $COMPUTE_CAP"
+
+        # Find CUDA root so cmake can locate nvcc even under sudo
+        CUDA_ROOT=$(find_cuda_root) || {
+            echo "Error: Cannot find CUDA toolkit. Is nvcc installed?"
+            echo "  Try: export PATH=\$PATH:/opt/cuda/bin and re-run without sudo"
+            exit 1
+        }
+        echo "CUDA root: $CUDA_ROOT"
+
+        cmake -B build \
+            -DGGML_CUDA=ON \
+            -DCUDA_ARCHITECTURES="$COMPUTE_CAP" \
+            -DWHISPER_BUILD_TESTS=OFF \
+            -DWHISPER_BUILD_EXAMPLES=ON \
+            -DCUDAToolkit_ROOT="$CUDA_ROOT" \
+            -DCMAKE_CUDA_COMPILER="$CUDA_ROOT/bin/nvcc" || {
+            echo "Error: CMake configuration failed"
+            exit 1
+        }
+
+        cmake --build build \
+            --config Release \
+            --target main \
+            -j"$(nproc)" || {
+            echo "Error: CMake build failed"
+            exit 1
+        }
+
+        copy_binary
         ;;
-        
+
     vulkan)
         echo "Configuring for Vulkan..."
-        
-        if command -v cmake &> /dev/null; then
-            cmake -B build -DGGML_VULKAN=ON 2>/dev/null || {
-                echo "Error: CMake configuration failed"
-                exit 1
-            }
-            cmake --build build --config Release --target main -j$(nproc) 2>/dev/null || {
-                echo "Error: CMake build failed"
-                exit 1
-            }
-            cp build/bin/main "$INSTALL_DIR/main" 2>/dev/null || cp build/main "$INSTALL_DIR/main"
-        else
-            GGML_VULKAN=1 make -j$(nproc) main 2>/dev/null || {
-                echo "Error: Make build failed"
-                exit 1
-            }
-            cp main "$INSTALL_DIR/main"
-        fi
+        cmake -B build \
+            -DGGML_VULKAN=ON \
+            -DWHISPER_BUILD_TESTS=OFF \
+            -DWHISPER_BUILD_EXAMPLES=ON || {
+            echo "Error: CMake configuration failed"; exit 1
+        }
+        cmake --build build --config Release --target main -j"$(nproc)" || {
+            echo "Error: CMake build failed"; exit 1
+        }
+        copy_binary
         ;;
-        
+
     metal)
         echo "Configuring for Apple Metal..."
-        
-        if command -v cmake &> /dev/null; then
-            cmake -B build -DGGML_METAL=ON 2>/dev/null || {
-                echo "Error: CMake configuration failed"
-                exit 1
-            }
-            cmake --build build --config Release --target main -j$(sysctl -n hw.ncpu) 2>/dev/null || {
-                echo "Error: CMake build failed"
-                exit 1
-            }
-            cp build/bin/main "$INSTALL_DIR/main" 2>/dev/null || cp build/main "$INSTALL_DIR/main"
-        else
-            make -j$(sysctl -n hw.ncpu) main 2>/dev/null || {
-                echo "Error: Make build failed"
-                exit 1
-            }
-            cp main "$INSTALL_DIR/main"
-        fi
+        cmake -B build \
+            -DGGML_METAL=ON \
+            -DWHISPER_BUILD_TESTS=OFF \
+            -DWHISPER_BUILD_EXAMPLES=ON || {
+            echo "Error: CMake configuration failed"; exit 1
+        }
+        cmake --build build --config Release --target main \
+            -j"$(sysctl -n hw.ncpu)" || {
+            echo "Error: CMake build failed"; exit 1
+        }
+        copy_binary
         ;;
-        
+
     *)
         echo "Building CPU-only version..."
-        
-        if command -v cmake &> /dev/null; then
-            cmake -B build 2>/dev/null || {
-                echo "Error: CMake configuration failed"
-                exit 1
-            }
-            cmake --build build --config Release --target main -j$(nproc 2>/dev/null || echo 2) 2>/dev/null || {
-                echo "Error: CMake build failed"
-                exit 1
-            }
-            cp build/bin/main "$INSTALL_DIR/main" 2>/dev/null || cp build/main "$INSTALL_DIR/main"
-        else
-            make -j$(nproc 2>/dev/null || echo 2) main 2>/dev/null || {
-                echo "Error: Make build failed"
-                exit 1
-            }
-            cp main "$INSTALL_DIR/main"
-        fi
+        cmake -B build \
+            -DWHISPER_BUILD_TESTS=OFF \
+            -DWHISPER_BUILD_EXAMPLES=ON \
+            -DCMAKE_BUILD_TYPE=Release || {
+            echo "Error: CMake configuration failed"; exit 1
+        }
+        cmake --build build --config Release --target main \
+            -j"$(nproc 2>/dev/null || echo 2)" || {
+            echo "Error: CMake build failed"; exit 1
+        }
+        copy_binary
         ;;
 esac
 
-# Make executable
 chmod +x "$INSTALL_DIR/main"
 
-# Verify binary exists
-if [ ! -f "$INSTALL_DIR/main" ]; then
-    echo "Error: Binary not found after build"
-    exit 1
-fi
+[ ! -f "$INSTALL_DIR/main" ] && { echo "Error: Binary not found after build"; exit 1; }
 
 echo "=================================================="
 echo "Build complete!"
-echo "Binary location: $INSTALL_DIR/main"
+echo "Binary: $INSTALL_DIR/main"
+echo "GPU:    $GPU_TYPE"
 echo "=================================================="
-
 exit 0

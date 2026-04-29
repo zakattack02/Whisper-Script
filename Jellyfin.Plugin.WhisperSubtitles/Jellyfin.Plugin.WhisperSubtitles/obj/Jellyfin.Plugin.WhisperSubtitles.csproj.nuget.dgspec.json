@@ -5,7 +5,7 @@
   },
   "projects": {
     "/home/kanucks/Documents/Whisper/Jellyfin.Plugin.WhisperSubtitles/Jellyfin.Plugin.WhisperSubtitles/Jellyfin.Plugin.WhisperSubtitles.csproj": {
-      "version": "0.0.0.47",
+      "version": "0.0.0.48",
       "restore": {
         "projectUniqueName": "/home/kanucks/Documents/Whisper/Jellyfin.Plugin.WhisperSubtitles/Jellyfin.Plugin.WhisperSubtitles/Jellyfin.Plugin.WhisperSubtitles.csproj",
         "projectName": "Jellyfin.Plugin.WhisperSubtitles",
@@ -79,11 +79,11 @@
           "downloadDependencies": [
             {
               "name": "Microsoft.AspNetCore.App.Ref",
-              "version": "[9.0.11, 9.0.11]"
+              "version": "[9.0.14, 9.0.14]"
             },
             {
               "name": "Microsoft.NETCore.App.Ref",
-              "version": "[9.0.11, 9.0.11]"
+              "version": "[9.0.14, 9.0.14]"
             }
           ],
           "frameworkReferences": {
@@ -91,7 +91,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "/usr/share/dotnet/sdk/10.0.100/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "/usr/share/dotnet/sdk/10.0.104/PortableRuntimeIdentifierGraph.json"
         }
       }
     }

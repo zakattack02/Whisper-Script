@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using MediaBrowser.Model.Plugins;
 
 namespace Jellyfin.Plugin.WhisperSubtitles.Configuration
@@ -57,6 +59,8 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Configuration
             SkipExisting = true;
             RegenerateAI = false;
             UseGPUAcceleration = true;
+            LibrariesToProcess = new List<string>();
+            FoldersToExclude = new List<string>();
         }
 
         /// <summary>
@@ -103,5 +107,15 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Configuration
         /// Gets or sets a value indicating whether to enable GPU acceleration.
         /// </summary>
         public bool UseGPUAcceleration { get; set; }
+
+        /// <summary>
+        /// Gets or sets the list of library IDs to process. If empty, all libraries are processed.
+        /// </summary>
+        public List<string> LibrariesToProcess { get; set; }
+
+        /// <summary>
+        /// Gets or sets the list of folder paths to exclude from processing.
+        /// </summary>
+        public List<string> FoldersToExclude { get; set; }
     }
 }

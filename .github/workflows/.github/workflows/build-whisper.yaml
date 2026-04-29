@@ -1,0 +1,43 @@
+name: '🔨 Build whisper.cpp Binary'
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [master]
+    paths:
+      - 'Jellyfin.Plugin.WhisperSubtitles/Scripts/Build-whisper.sh'
+
+jobs:
+  build-whisper-linux-x64:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git cmake build-essential
+
+      - name: Clone whisper.cpp
+        run: |
+          git clone --depth=1 https://github.com/ggerganov/whisper.cpp /tmp/whisper.cpp
+
+      - name: Build (CPU only, no CUDA needed for CI)
+        run: |
+          cd /tmp/whisper.cpp
+          cmake -B build -DWHISPER_BUILD_TESTS=OFF -DWHISPER_BUILD_EXAMPLES=ON
+          cmake --build build --config Release -j$(nproc) --target main
+
+      - name: Copy binary to repo
+        run: |
+          mkdir -p Jellyfin.Plugin.WhisperSubtitles/Jellyfin.Plugin.WhisperSubtitles/bin/whisper/linux-x64
+          cp /tmp/whisper.cpp/build/bin/main \
+             Jellyfin.Plugin.WhisperSubtitles/Jellyfin.Plugin.WhisperSubtitles/bin/whisper/linux-x64/main
+          chmod +x Jellyfin.Plugin.WhisperSubtitles/Jellyfin.Plugin.WhisperSubtitles/bin/whisper/linux-x64/main
+
+      - name: Upload as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: whisper-linux-x64
+          path: Jellyfin.Plugin.WhisperSubtitles/Jellyfin.Plugin.WhisperSubtitles/bin/whisper/linux-x64/main
+          retention-days: 30

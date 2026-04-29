@@ -92,6 +92,22 @@
                         <div class="fieldDescription">Use CUDA/Vulkan for faster processing (requires compatible GPU)</div>
                     </div>
 
+                    <h3 style="margin-top: 30px;">Library & Folder Selection</h3>
+
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; margin-bottom: 10px; font-weight: bold;">Libraries to Process</label>
+                        <div id="LibrariesToProcessContainer" style="border: 1px solid #333; padding: 10px; border-radius: 4px; max-height: 300px; overflow-y: auto;">
+                            <p style="color: #888; text-align: center; margin: 10px 0;">Loading libraries...</p>
+                        </div>
+                        <div class="fieldDescription" style="margin-top: 5px;">Select which libraries to process. Leave empty to process all libraries.</div>
+                    </div>
+
+                    <div style="margin-bottom: 20px;">
+                        <label class="inputLabel" for="FoldersToExclude">Folders to Exclude</label>
+                        <textarea is="emby-input" id="FoldersToExclude" name="FoldersToExclude" class="emby-input" style="height: 150px; width: 100%; padding: 8px; border: 1px solid #555; border-radius: 4px; font-family: monospace; box-sizing: border-box;"></textarea>
+                        <div class="fieldDescription">Enter folder paths to exclude, one per line (e.g., /path/to/folder). Use wildcards if supported by your system.</div>
+                    </div>
+
                     <div>
                         <button is="emby-button" type="submit" class="raised button-submit block emby-button">
                             <span>Save</span>
@@ -134,10 +150,57 @@
                         document.getElementById('RegenerateAI').checked = config.RegenerateAI || false;
                         document.getElementById('UseGPUAcceleration').checked = config.UseGPUAcceleration || false;
                         
+                        // Load folders to exclude
+                        var foldersToExclude = config.FoldersToExclude || [];
+                        document.getElementById('FoldersToExclude').value = foldersToExclude.join('\n');
+                        
+                        // Load libraries to process
+                        loadLibraries(config.LibrariesToProcess || []);
+                        
                         Dashboard.hideLoadingMsg();
                     }).catch(function(error) {
                         console.error('[WhisperSubtitles] Error loading config:', error);
                         Dashboard.hideLoadingMsg();
+                    });
+                }
+
+                function loadLibraries(selectedLibraries) {
+                    if (typeof ApiClient === 'undefined') {
+                        console.error('[WhisperSubtitles] ApiClient not available for loading libraries');
+                        return;
+                    }
+                    
+                    ApiClient.getLibraryFolders().then(function(librariesResponse) {
+                        var container = document.getElementById('LibrariesToProcessContainer');
+                        container.innerHTML = '';
+                        
+                        if (!librariesResponse.Items || librariesResponse.Items.length === 0) {
+                            container.innerHTML = '<p style="color: #888; text-align: center; margin: 10px 0;">No libraries found</p>';
+                            return;
+                        }
+                        
+                        librariesResponse.Items.forEach(function(library) {
+                            var checkbox = document.createElement('input');
+                            checkbox.type = 'checkbox';
+                            checkbox.id = 'lib_' + library.Id;
+                            checkbox.className = 'library-checkbox';
+                            checkbox.value = library.Id;
+                            checkbox.checked = selectedLibraries.indexOf(library.Id) !== -1;
+                            
+                            var label = document.createElement('label');
+                            label.style.display = 'block';
+                            label.style.padding = '5px 0';
+                            label.style.cursor = 'pointer';
+                            
+                            label.appendChild(checkbox);
+                            label.appendChild(document.createTextNode(' ' + (library.Name || 'Unknown Library')));
+                            
+                            container.appendChild(label);
+                        });
+                    }).catch(function(error) {
+                        console.error('[WhisperSubtitles] Error loading libraries:', error);
+                        var container = document.getElementById('LibrariesToProcessContainer');
+                        container.innerHTML = '<p style="color: #f44336; text-align: center; margin: 10px 0;">Error loading libraries</p>';
                     });
                 }
 
@@ -162,6 +225,21 @@
                         config.SkipExisting = document.getElementById('SkipExisting').checked;
                         config.RegenerateAI = document.getElementById('RegenerateAI').checked;
                         config.UseGPUAcceleration = document.getElementById('UseGPUAcceleration').checked;
+                        
+                        // Save selected libraries
+                        var selectedLibraries = [];
+                        var libraryCheckboxes = document.querySelectorAll('.library-checkbox:checked');
+                        libraryCheckboxes.forEach(function(checkbox) {
+                            selectedLibraries.push(checkbox.value);
+                        });
+                        config.LibrariesToProcess = selectedLibraries;
+                        
+                        // Save folders to exclude
+                        var foldersText = document.getElementById('FoldersToExclude').value;
+                        var foldersToExclude = foldersText.split('\n')
+                            .map(function(folder) { return folder.trim(); })
+                            .filter(function(folder) { return folder.length > 0; });
+                        config.FoldersToExclude = foldersToExclude;
                         
                         return ApiClient.updatePluginConfiguration(WhisperSubtitlesConfig.pluginUniqueId, config);
                     }).then(function() {

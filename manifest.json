@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/zakattack02/Whisper-Script/feature/jellyfin-plugin/logo.png",
     "versions": [
       {
+        "version": "0.0.0.50",
+        "changelog": "Chnaged Library call to virtFolders instead of LibraryFolders",
+        "targetAbi": "10.11.2.0",
+        "sourceUrl": "https://github.com/zakattack02/Whisper-Script/releases/download/v0.0.0.50/jellyfin-plugin-whispersubtitles_0.0.0.50.zip",
+        "checksum": "661e466d584b6a2609363c34706ff71d",
+        "timestamp": "2026-04-29T16:54:48Z"
+      },
+      {
         "version": "0.0.0.49",
         "changelog": "Bug fixes and improvements",
         "targetAbi": "10.11.2.0",

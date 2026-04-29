@@ -301,277 +301,33 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
 
         /// <summary>
         /// Download and install whisper.cpp binary.
-        /// Strategy:
-        /// 1. Try to build from source with GPU support (preferred)
-        /// 2. Fallback to precompiled binary if available for platform
-        /// 3. Provide user guidance if all methods fail
         /// </summary>
-        public async Task<bool> DownloadBinaryAsync(CancellationToken cancellationToken = default)
+        public Task<bool> DownloadBinaryAsync(CancellationToken cancellationToken = default)
         {
-            try
-            {
-                _logger.LogInformation("Starting whisper.cpp installation");
-
-                var platform = GetPlatformString();
-                _logger.LogInformation("Detected platform: {Platform}", platform);
-
-                // Try building from source with GPU support (preferred)
-                if (await TryBuildFromSourceAsync(cancellationToken))
-                {
-                    _logger.LogInformation("Whisper.cpp built successfully with GPU support");
-                    return true;
-                }
-
-                _logger.LogWarning("Build from source failed, attempting alternative installation methods");
-
-                // Fallback: Download precompiled binary if available for this platform
-                var downloadUrl = GetDownloadUrl(platform);
-
-                if (!string.IsNullOrEmpty(downloadUrl))
-                {
-                    _logger.LogInformation("Downloading precompiled binary from: {Url}", downloadUrl);
-                    
-                    try
-                    {
-                        using var response = await _httpClient.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-                        if (response.IsSuccessStatusCode)
-                        {
-                            var totalBytes = response.Content.Headers.ContentLength ?? 0;
-                            _logger.LogInformation("Download size: {Size} MB", totalBytes / 1024 / 1024);
-
-                            var tempFile = Path.Combine(_downloadPath, "whisper-temp.download");
-                            await using (var contentStream = await response.Content.ReadAsStreamAsync(cancellationToken))
-                            await using (var fileStream = new FileStream(tempFile, FileMode.Create, FileAccess.Write, FileShare.None, 8192, useAsync: true))
-                            {
-                                await contentStream.CopyToAsync(fileStream, cancellationToken);
-                            }
-
-                            _logger.LogInformation("Download complete, extracting...");
-
-                            if (downloadUrl.EndsWith(".zip"))
-                            {
-                                await ExtractZipAsync(tempFile, _downloadPath, cancellationToken);
-                                File.Delete(tempFile);
-                            }
-                            else
-                            {
-                                if (File.Exists(_binaryPath))
-                                {
-                                    File.Delete(_binaryPath);
-                                }
-                                File.Move(tempFile, _binaryPath);
-                            }
-
-                            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                            {
-                                MakeExecutable(_binaryPath);
-                            }
-
-                            _logger.LogInformation("Whisper binary installed successfully at {Path}", _binaryPath);
-                            return true;
-                        }
-                        else
-                        {
-                            _logger.LogWarning("Failed to download binary: HTTP {StatusCode}", response.StatusCode);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "Failed to download precompiled binary");
-                    }
-                }
-                else
-                {
-                    _logger.LogInformation("No precompiled binary available for {Platform}", platform);
-                }
-
-                // All automated methods failed - provide user guidance
-                _logger.LogError("Failed to automatically install whisper.cpp");
-                _logger.LogInformation("=== MANUAL INSTALLATION REQUIRED ===");
-                _logger.LogInformation("Please install whisper.cpp manually:");
-                _logger.LogInformation("  Linux: git clone https://github.com/ggerganov/whisper.cpp && cd whisper.cpp && make");
-                _logger.LogInformation("  macOS: git clone https://github.com/ggerganov/whisper.cpp && cd whisper.cpp && make");
-                _logger.LogInformation("  Then: sudo cp main /usr/local/bin/whisper");
-                _logger.LogInformation("  Or set WHISPER_CPP_MAIN environment variable to the binary path");
-
-                return false;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Unexpected error during whisper.cpp installation");
-                return false;
-            }
+            _logger.LogError(
+                "Whisper binary not found at {Path}. " +
+                "Please reinstall the plugin from the releases page — " +
+                "the zip includes the pre-built whisper-cli binary. " +
+                "Releases: https://github.com/zakattack02/Whisper-Script/releases",
+                _binaryPath);
+            return Task.FromResult(false);
         }
 
         /// <summary>
-        /// Try to build whisper.cpp from source with GPU support.
-        /// Automatically handles permission issues and provides fallback methods.
+        /// Stub: Build from source no longer supported.
         /// </summary>
-        private async Task<bool> TryBuildFromSourceAsync(CancellationToken cancellationToken)
+        private Task<bool> TryBuildFromSourceAsync(CancellationToken cancellationToken)
         {
-            try
-            {
-                _logger.LogInformation("Attempting to build whisper.cpp from source...");
-
-                // Download build script
-                var scriptUrl = "https://raw.githubusercontent.com/zakattack02/Whisper-Script/refs/heads/feature/jellyfin-plugin/Jellyfin.Plugin.WhisperSubtitles/Scripts/Build-whisper.sh";
-                var scriptPath = Path.Combine(_downloadPath, "build-whisper.sh");
-
-                _logger.LogInformation("Downloading build script from: {Url}", scriptUrl);
-                
-                using var response = await _httpClient.GetAsync(scriptUrl, cancellationToken);
-                if (!response.IsSuccessStatusCode)
-                {
-                    _logger.LogWarning("Failed to download build script: HTTP {Status}", response.StatusCode);
-                    return false;
-                }
-
-                var scriptContent = await response.Content.ReadAsStringAsync(cancellationToken);
-                await File.WriteAllTextAsync(scriptPath, scriptContent, cancellationToken);
-
-                // Make script executable
-                if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                {
-                    MakeExecutable(scriptPath);
-                }
-
-                // Run build script with non-root fallback
-                _logger.LogInformation("Running build script...");
-                
-                // First, try running without sudo (should work if already root or in container)
-                if (await RunBuildScriptAsync(scriptPath, false, cancellationToken))
-                {
-                    return true;
-                }
-
-                _logger.LogWarning("Build script failed, this may be due to permission restrictions");
-                _logger.LogInformation("Attempting build with reduced dependency requirements...");
-                
-                // Try again without sudo (the script should handle its own permission issues)
-                if (await RunBuildScriptAsync(scriptPath, false, cancellationToken))
-                {
-                    return true;
-                }
-
-                _logger.LogWarning("Build failed. User may need to install whisper.cpp manually.");
-                return false;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to build from source, will try precompiled binary");
-                return false;
-            }
+            return Task.FromResult(false);
         }
 
         /// <summary>
-/// Run the build script and capture output.
-/// </summary>
-private async Task<bool> RunBuildScriptAsync(string scriptPath, bool useSudo, CancellationToken cancellationToken)
-{
-    try
-    {
-        var installPath = Path.GetDirectoryName(_binaryPath);
-        var downloadPath = _downloadPath;
-        
-        ProcessStartInfo processInfo;
-        
-        if (useSudo)
+        /// Stub: Build script execution no longer supported.
+        /// </summary>
+        private Task<bool> RunBuildScriptAsync(string scriptPath, bool useSudo, CancellationToken cancellationToken)
         {
-            processInfo = new ProcessStartInfo
-            {
-                FileName = "sudo",
-                Arguments = $"bash {scriptPath} {installPath} {downloadPath}",
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
+            return Task.FromResult(false);
         }
-        else
-        {
-            processInfo = new ProcessStartInfo
-            {
-                FileName = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "bash" : "/bin/bash",
-                Arguments = $"{scriptPath} {installPath} {downloadPath}",
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
-        }
-
-        using var process = Process.Start(processInfo);
-        if (process == null)
-        {
-            _logger.LogError("Failed to start build script");
-            return false;
-        }
-
-        var output = new StringBuilder();
-        var errors = new StringBuilder();
-
-        process.OutputDataReceived += (_, e) =>
-        {
-            if (!string.IsNullOrEmpty(e.Data))
-            {
-                output.AppendLine(e.Data);
-                _logger.LogInformation("Build: {Output}", e.Data);
-            }
-        };
-
-        process.ErrorDataReceived += (_, e) =>
-        {
-            if (!string.IsNullOrEmpty(e.Data))
-            {
-                errors.AppendLine(e.Data);
-                
-                // Permission errors are expected in restricted environments
-                if (e.Data.Contains("Permission denied") || e.Data.Contains("E: List directory"))
-                {
-                    _logger.LogWarning("Build: {Error}", e.Data);
-                }
-                else
-                {
-                    _logger.LogWarning("Build: {Error}", e.Data);
-                }
-            }
-        };
-
-        process.BeginOutputReadLine();
-        process.BeginErrorReadLine();
-
-        await process.WaitForExitAsync(cancellationToken);
-
-        if (process.ExitCode == 0 && File.Exists(_binaryPath))
-        {
-            _logger.LogInformation("Build completed successfully");
-            
-            // Clean up script
-            try { File.Delete(scriptPath); } catch { /* Ignore */ }
-            
-            return true;
-        }
-        else
-        {
-            if (process.ExitCode != 0)
-            {
-                _logger.LogWarning("Build script failed with exit code {Code}", process.ExitCode);
-            }
-            
-            if (!string.IsNullOrEmpty(errors.ToString()))
-            {
-                _logger.LogWarning("Build stderr: {Errors}", errors.ToString().Substring(0, Math.Min(500, errors.Length)));
-            }
-            
-            return false;
-        }
-    }
-    catch (Exception ex)
-    {
-        _logger.LogWarning(ex, "Build script execution failed");
-        return false;
-    }
-}
 
         /// <summary>
         /// Get platform string for download URL.

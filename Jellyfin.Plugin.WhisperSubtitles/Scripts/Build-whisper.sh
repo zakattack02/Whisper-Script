@@ -83,22 +83,18 @@ fi
 cd "$REPO_DIR"
 
 # Helper: copy binary from either cmake output location
-# whisper.cpp renamed main -> whisper-cli in recent versions
 copy_binary() {
     for candidate in \
         "build/bin/whisper-cli" \
-        "build/bin/main" \
-        "build/whisper-cli" \
-        "build/main"; do
+        "build/bin/main"; do
         if [ -f "$candidate" ]; then
             cp "$candidate" "$INSTALL_DIR/whisper-cli"
             echo "Copied $candidate → $INSTALL_DIR/whisper-cli"
             return 0
         fi
     done
-
-    echo "Error: Binary not found. Searched:"
-    find build/ -type f -executable 2>/dev/null | head -20
+    echo "Error: Binary not found. Built targets:"
+    find build/bin/ -type f -executable 2>/dev/null
     exit 1
 }
 
@@ -131,7 +127,7 @@ case $GPU_TYPE in
 
         cmake --build build \
             --config Release \
-            --target main \
+            --target whisper-cli \
             -j"$(nproc)" || {
             echo "Error: CMake build failed"
             exit 1
@@ -148,7 +144,7 @@ case $GPU_TYPE in
             -DWHISPER_BUILD_EXAMPLES=ON || {
             echo "Error: CMake configuration failed"; exit 1
         }
-        cmake --build build --config Release --target main -j"$(nproc)" || {
+        cmake --build build --config Release --target whisper-cli -j"$(nproc)" || {
             echo "Error: CMake build failed"; exit 1
         }
         copy_binary
@@ -162,7 +158,7 @@ case $GPU_TYPE in
             -DWHISPER_BUILD_EXAMPLES=ON || {
             echo "Error: CMake configuration failed"; exit 1
         }
-        cmake --build build --config Release --target main \
+        cmake --build build --config Release --target whisper-cli \
             -j"$(sysctl -n hw.ncpu)" || {
             echo "Error: CMake build failed"; exit 1
         }
@@ -177,7 +173,7 @@ case $GPU_TYPE in
             -DCMAKE_BUILD_TYPE=Release || {
             echo "Error: CMake configuration failed"; exit 1
         }
-        cmake --build build --config Release --target main \
+        cmake --build build --config Release --target whisper-cli \
             -j"$(nproc 2>/dev/null || echo 2)" || {
             echo "Error: CMake build failed"; exit 1
         }
@@ -185,7 +181,7 @@ case $GPU_TYPE in
         ;;
 esac
 
-chmod +x "$INSTALL_DIR/main"
+chmod +x "$INSTALL_DIR/whisper-cli"
 
 [ ! -f "$INSTALL_DIR/main" ] && { echo "Error: Binary not found after build"; exit 1; }
 

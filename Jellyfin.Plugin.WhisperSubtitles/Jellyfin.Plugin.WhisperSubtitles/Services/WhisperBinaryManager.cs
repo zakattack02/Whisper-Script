@@ -303,98 +303,89 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
         }
 
         /// <summary>
-        /// Download and install whisper.cpp binary.
-        /// Extracts the bundled binary from the plugin directory to the cache.
-        /// </summary>
-        public async Task<bool> DownloadBinaryAsync(CancellationToken cancellationToken = default)
+/// Extracts the bundled binary from the dynamic plugin directory to the cache.
+/// </summary>
+public async Task<bool> DownloadBinaryAsync(CancellationToken cancellationToken = default)
+{
+    try
+    {
+        _logger.LogInformation("Starting manual binary deployment from plugin directory...");
+
+        var bundledBinaryPath = FindBundledBinary();
+        
+        if (string.IsNullOrEmpty(bundledBinaryPath))
         {
-            try
-            {
-                _logger.LogInformation("Attempting to extract bundled whisper-cli binary...");
-
-                // Check if binary already exists in cache
-                if (File.Exists(_binaryPath))
-                {
-                    _logger.LogInformation("Binary already exists at {Path}", _binaryPath);
-                    return true;
-                }
-
-                // Look for bundled binary in plugin directory
-                var bundledBinaryPath = FindBundledBinary();
-                if (string.IsNullOrEmpty(bundledBinaryPath))
-                {
-                    _logger.LogError(
-                        "Whisper binary not found. " +
-                        "Please reinstall the plugin from the releases page — " +
-                        "the zip must include the pre-built whisper-cli binary. " +
-                        "Releases: https://github.com/zakattack02/Whisper-Script/releases");
-                    return false;
-                }
-
-                // Create cache directory if it doesn't exist
-                var binDir = Path.GetDirectoryName(_binaryPath);
-                if (!Directory.Exists(binDir))
-                {
-                    Directory.CreateDirectory(binDir);
-                    _logger.LogInformation("Created binary directory: {BinaryDir}", binDir);
-                }
-
-                // Copy binary to cache
-                _logger.LogInformation("Copying binary from {Source} to {Destination}", bundledBinaryPath, _binaryPath);
-                File.Copy(bundledBinaryPath, _binaryPath, overwrite: true);
-
-                // Make executable on Unix
-                if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                {
-                    MakeExecutable(_binaryPath);
-                }
-
-                _logger.LogInformation("Binary extracted successfully to {Path}", _binaryPath);
-                return true;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to extract bundled whisper binary");
-                return false;
-            }
+            // If we can't find it bundled, we log a very specific error helping the user
+            _logger.LogError("Engine binary not found in plugin subfolders. Expected to find it in the 'whisper/{Platform}' directory of the plugin installation.", GetPlatformString());
+            return false;
         }
 
-        /// <summary>
-        /// Find the bundled whisper binary in the plugin directory.
-        /// </summary>
-        private string? FindBundledBinary()
+        // Ensure target directory exists
+        var binDir = Path.GetDirectoryName(_binaryPath);
+        if (!Directory.Exists(binDir))
         {
-            if (string.IsNullOrEmpty(_pluginPath) || !Directory.Exists(_pluginPath))
-            {
-                _logger.LogDebug("Plugin path not available: {PluginPath}", _pluginPath);
-                return null;
-            }
-
-            // Determine platform-specific subdirectory
-            var platform = GetPlatformString();
-            var whisperDir = Path.Combine(_pluginPath, "whisper", platform);
-
-            _logger.LogDebug("Looking for bundled binary in: {WhisperDir}", whisperDir);
-
-            // Try whisper-cli first (new name)
-            var whisperCliBinary = Path.Combine(whisperDir, RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "whisper-cli.exe" : "whisper-cli");
-            if (File.Exists(whisperCliBinary))
-            {
-                _logger.LogInformation("Found bundled whisper-cli binary at {Path}", whisperCliBinary);
-                return whisperCliBinary;
-            }
-
-            // Fallback to old name (main) for backward compatibility
-            var mainBinary = Path.Combine(whisperDir, RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "main.exe" : "main");
-            if (File.Exists(mainBinary))
-            {
-                _logger.LogInformation("Found bundled main binary at {Path} (old name, will rename to whisper-cli)", mainBinary);
-                return mainBinary;
-            }
-
-            _logger.LogWarning("No bundled binary found in {WhisperDir}", whisperDir);
-            return null;
+            Directory.CreateDirectory(binDir!);
         }
+
+        // Copy and Rename: 'main' (from zip) -> 'whisper-cli' (expected by service)
+        _logger.LogInformation("Deploying engine: Copying {Source} to {Destination}", bundledBinaryPath, _binaryPath);
+        File.Copy(bundledBinaryPath, _binaryPath, overwrite: true);
+
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            MakeExecutable(_binaryPath);
+        }
+
+        return await TestBinaryAsync(cancellationToken);
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Failed to deploy bundled whisper binary");
+        return false;
+    }
+}
+
+private string? FindBundledBinary()
+{
+    // 1. Get the directory where THIS DLL is actually sitting
+    // This handles the "Whisper Subtitles_0.0.0.53" versioning automatically
+    var assemblyLocation = typeof(WhisperBinaryManager).Assembly.Location;
+    var currentPluginFolder = Path.GetDirectoryName(assemblyLocation);
+
+    if (string.IsNullOrEmpty(currentPluginFolder)) return null;
+
+    // 2. Determine platform (linux-x64, linux-arm64, etc.)
+    var platform = GetPlatformString();
+    
+    // 3. Construct the search paths
+    // Search both the local 'whisper' folder and the one in the zip structure
+    var possibleFolders = new[]
+    {
+        Path.Combine(currentPluginFolder, "whisper", platform),
+        Path.Combine(currentPluginFolder, platform) // fallback
+    };
+
+    var binaryNames = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) 
+        ? new[] { "whisper-cli.exe", "main.exe" } 
+        : new[] { "whisper-cli", "main" };
+
+    foreach (var folder in possibleFolders)
+    {
+        if (!Directory.Exists(folder)) continue;
+
+        foreach (var name in binaryNames)
+        {
+            var fullPath = Path.Combine(folder, name);
+            if (File.Exists(fullPath))
+            {
+                _logger.LogInformation("Located bundled binary: {Path}", fullPath);
+                return fullPath;
+            }
+        }
+    }
+
+    return null;
+}
 
         /// <summary>
         /// Stub: Build from source no longer supported.

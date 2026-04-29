@@ -21,14 +21,20 @@
                         </select>
                         <div class="fieldDescription">Larger models are more accurate but slower</div>
                         <div class="inputContainer" style="margin-top: 15px;">
-                            <button is="emby-button" type="button" id="InstallBinaryButton" class="raised emby-button" style="margin-right: 10px;">
-                                <span>Install/Build Whisper.cpp</span>
-                            </button>
                             <button is="emby-button" type="button" id="DownloadModelButton" class="raised button-submit emby-button">
                                 <span>Download Selected Model</span>
                             </button>
                         </div>
-                        <div id="binaryStatus" class="fieldDescription" style="display: none; padding: 10px; margin-top: 10px; border-radius: 4px;"></div>
+                        <div id="binaryInstructions" style="padding: 15px; margin-top: 15px; border-radius: 4px; background-color: rgba(255, 152, 0, 0.2); color: #ff9800; border-left: 4px solid #ff9800;">
+                            <div style="font-weight: bold; margin-bottom: 10px;">⚠ Whisper Binary Setup Required</div>
+                            <div style="margin-bottom: 8px;">The whisper-cli binary is bundled with the plugin but must be manually copied to the cache directory:</div>
+                            <div style="font-family: monospace; background-color: rgba(0, 0, 0, 0.3); padding: 10px; margin-bottom: 8px; border-radius: 3px;">
+                                # Copy binary from plugin directory to cache<br/>
+                                sudo cp ~/.config/jellyfin/plugins/Whisper\ Subtitles_*/whisper/linux-x64/whisper-cli ~/.cache/whisper-cpp/<br/>
+                                sudo chmod +x ~/.cache/whisper-cpp/whisper-cli
+                            </div>
+                            <div style="font-size: 0.9em; color: #b39ddb;">Replace <span style="font-family: monospace;">~/.config/jellyfin</span> with your Jellyfin config path if different. Adjust paths for macOS (~/Library) or Windows (AppData\\Roaming\\Jellyfin).</div>
+                        </div>
                         <div id="downloadStatus" class="fieldDescription" style="display: none; padding: 10px; margin-top: 10px; border-radius: 4px;"></div>
                     </div>
 
@@ -165,44 +171,60 @@
                 }
 
                 function loadLibraries(selectedLibraries) {
-                    if (typeof ApiClient === 'undefined') {
-                        console.error('[WhisperSubtitles] ApiClient not available for loading libraries');
-                        return;
-                    }
-                    
-                    ApiClient.getVirtualFolders().then(function(librariesResponse) {
-                        var container = document.getElementById('LibrariesToProcessContainer');
-                        container.innerHTML = '';
-                        
-                        if (!librariesResponse.Items || librariesResponse.Items.length === 0) {
-                            container.innerHTML = '<p style="color: #888; text-align: center; margin: 10px 0;">No libraries found</p>';
-                            return;
-                        }
-                        
-                        librariesResponse.Items.forEach(function(library) {
-                            var checkbox = document.createElement('input');
-                            checkbox.type = 'checkbox';
-                            checkbox.id = 'lib_' + library.Id;
-                            checkbox.className = 'library-checkbox';
-                            checkbox.value = library.Id;
-                            checkbox.checked = selectedLibraries.indexOf(library.Id) !== -1;
-                            
-                            var label = document.createElement('label');
-                            label.style.display = 'block';
-                            label.style.padding = '5px 0';
-                            label.style.cursor = 'pointer';
-                            
-                            label.appendChild(checkbox);
-                            label.appendChild(document.createTextNode(' ' + (library.Name || 'Unknown Library')));
-                            
-                            container.appendChild(label);
-                        });
-                    }).catch(function(error) {
-                        console.error('[WhisperSubtitles] Error loading libraries:', error);
-                        var container = document.getElementById('LibrariesToProcessContainer');
-                        container.innerHTML = '<p style="color: #f44336; text-align: center; margin: 10px 0;">Error loading libraries</p>';
-                    });
-                }
+    if (typeof ApiClient === 'undefined') {
+        console.error('[WhisperSubtitles] ApiClient not available for loading libraries');
+        return;
+    }
+    
+    // Ensure selectedLibraries is an array to prevent .indexOf crashes
+    selectedLibraries = selectedLibraries || [];
+
+    ApiClient.getVirtualFolders().then(function(librariesResponse) {
+        var container = document.getElementById('LibrariesToProcessContainer');
+        if (!container) return;
+        container.innerHTML = '';
+        
+        // getVirtualFolders usually returns the array directly. 
+        // We handle both cases (direct array or .Items wrapper) for compatibility.
+        var folders = Array.isArray(librariesResponse) ? librariesResponse : (librariesResponse.Items || []);
+        
+        // Filter out non-video libraries (optional but recommended)
+        var videoFolders = folders.filter(function(f) {
+            return f.CollectionType === 'movies' || f.CollectionType === 'tvshows' || f.CollectionType === 'homevideos';
+        });
+
+        if (videoFolders.length === 0) {
+            container.innerHTML = '<p style="color: #888; text-align: center; margin: 10px 0;">No media libraries found</p>';
+            return;
+        }
+        
+        videoFolders.forEach(function(library) {
+            var label = document.createElement('label');
+            label.className = 'checkboxContainer'; // Use Jellyfin's standard class if possible
+            label.style.display = 'block';
+            label.style.padding = '5px 0';
+            
+            var checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.id = 'lib_' + library.ItemId; // Note: Virtual folders use ItemId or Id depending on version
+            checkbox.className = 'library-checkbox';
+            checkbox.value = library.ItemId || library.Id;
+            checkbox.checked = selectedLibraries.indexOf(checkbox.value) !== -1;
+            
+            // Append elements
+            label.appendChild(checkbox);
+            label.appendChild(document.createTextNode(' ' + (library.Name || 'Unknown Library')));
+            
+            container.appendChild(label);
+        });
+    }).catch(function(error) {
+        console.error('[WhisperSubtitles] Error loading libraries:', error);
+        var container = document.getElementById('LibrariesToProcessContainer');
+        if (container) {
+            container.innerHTML = '<p style="color: #f44336; text-align: center; margin: 10px 0;">Error loading libraries</p>';
+        }
+    });
+}
 
                 function saveConfig(e) {
                     e.preventDefault();
@@ -309,37 +331,6 @@
                                 downloadStatusDiv.style.backgroundColor = 'rgba(220, 0, 0, 0.2)';
                                 downloadStatusDiv.style.color = '#dc0000';
                                 downloadStatusDiv.innerHTML = '✗ Download failed';
-                            });
-                        }
-                    });
-                }
-                
-                var installBtn = document.getElementById('InstallBinaryButton');
-                if (installBtn) {
-                    installBtn.addEventListener('click', function() {
-                        var binaryStatusDiv = document.getElementById('binaryStatus');
-                        
-                        console.log('[WhisperSubtitles] Starting binary installation...');
-                        
-                        binaryStatusDiv.style.display = 'block';
-                        binaryStatusDiv.style.backgroundColor = 'rgba(0, 164, 220, 0.2)';
-                        binaryStatusDiv.style.color = '#00a4dc';
-                        binaryStatusDiv.innerHTML = '⟳ Installing whisper.cpp binary...';
-                        
-                        if (typeof ApiClient !== 'undefined') {
-                            ApiClient.fetch({
-                                type: 'POST',
-                                url: ApiClient.getUrl('api/WhisperSubtitles/InstallBinary'),
-                                contentType: 'application/json'
-                            }).then(function(response) {
-                                binaryStatusDiv.style.backgroundColor = 'rgba(0, 200, 83, 0.2)';
-                                binaryStatusDiv.style.color = '#00c853';
-                                binaryStatusDiv.innerHTML = '✓ Whisper.cpp installed successfully';
-                                setTimeout(function() { binaryStatusDiv.style.display = 'none'; }, 10000);
-                            }).catch(function(error) {
-                                binaryStatusDiv.style.backgroundColor = 'rgba(220, 0, 0, 0.2)';
-                                binaryStatusDiv.style.color = '#dc0000';
-                                binaryStatusDiv.innerHTML = '✗ Installation failed';
                             });
                         }
                     });

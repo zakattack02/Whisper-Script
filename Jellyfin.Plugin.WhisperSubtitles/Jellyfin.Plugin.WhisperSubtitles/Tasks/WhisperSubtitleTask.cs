@@ -170,6 +170,9 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Tasks
         /// <returns>List of video items.</returns>
         private List<BaseItem> GetVideoItems(PluginConfiguration config)
         {
+            // Get enabled libraries from configuration
+            var enabledLibraries = config.LibrariesToProcess ?? new List<string>();
+            
             var query = new InternalItemsQuery
             {
                 IncludeItemTypes = new[] { BaseItemKind.Movie, BaseItemKind.Episode },
@@ -177,10 +180,53 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Tasks
                 Recursive = true
             };
 
-            var items = _libraryManager.GetItemList(query);
+            var allItems = _libraryManager.GetItemList(query);
             
-            // Filter out items without valid paths
-            return items.Where(item => !string.IsNullOrEmpty(item.Path) && File.Exists(item.Path)).ToList();
+            // Filter by enabled libraries and valid paths
+            var filteredItems = new List<BaseItem>();
+            foreach (var item in allItems)
+            {
+                // Skip items without valid paths
+                if (string.IsNullOrEmpty(item.Path) || !File.Exists(item.Path))
+                {
+                    continue;
+                }
+
+                // If no libraries are configured, process all items
+                if (!enabledLibraries.Any())
+                {
+                    filteredItems.Add(item);
+                    continue;
+                }
+
+                // Get the library folder for this item
+                try
+                {
+                    var collectionFolders = _libraryManager.GetCollectionFolders(item);
+                    var libraryFolder = collectionFolders.FirstOrDefault();
+
+                    if (libraryFolder != null && enabledLibraries.Contains(libraryFolder.Id.ToString()))
+                    {
+                        filteredItems.Add(item);
+                    }
+                    else if (libraryFolder == null)
+                    {
+                        // Item doesn't belong to a specific collection folder, skip it
+                        _logger.LogDebug("Skipping {Name} - No collection folder found", item.Name);
+                    }
+                    else
+                    {
+                        _logger.LogDebug("Skipping {Name} - Library {LibraryId} not enabled", item.Name, libraryFolder.Id);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Error determining library folder for {ItemName}", item.Name);
+                }
+            }
+
+            _logger.LogInformation("Filtering: Found {Total} items total, {Filtered} enabled for processing", allItems.Count, filteredItems.Count);
+            return filteredItems;
         }
 
         /// <summary>

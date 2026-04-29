@@ -161,28 +161,32 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
                     "Generating subtitles: video={Video}, model={Model}, lang={Lang}, translate={Translate}, acceleration={Acceleration}",
                     videoPath, model, language, translate, gpuStatus);
 
-                // Build whisper.cpp command
-                var args = new StringBuilder();
-                args.Append($"-m \"{modelFile}\" ");
-                args.Append($"-f \"{videoPath}\" ");
-                args.Append($"-l {language} ");
-                args.Append("-osrt ");  // Output SRT format
-                args.Append($"-of \"{Path.GetFileNameWithoutExtension(outputPath)}\" ");
-                args.Append($"--output-dir \"{Path.GetDirectoryName(outputPath) ?? "."}\" ");
+                // Prepare output paths
+                var outputDir = Path.GetDirectoryName(outputPath) ?? ".";
+                var outputFileName = Path.GetFileNameWithoutExtension(outputPath);
+
+                // Build whisper.cpp command using StringBuilder
+                var argsBuilder = new StringBuilder();
+                argsBuilder.Append($"-m \"{modelFile}\" ");
+                argsBuilder.Append($"-f \"{videoPath}\" ");
+                argsBuilder.Append($"-l {language} ");
+                argsBuilder.Append("-osrt ");  // Output SRT format
+                argsBuilder.Append($"-of \"{outputFileName}\" ");
+                argsBuilder.Append($"--output-dir \"{outputDir}\" ");
 
                 if (translate)
                 {
-                    args.Append("-tr ");  // Translate to English
+                    argsBuilder.Append("-tr ");  // Translate to English
                 }
 
                 if (wordTimestamps)
                 {
-                    args.Append("-ml 1 ");  // Max line length for word timestamps
+                    argsBuilder.Append("-ml 1 ");  // Max line length for word timestamps
                 }
 
                 // Thread count - use all cores but cap at 16 for efficiency
                 var threads = Math.Min(Environment.ProcessorCount, 16);
-                args.Append($"-t {threads} ");
+                argsBuilder.Append($"-t {threads} ");
                 
                 // GPU acceleration flag
                 if (config.UseGPUAcceleration && !string.IsNullOrEmpty(_binaryManager.DetectedGPUType))
@@ -190,15 +194,15 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
                     switch (_binaryManager.DetectedGPUType)
                     {
                         case "cuda":
-                            args.Append("-ngl 999 ");  // Offload all layers to GPU
+                            argsBuilder.Append("-ngl 999 ");  // Offload all layers to GPU
                             _logger.LogInformation("CUDA acceleration enabled");
                             break;
                         case "vulkan":
-                            args.Append("-ngl 999 ");  // Offload all layers to GPU
+                            argsBuilder.Append("-ngl 999 ");  // Offload all layers to GPU
                             _logger.LogInformation("Vulkan acceleration enabled");
                             break;
                         case "metal":
-                            args.Append("-ngl 1 ");    // Metal GPU offloading
+                            argsBuilder.Append("-ngl 1 ");    // Metal GPU offloading
                             _logger.LogInformation("Metal acceleration enabled");
                             break;
                     }
@@ -207,17 +211,17 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
                 {
                     _logger.LogInformation("Using CPU-only processing");
                 }
-                
-                args.Append("-vv ");  // Verbose output
 
-                var arguments = args.ToString();
+                argsBuilder.Append("-vv ");  // Verbose output
+
+                var args = argsBuilder.ToString();
                 
-                _logger.LogInformation("Running: {Binary} {Args}", _binaryManager.BinaryPath, arguments);
+                _logger.LogInformation("Running: {Binary} {Args}", _binaryManager.BinaryPath, args);
 
                 var processInfo = new ProcessStartInfo
                 {
                     FileName = _binaryManager.BinaryPath,
-                    Arguments = arguments,
+                    Arguments = args,
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
                     UseShellExecute = false,

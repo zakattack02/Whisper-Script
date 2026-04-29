@@ -120,8 +120,8 @@ echo ""
 # ── Step 3: Build whisper.cpp ─────────────────────────────────────────────────
 echo -e "${YELLOW}[3/8] Building whisper.cpp using Build-whisper.sh...${NC}"
 
-# Create output directory for the binary
-WHISPER_OUTPUT="$WHISPER_BINARY_DIR"
+# Create output directory for the binary (use absolute path)
+WHISPER_OUTPUT="$(cd "$PLUGIN_FOLDER" && pwd)/bin/whisper/linux-x64"
 mkdir -p "$WHISPER_OUTPUT"
 
 # Call the build script with the plugin directory as output
@@ -137,9 +137,10 @@ echo ""
 
 # ── Step 4: Verify binary ────────────────────────────────────────────────────
 echo -e "${YELLOW}[4/8] Verifying whisper binary...${NC}"
-[ -f "$WHISPER_BINARY_DIR/whisper-cli" ] || error_exit "Binary not found at $WHISPER_BINARY_DIR/whisper-cli"
-chmod +x "$WHISPER_BINARY_DIR/whisper-cli"
-echo -e "${GREEN}✓ Binary verified: $WHISPER_BINARY_DIR/whisper-cli${NC}"
+# Note: WHISPER_OUTPUT was computed in Step 3
+[ -f "$WHISPER_OUTPUT/whisper-cli" ] || error_exit "Binary not found at $WHISPER_OUTPUT/whisper-cli"
+chmod +x "$WHISPER_OUTPUT/whisper-cli"
+echo -e "${GREEN}✓ Binary verified: $WHISPER_OUTPUT/whisper-cli${NC}"
 echo ""
 
 # ── Step 5: Build C# plugin ───────────────────────────────────────────────────
@@ -154,8 +155,9 @@ dotnet publish \
 
 # Copy whisper binary into publish output so it ends up in the zip
 echo "  Copying whisper binary into publish output..."
+# Note: WHISPER_OUTPUT was computed in Step 3
 mkdir -p "$BUILD_OUTPUT/whisper/linux-x64"
-cp "$WHISPER_BINARY_DIR/whisper-cli" "$BUILD_OUTPUT/whisper/linux-x64/whisper-cli"
+cp "$WHISPER_OUTPUT/whisper-cli" "$BUILD_OUTPUT/whisper/linux-x64/whisper-cli"
 chmod +x "$BUILD_OUTPUT/whisper/linux-x64/whisper-cli"
 
 echo -e "${GREEN}✓ C# plugin built${NC}"

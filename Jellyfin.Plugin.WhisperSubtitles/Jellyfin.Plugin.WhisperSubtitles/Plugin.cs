@@ -33,7 +33,7 @@ namespace Jellyfin.Plugin.WhisperSubtitles
         /// <summary>
         /// Gets the application paths.
         /// </summary>
-        public IApplicationPaths ApplicationPaths { get; private set; }
+        public new IApplicationPaths ApplicationPaths { get; private set; }
 
         /// <inheritdoc />
         public override string Name => "Whisper Subtitles";

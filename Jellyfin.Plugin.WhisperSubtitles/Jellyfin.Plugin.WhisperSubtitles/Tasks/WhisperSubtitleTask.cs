@@ -171,11 +171,11 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Tasks
         private List<BaseItem> GetVideoItems(PluginConfiguration config)
         {
             // Get enabled libraries from configuration
-            var enabledLibraries = config.LibrariesToProcess ?? new List<string>();
+            var enabledLibraryIds = config.LibrariesToProcess ?? new List<string>();
             
             var query = new InternalItemsQuery
             {
-                IncludeItemTypes = new[] { BaseItemKind.Movie, BaseItemKind.Episode },
+                IncludeItemTypes = new[] { BaseItemKind.Movie, BaseItemKind.Episode, BaseItemKind.Video },
                 IsVirtualItem = false,
                 Recursive = true
             };
@@ -183,52 +183,42 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Tasks
             var allItems = _libraryManager.GetItemList(query);
             
             // Filter by enabled libraries and valid paths
-            var filteredItems = new List<BaseItem>();
-            foreach (var item in allItems)
+            var filteredItems = allItems.Where(item => 
             {
                 // Skip items without valid paths
                 if (string.IsNullOrEmpty(item.Path) || !File.Exists(item.Path))
                 {
-                    continue;
+                    return false;
                 }
 
                 // If no libraries are configured, process all items
-                if (!enabledLibraries.Any())
+                if (!enabledLibraryIds.Any())
                 {
-                    filteredItems.Add(item);
-                    continue;
+                    return true;
                 }
 
-                // Get the library folder for this item
-                try
+                // Find which library folder this item belongs to
+                var rootFolder = _libraryManager.GetCollectionFolders(item).FirstOrDefault();
+                if (rootFolder == null)
                 {
-                    var collectionFolders = _libraryManager.GetCollectionFolders(item);
-                    var libraryFolder = collectionFolders.FirstOrDefault();
+                    _logger.LogDebug("Skipping {Name} - No collection folder found", item.Name);
+                    return false;
+                }
 
-                    if (libraryFolder != null && enabledLibraries.Contains(libraryFolder.Id.ToString()))
-                    {
-                        filteredItems.Add(item);
-                    }
-                    else if (libraryFolder == null)
-                    {
-                        // Item doesn't belong to a specific collection folder, skip it
-                        _logger.LogDebug("Skipping {Name} - No collection folder found", item.Name);
-                    }
-                    else
-                    {
-                        _logger.LogDebug("Skipping {Name} - Library {LibraryId} not enabled", item.Name, libraryFolder.Id);
-                    }
-                }
-                catch (Exception ex)
+                // Check if this library folder is enabled
+                var isEnabled = enabledLibraryIds.Contains(rootFolder.Id.ToString());
+                
+                if (!isEnabled)
                 {
-                    _logger.LogWarning(ex, "Error determining library folder for {ItemName}", item.Name);
+                    _logger.LogDebug("Skipping {Name} - Library {LibraryId} not enabled", item.Name, rootFolder.Id);
                 }
-            }
+
+                return isEnabled;
+            }).ToList();
 
             _logger.LogInformation("Filtering: Found {Total} items total, {Filtered} enabled for processing", allItems.Count, filteredItems.Count);
             return filteredItems;
         }
-
         /// <summary>
         /// Determine if a video should be skipped based on configuration.
         /// </summary>

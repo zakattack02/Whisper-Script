@@ -5,7 +5,7 @@
   },
   "projects": {
     "/home/kanucks/Documents/Whisper/Jellyfin.Plugin.WhisperSubtitles/Jellyfin.Plugin.WhisperSubtitles/Jellyfin.Plugin.WhisperSubtitles.csproj": {
-      "version": "0.0.0.56",
+      "version": "0.0.0.57",
       "restore": {
         "projectUniqueName": "/home/kanucks/Documents/Whisper/Jellyfin.Plugin.WhisperSubtitles/Jellyfin.Plugin.WhisperSubtitles/Jellyfin.Plugin.WhisperSubtitles.csproj",
         "projectName": "Jellyfin.Plugin.WhisperSubtitles",

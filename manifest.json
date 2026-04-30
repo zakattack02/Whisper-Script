@@ -17,14 +17,6 @@
         "timestamp": "2026-04-30T02:58:07Z"
       },
       {
-        "version": "0.0.0.60",
-        "changelog": "Bug fixes and improvements",
-        "targetAbi": "10.11.2.0",
-        "sourceUrl": "https://github.com/zakattack02/Whisper-Script/releases/download/v0.0.0.60/jellyfin-plugin-whispersubtitles_0.0.0.60.zip",
-        "checksum": "41e5f9355f67fe81547211cc9dfa59ad",
-        "timestamp": "2026-04-30T02:56:46Z"
-      },
-      {
         "version": "0.0.0.59",
         "changelog": "FUCK",
         "targetAbi": "10.11.2.0",

@@ -1,7 +1,0 @@
-/home/kanucks/Documents/Whisper/tests/Whisper.Plugin.Tests/bin/Debug/net9.0/.msCoverageSourceRootsMapping_Whisper.Plugin.Tests
-/home/kanucks/Documents/Whisper/tests/Whisper.Plugin.Tests/obj/Debug/net9.0/Whisper.Plugin.Tests.csproj.AssemblyReference.cache
-/home/kanucks/Documents/Whisper/tests/Whisper.Plugin.Tests/obj/Debug/net9.0/Whisper.Plugin.Tests.GeneratedMSBuildEditorConfig.editorconfig
-/home/kanucks/Documents/Whisper/tests/Whisper.Plugin.Tests/obj/Debug/net9.0/Whisper.Plugin.Tests.AssemblyInfoInputs.cache
-/home/kanucks/Documents/Whisper/tests/Whisper.Plugin.Tests/obj/Debug/net9.0/Whisper.Plugin.Tests.AssemblyInfo.cs
-/home/kanucks/Documents/Whisper/tests/Whisper.Plugin.Tests/obj/Debug/net9.0/Whisper.Plugin.Tests.csproj.CoreCompileInputs.cache
-/home/kanucks/Documents/Whisper/tests/Whisper.Plugin.Tests/obj/Debug/net9.0/Whisper.Plugin.Tests.sourcelink.json

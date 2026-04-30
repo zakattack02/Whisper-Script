@@ -12,263 +12,79 @@ using Microsoft.Extensions.Logging;
 namespace Jellyfin.Plugin.WhisperSubtitles.Services
 {
     /// <summary>
-    /// Service for managing whisper.cpp binary installation.
+    /// Manages the whisper.cpp binary: discovery, deployment from plugin bundle, and testing.
     /// </summary>
     public class WhisperBinaryManager : IDisposable
     {
+        // The filename the build script produces inside whisper/{platform}/.
+        // Must match BINARY_NAME in Build-whisper.sh.
+        private const string BundledBinaryName = "whisper-whisper-cli";
+
         private readonly ILogger _logger;
         private readonly HttpClient _httpClient;
         private readonly string _binaryPath;
         private readonly string _downloadPath;
         private readonly string? _jellyfinFFmpegPath;
-        private readonly string? _pluginPath;
         private string? _detectedGPUType;
         private bool _disposed;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="WhisperBinaryManager"/> class.
+        /// Initialises a new instance of <see cref="WhisperBinaryManager"/>.
         /// </summary>
-        /// <param name="logger">Logger instance.</param>
-        /// <param name="pluginPath">Optional path to the plugin directory containing bundled binary.</param>
-        public WhisperBinaryManager(ILogger logger, string? pluginPath = null)
+        public WhisperBinaryManager(ILogger logger)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _pluginPath = pluginPath;
-            _httpClient = new HttpClient(new SocketsHttpHandler { AutomaticDecompression = System.Net.DecompressionMethods.GZip })
+            _httpClient = new HttpClient(new SocketsHttpHandler
             {
-                Timeout = TimeSpan.FromMinutes(30) // 30-minute timeout for large downloads
+                AutomaticDecompression = System.Net.DecompressionMethods.GZip
+            })
+            {
+                Timeout = TimeSpan.FromMinutes(30)
             };
             _httpClient.DefaultRequestHeaders.Add("User-Agent", "Jellyfin-Whisper-Plugin");
-            
-            // Find Jellyfin's FFmpeg
+
             _jellyfinFFmpegPath = FindJellyfinFFmpeg();
-            
-            // Determine binary storage location
+            _detectedGPUType    = DetectGPU();
+
+            // ── Determine cache directory ──────────────────────────────────
             var cacheDir = Environment.GetEnvironmentVariable("JELLYFIN_CACHE_DIR");
             if (string.IsNullOrEmpty(cacheDir))
             {
-                var homeDir = Environment.GetEnvironmentVariable("HOME");
-                if (string.IsNullOrEmpty(homeDir))
-                {
-                    homeDir = Path.GetTempPath();
-                }
-                cacheDir = Path.Combine(homeDir, ".cache");
+                var home = Environment.GetEnvironmentVariable("HOME")
+                           ?? Path.GetTempPath();
+                cacheDir = Path.Combine(home, ".cache");
             }
-            
+
             var whisperDir = Path.Combine(cacheDir, "whisper-cpp");
-            _downloadPath = whisperDir;
-            
-            // Binary name depends on platform
-            var binaryName = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) 
-                ? "whisper-cli.exe" 
-                : "whisper-cli";
-            _binaryPath = Path.Combine(whisperDir, binaryName);
-            
-            _logger.LogInformation("Whisper binary path: {BinaryPath}", _binaryPath);
-            _logger.LogInformation("Jellyfin FFmpeg path: {FFmpegPath}", _jellyfinFFmpegPath ?? "Not found");
-            
-            // Detect available GPU
-            _detectedGPUType = DetectGPU();
-            _logger.LogInformation("Detected GPU type: {GPUType}", _detectedGPUType ?? "None (CPU only)");
-            
+            _downloadPath  = whisperDir;
+            _binaryPath    = Path.Combine(whisperDir, BundledBinaryName);
+
+            _logger.LogInformation("Whisper cache binary path : {Path}", _binaryPath);
+            _logger.LogInformation("Jellyfin FFmpeg           : {Path}", _jellyfinFFmpegPath ?? "not found");
+            _logger.LogInformation("Detected GPU              : {GPU}",  _detectedGPUType   ?? "none (CPU only)");
+
             try
             {
-                if (!Directory.Exists(whisperDir))
-                {
-                    Directory.CreateDirectory(whisperDir);
-                    _logger.LogInformation("Created whisper binary directory: {WhisperDir}", whisperDir);
-                }
+                Directory.CreateDirectory(whisperDir);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to create whisper binary directory");
+                _logger.LogError(ex, "Failed to create whisper cache directory: {Dir}", whisperDir);
             }
         }
 
-        /// <summary>
-        /// Find Jellyfin's FFmpeg installation.
-        /// </summary>
-        private string? FindJellyfinFFmpeg()
-        {
-            var possiblePaths = new[]
-            {
-                "/usr/lib/jellyfin-ffmpeg/ffmpeg",           // Jellyfin's bundled FFmpeg
-                "/usr/lib/jellyfin-ffmpeg5/ffmpeg",          // Alternative path
-                "/usr/lib/jellyfin-ffmpeg6/ffmpeg",          // FFmpeg 6.x
-                "/jellyfin/ffmpeg",                          // Docker mount point
-                "/config/ffmpeg/ffmpeg",                     // Custom location
-                "ffmpeg"                                     // System PATH
-            };
+        // ── Public surface ─────────────────────────────────────────────────────
 
-            foreach (var path in possiblePaths)
-            {
-                try
-                {
-                    if (File.Exists(path))
-                    {
-                        _logger.LogInformation("Found Jellyfin FFmpeg at: {Path}", path);
-                        return path;
-                    }
-                }
-                catch
-                {
-                    // Ignore access errors
-                }
-            }
-
-            // Try which command
-            try
-            {
-                var psi = new ProcessStartInfo
-                {
-                    FileName = "which",
-                    Arguments = "ffmpeg",
-                    RedirectStandardOutput = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true
-                };
-
-                using var process = Process.Start(psi);
-                if (process != null)
-                {
-                    var result = process.StandardOutput.ReadToEnd().Trim();
-                    process.WaitForExit();
-                    if (!string.IsNullOrEmpty(result) && File.Exists(result))
-                    {
-                        _logger.LogInformation("Found FFmpeg via which: {Path}", result);
-                        return result;
-                    }
-                }
-            }
-            catch
-            {
-                // Ignore
-            }
-
-            _logger.LogWarning("Jellyfin FFmpeg not found, whisper.cpp will use built-in audio handling");
-            return null;
-        }
-
-        /// <summary>
-        /// Detect available GPU type (CUDA, Vulkan, Metal, or None).
-        /// </summary>
-        private string? DetectGPU()
-        {
-            // Check for NVIDIA GPU (CUDA)
-            if (CheckNvidiaGPU())
-            {
-                return "cuda";
-            }
-
-            // Check for Vulkan support (AMD/Intel)
-            if (CheckVulkanGPU())
-            {
-                return "vulkan";
-            }
-
-            // Check for Metal (macOS)
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-            {
-                return "metal";
-            }
-
-            return null;
-        }
-
-        /// <summary>
-        /// Check if NVIDIA GPU with CUDA is available.
-        /// </summary>
-        private bool CheckNvidiaGPU()
-        {
-            try
-            {
-                var psi = new ProcessStartInfo
-                {
-                    FileName = "nvidia-smi",
-                    Arguments = "--query-gpu=name --format=csv,noheader",
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true
-                };
-
-                using var process = Process.Start(psi);
-                if (process != null)
-                {
-                    var output = process.StandardOutput.ReadToEnd();
-                    process.WaitForExit();
-                    
-                    if (process.ExitCode == 0 && !string.IsNullOrWhiteSpace(output))
-                    {
-                        _logger.LogInformation("NVIDIA GPU detected: {GPU}", output.Trim());
-                        return true;
-                    }
-                }
-            }
-            catch
-            {
-                // nvidia-smi not available
-            }
-
-            return false;
-        }
-
-        /// <summary>
-        /// Check if Vulkan GPU is available.
-        /// </summary>
-        private bool CheckVulkanGPU()
-        {
-            try
-            {
-                var psi = new ProcessStartInfo
-                {
-                    FileName = "vulkaninfo",
-                    Arguments = "--summary",
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true
-                };
-
-                using var process = Process.Start(psi);
-                if (process != null)
-                {
-                    var output = process.StandardOutput.ReadToEnd();
-                    process.WaitForExit();
-                    
-                    if (process.ExitCode == 0 && output.Contains("deviceName"))
-                    {
-                        _logger.LogInformation("Vulkan GPU detected");
-                        return true;
-                    }
-                }
-            }
-            catch
-            {
-                // vulkaninfo not available
-            }
-
-            return false;
-        }
-
-        /// <summary>
-        /// Gets the detected GPU type.
-        /// </summary>
-        public string? DetectedGPUType => _detectedGPUType;
-
-        /// <summary>
-        /// Gets the path to Jellyfin's FFmpeg.
-        /// </summary>
-        public string? JellyfinFFmpegPath => _jellyfinFFmpegPath;
-
-        /// <summary>
-        /// Get the path to the whisper binary.
-        /// </summary>
+        /// <summary>Gets the path where the binary is expected to live in the cache.</summary>
         public string BinaryPath => _binaryPath;
 
-        /// <summary>
-        /// Check if whisper.cpp binary is available.
-        /// </summary>
+        /// <summary>Gets the detected GPU type string, or null for CPU-only.</summary>
+        public string? DetectedGPUType => _detectedGPUType;
+
+        /// <summary>Gets Jellyfin's bundled FFmpeg path, if found.</summary>
+        public string? JellyfinFFmpegPath => _jellyfinFFmpegPath;
+
+        /// <summary>Returns true if the binary is present and executable in the cache.</summary>
         public bool IsBinaryAvailable()
         {
             if (!File.Exists(_binaryPath))
@@ -277,301 +93,45 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
                 return false;
             }
 
-            // Check if file is executable (Unix)
-            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            {
-                try
-                {
-                    var fileInfo = new FileInfo(_binaryPath);
-                    var unixFileMode = (int)fileInfo.UnixFileMode;
-                    var isExecutable = (unixFileMode & 0x49) != 0; // Check if any execute bit is set
-                    
-                    if (!isExecutable)
-                    {
-                        _logger.LogWarning("Whisper binary exists but is not executable");
-                        MakeExecutable(_binaryPath);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Could not check executable permissions");
-                }
-            }
-
+            EnsureExecutable(_binaryPath);
             _logger.LogInformation("Whisper binary found at {Path}", _binaryPath);
             return true;
         }
 
         /// <summary>
-/// Extracts the bundled binary from the dynamic plugin directory to the cache.
-/// </summary>
-public async Task<bool> DownloadBinaryAsync(CancellationToken cancellationToken = default)
-{
-    try
-    {
-        _logger.LogInformation("Starting manual binary deployment from plugin directory...");
-
-        var bundledBinaryPath = FindBundledBinary();
-        
-        if (string.IsNullOrEmpty(bundledBinaryPath))
-        {
-            // If we can't find it bundled, we log a very specific error helping the user
-            _logger.LogError("Engine binary not found in plugin subfolders. Expected to find it in the 'whisper/{Platform}' directory of the plugin installation.", GetPlatformString());
-            return false;
-        }
-
-        // Ensure target directory exists
-        var binDir = Path.GetDirectoryName(_binaryPath);
-        if (!Directory.Exists(binDir))
-        {
-            Directory.CreateDirectory(binDir!);
-        }
-
-        // Copy and Rename: 'main' (from zip) -> 'whisper-cli' (expected by service)
-        _logger.LogInformation("Deploying engine: Copying {Source} to {Destination}", bundledBinaryPath, _binaryPath);
-        File.Copy(bundledBinaryPath, _binaryPath, overwrite: true);
-
-        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-        {
-            MakeExecutable(_binaryPath);
-        }
-
-        return await TestBinaryAsync(cancellationToken);
-    }
-    catch (Exception ex)
-    {
-        _logger.LogError(ex, "Failed to deploy bundled whisper binary");
-        return false;
-    }
-}
-
-private string? FindBundledBinary()
-{
-    // 1. Get the directory where THIS DLL is actually sitting
-    // This handles the "Whisper Subtitles_0.0.0.53" versioning automatically
-    var assemblyLocation = typeof(WhisperBinaryManager).Assembly.Location;
-    var currentPluginFolder = Path.GetDirectoryName(assemblyLocation);
-
-    if (string.IsNullOrEmpty(currentPluginFolder)) return null;
-
-    // 2. Determine platform (linux-x64, linux-arm64, etc.)
-    var platform = GetPlatformString();
-    
-    // 3. Construct the search paths
-    // Search both the local 'whisper' folder and the one in the zip structure
-    var possibleFolders = new[]
-    {
-        Path.Combine(currentPluginFolder, "whisper", platform),
-        Path.Combine(currentPluginFolder, platform) // fallback
-    };
-
-    var binaryNames = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) 
-        ? new[] { "whisper-cli.exe", "main.exe" } 
-        : new[] { "whisper-cli", "main" };
-
-    foreach (var folder in possibleFolders)
-    {
-        if (!Directory.Exists(folder)) continue;
-
-        foreach (var name in binaryNames)
-        {
-            var fullPath = Path.Combine(folder, name);
-            if (File.Exists(fullPath))
-            {
-                _logger.LogInformation("Located bundled binary: {Path}", fullPath);
-                return fullPath;
-            }
-        }
-    }
-
-    return null;
-}
-
-        /// <summary>
-        /// Stub: Build from source no longer supported.
+        /// Deploys the bundled binary from the plugin's installation directory into the cache.
+        /// This is the only "download" path — we ship the binary, we just need to copy it.
         /// </summary>
-        private Task<bool> TryBuildFromSourceAsync(CancellationToken cancellationToken)
+        public async Task<bool> DownloadBinaryAsync(CancellationToken cancellationToken = default)
         {
-            return Task.FromResult(false);
-        }
-
-        /// <summary>
-        /// Stub: Build script execution no longer supported.
-        /// </summary>
-        private Task<bool> RunBuildScriptAsync(string scriptPath, bool useSudo, CancellationToken cancellationToken)
-        {
-            return Task.FromResult(false);
-        }
-
-        /// <summary>
-        /// Get platform string for download URL.
-        /// </summary>
-        private string GetPlatformString()
-        {
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-            {
-                if (RuntimeInformation.ProcessArchitecture == Architecture.X64)
-                    return "linux-x64";
-                if (RuntimeInformation.ProcessArchitecture == Architecture.Arm64)
-                    return "linux-arm64";
-            }
-            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            {
-                if (RuntimeInformation.ProcessArchitecture == Architecture.X64)
-                    return "windows-x64";
-            }
-            else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-            {
-                if (RuntimeInformation.ProcessArchitecture == Architecture.X64)
-                    return "macos-x64";
-                if (RuntimeInformation.ProcessArchitecture == Architecture.Arm64)
-                    return "macos-arm64";
-            }
-
-            return "unknown";
-        }
-
-        /// <summary>
-        /// Get download URL for whisper.cpp binary.
-        /// Supports official whisper.cpp releases and community-provided precompiled binaries.
-        /// </summary>
-        private string? GetDownloadUrl(string platform)
-        {
-            // Try multiple sources for precompiled binaries
-            // Primary: Official whisper.cpp releases (Windows only)
-            // Fallback: Community-provided binaries via direct URLs
-            // Last resort: Build from source (returns null to trigger build)
-
-            if (platform == "windows-x64")
-            {
-                // Windows: Official whisper.cpp releases
-                var version = "v1.8.2";
-                var baseUrl = $"https://github.com/ggml-org/whisper.cpp/releases/download/{version}";
-                return $"{baseUrl}/whisper-bin-x64.zip";
-            }
-            else if (platform == "linux-x64" || platform == "linux-arm64")
-            {
-                // Linux: Provide direct link to community-built binaries if available
-                // For now, return null to trigger build from source (preferred for GPU support)
-                // Users can also install pre-built packages or build manually
-                _logger.LogInformation("No precompiled binary available for {Platform}. Will attempt to build from source or recommend manual installation.", platform);
-                return null;
-            }
-            else if (platform == "macos-x64" || platform == "macos-arm64")
-            {
-                // macOS: Also requires building from source for best compatibility
-                return null;
-            }
-
-            _logger.LogWarning("Unknown platform: {Platform}", platform);
-            return null;
-        }
-
-        /// <summary>
-        /// Extract zip archive.
-        /// </summary>
-        private async Task ExtractZipAsync(string zipPath, string extractPath, CancellationToken cancellationToken)
-        {
-            await Task.Run(() =>
-            {
-                using var archive = ZipFile.OpenRead(zipPath);
-                
-                foreach (var entry in archive.Entries)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-
-                    // Look for the executable in the archive (e.g., whisper-cli or main)
-                    if (entry.FullName.Contains("whisper-cli") && 
-                        (entry.FullName.EndsWith("whisper-cli") || entry.FullName.EndsWith("whisper-cli.exe")))
-                    {
-                        var destinationPath = Path.Combine(extractPath, Path.GetFileName(entry.FullName));
-                        
-                        _logger.LogInformation("Extracting {Entry} to {Destination}", entry.FullName, destinationPath);
-                        
-                        if (File.Exists(destinationPath))
-                        {
-                            File.Delete(destinationPath);
-                        }
-                        
-                        entry.ExtractToFile(destinationPath, true);
-                    }    
-                    else if (entry.FullName.Contains("main") && 
-                        (entry.FullName.EndsWith("main") || entry.FullName.EndsWith("main.exe")))
-                    {
-                        var destinationPath = Path.Combine(extractPath, Path.GetFileName(entry.FullName));
-                        
-                        _logger.LogInformation("Extracting {Entry} to {Destination}", entry.FullName, destinationPath);
-                        
-                        if (File.Exists(destinationPath))
-                        {
-                            File.Delete(destinationPath);
-                        }
-                        
-                        entry.ExtractToFile(destinationPath, true);
-                    }
-                }
-            }, cancellationToken);
-        }
-
-        /// <summary>
-        /// Make file executable on Unix systems.
-        /// </summary>
-        private void MakeExecutable(string filePath)
-        {
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                return;
-
             try
             {
-                // Use chmod command to make executable
-                var process = new Process
-                {
-                    StartInfo = new ProcessStartInfo
-                    {
-                        FileName = "chmod",
-                        Arguments = $"+x \"{filePath}\"",
-                        RedirectStandardOutput = true,
-                        RedirectStandardError = true,
-                        UseShellExecute = false,
-                        CreateNoWindow = true
-                    }
-                };
+                _logger.LogInformation("Deploying bundled whisper binary from plugin directory...");
 
-                process.Start();
-                process.WaitForExit();
+                var source = FindBundledBinary();
+                if (source is null)
+                {
+                    _logger.LogError(
+                        "Bundled binary not found inside plugin folder. " +
+                        "Expected '{Name}' inside whisper/{Platform}/ sub-directory.",
+                        BundledBinaryName, GetPlatformString());
+                    return false;
+                }
 
-                if (process.ExitCode == 0)
-                {
-                    _logger.LogInformation("Made {Path} executable", filePath);
-                }
-                else
-                {
-                    _logger.LogWarning("chmod failed with exit code {Code}", process.ExitCode);
-                }
+                _logger.LogInformation("Copying {Source} → {Dest}", source, _binaryPath);
+                File.Copy(source, _binaryPath, overwrite: true);
+                EnsureExecutable(_binaryPath);
+
+                return await TestBinaryAsync(cancellationToken);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to make file executable");
-                
-                // Fallback: try using FileInfo.UnixFileMode (requires .NET 7+)
-                try
-                {
-                    var fileInfo = new FileInfo(filePath);
-                    fileInfo.UnixFileMode = UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute |
-                                           UnixFileMode.GroupRead | UnixFileMode.GroupExecute |
-                                           UnixFileMode.OtherRead | UnixFileMode.OtherExecute;
-                    _logger.LogInformation("Set executable permissions using UnixFileMode");
-                }
-                catch (Exception ex2)
-                {
-                    _logger.LogError(ex2, "Failed to set UnixFileMode");
-                }
+                _logger.LogError(ex, "Failed to deploy bundled whisper binary");
+                return false;
             }
         }
 
-        /// <summary>
-        /// Test if the binary works.
-        /// </summary>
+        /// <summary>Runs the binary with --help to verify it starts correctly.</summary>
         public async Task<bool> TestBinaryAsync(CancellationToken cancellationToken = default)
         {
             if (!IsBinaryAvailable())
@@ -579,65 +139,266 @@ private string? FindBundledBinary()
 
             try
             {
-                var process = new Process
+                using var process = Process.Start(new ProcessStartInfo
                 {
-                    StartInfo = new ProcessStartInfo
-                    {
-                        FileName = _binaryPath,
-                        Arguments = "--help",
-                        RedirectStandardOutput = true,
-                        RedirectStandardError = true,
-                        UseShellExecute = false,
-                        CreateNoWindow = true
-                    }
-                };
+                    FileName               = _binaryPath,
+                    Arguments              = "--help",
+                    RedirectStandardOutput = true,
+                    RedirectStandardError  = true,
+                    UseShellExecute        = false,
+                    CreateNoWindow         = true
+                })!;
 
-                process.Start();
                 await process.WaitForExitAsync(cancellationToken);
 
-                var success = process.ExitCode == 0;
-                _logger.LogInformation("Binary test {Result}", success ? "passed" : "failed");
-                
+                // whisper-cli --help exits with 0; some versions exit 1 but still print usage.
+                // Accept both — what matters is it ran without an OS-level failure.
+                var success = process.ExitCode == 0 || process.ExitCode == 1;
+                _logger.LogInformation("Binary test {Result} (exit code {Code})",
+                    success ? "passed" : "FAILED", process.ExitCode);
                 return success;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to test whisper binary");
+                _logger.LogError(ex, "Exception while testing whisper binary");
                 return false;
             }
         }
 
+        // ── Private helpers ────────────────────────────────────────────────────
+
         /// <summary>
-        /// Dispose resources.
+        /// Locates the bundled binary inside the plugin's own installation folder.
+        /// Uses the assembly location so version-stamped folder names are handled automatically.
         /// </summary>
+        private string? FindBundledBinary()
+        {
+            // Assembly.Location gives us the path of THIS dll, which lives in the
+            // versioned plugin folder, e.g.:
+            //   /config/plugins/Whisper Subtitles_0.0.0.57/Jellyfin.Plugin.WhisperSubtitles.dll
+            var assemblyDir = Path.GetDirectoryName(
+                typeof(WhisperBinaryManager).Assembly.Location);
+
+            if (string.IsNullOrEmpty(assemblyDir))
+            {
+                _logger.LogError("Could not determine assembly directory");
+                return null;
+            }
+
+            var platform = GetPlatformString();
+
+            // Primary layout produced by make-release.sh / build.yaml:
+            //   <plugin-dir>/whisper/<platform>/whisper-whisper-cli
+            var candidate = Path.Combine(assemblyDir, "whisper", platform, BundledBinaryName);
+            _logger.LogDebug("Looking for bundled binary at: {Path}", candidate);
+
+            if (File.Exists(candidate))
+            {
+                _logger.LogInformation("Located bundled binary: {Path}", candidate);
+                return candidate;
+            }
+
+            // Fallback: flat layout
+            candidate = Path.Combine(assemblyDir, platform, BundledBinaryName);
+            _logger.LogDebug("Fallback path: {Path}", candidate);
+
+            if (File.Exists(candidate))
+            {
+                _logger.LogInformation("Located bundled binary (fallback): {Path}", candidate);
+                return candidate;
+            }
+
+            return null;
+        }
+
+        private string GetPlatformString()
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            {
+                return RuntimeInformation.ProcessArchitecture switch
+                {
+                    Architecture.X64   => "linux-x64",
+                    Architecture.Arm64 => "linux-arm64",
+                    _                  => "linux-x64"
+                };
+            }
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                return "windows-x64";
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            {
+                return RuntimeInformation.ProcessArchitecture switch
+                {
+                    Architecture.Arm64 => "macos-arm64",
+                    _                  => "macos-x64"
+                };
+            }
+            return "linux-x64"; // safe default for Docker
+        }
+
+        private static void EnsureExecutable(string filePath)
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                return;
+
+            try
+            {
+                var fi = new FileInfo(filePath);
+                // Set rwxr-xr-x
+                fi.UnixFileMode =
+                    UnixFileMode.UserRead  | UnixFileMode.UserWrite  | UnixFileMode.UserExecute  |
+                    UnixFileMode.GroupRead |                            UnixFileMode.GroupExecute |
+                    UnixFileMode.OtherRead |                            UnixFileMode.OtherExecute;
+            }
+            catch
+            {
+                // Fallback to chmod subprocess
+                try
+                {
+                    using var p = Process.Start(new ProcessStartInfo
+                    {
+                        FileName  = "chmod",
+                        Arguments = $"+x \"{filePath}\"",
+                        UseShellExecute = false,
+                        CreateNoWindow  = true
+                    });
+                    p?.WaitForExit();
+                }
+                catch { /* best-effort */ }
+            }
+        }
+
+        // ── GPU detection ──────────────────────────────────────────────────────
+
+        private string? DetectGPU()
+        {
+            if (CheckNvidiaGPU())  return "cuda";
+            if (CheckVulkanGPU())  return "vulkan";
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) return "metal";
+            return null;
+        }
+
+        private bool CheckNvidiaGPU()
+        {
+            try
+            {
+                using var p = Process.Start(new ProcessStartInfo
+                {
+                    FileName               = "nvidia-smi",
+                    Arguments              = "--query-gpu=name --format=csv,noheader",
+                    RedirectStandardOutput = true,
+                    RedirectStandardError  = true,
+                    UseShellExecute        = false,
+                    CreateNoWindow         = true
+                });
+                if (p is null) return false;
+                var output = p.StandardOutput.ReadToEnd();
+                p.WaitForExit();
+                if (p.ExitCode == 0 && !string.IsNullOrWhiteSpace(output))
+                {
+                    _logger.LogInformation("NVIDIA GPU detected: {GPU}", output.Trim());
+                    return true;
+                }
+            }
+            catch { /* nvidia-smi not present */ }
+            return false;
+        }
+
+        private bool CheckVulkanGPU()
+        {
+            try
+            {
+                using var p = Process.Start(new ProcessStartInfo
+                {
+                    FileName               = "vulkaninfo",
+                    Arguments              = "--summary",
+                    RedirectStandardOutput = true,
+                    RedirectStandardError  = true,
+                    UseShellExecute        = false,
+                    CreateNoWindow         = true
+                });
+                if (p is null) return false;
+                var output = p.StandardOutput.ReadToEnd();
+                p.WaitForExit();
+                if (p.ExitCode == 0 && output.Contains("deviceName"))
+                {
+                    _logger.LogInformation("Vulkan GPU detected");
+                    return true;
+                }
+            }
+            catch { /* vulkaninfo not present */ }
+            return false;
+        }
+
+        // ── FFmpeg discovery ───────────────────────────────────────────────────
+
+        private string? FindJellyfinFFmpeg()
+        {
+            var candidates = new[]
+            {
+                "/usr/lib/jellyfin-ffmpeg/ffmpeg",
+                "/usr/lib/jellyfin-ffmpeg5/ffmpeg",
+                "/usr/lib/jellyfin-ffmpeg6/ffmpeg",
+                "/jellyfin/ffmpeg",
+                "/config/ffmpeg/ffmpeg",
+                "ffmpeg"
+            };
+
+            foreach (var path in candidates)
+            {
+                try
+                {
+                    if (File.Exists(path))
+                    {
+                        _logger.LogInformation("Found Jellyfin FFmpeg: {Path}", path);
+                        return path;
+                    }
+                }
+                catch { /* permission errors on some paths */ }
+            }
+
+            // Try `which ffmpeg`
+            try
+            {
+                using var p = Process.Start(new ProcessStartInfo
+                {
+                    FileName               = "which",
+                    Arguments              = "ffmpeg",
+                    RedirectStandardOutput = true,
+                    UseShellExecute        = false,
+                    CreateNoWindow         = true
+                });
+                if (p is not null)
+                {
+                    var result = p.StandardOutput.ReadToEnd().Trim();
+                    p.WaitForExit();
+                    if (!string.IsNullOrEmpty(result) && File.Exists(result))
+                    {
+                        _logger.LogInformation("Found FFmpeg via which: {Path}", result);
+                        return result;
+                    }
+                }
+            }
+            catch { /* which not available */ }
+
+            _logger.LogWarning("FFmpeg not found; whisper.cpp will use built-in audio handling");
+            return null;
+        }
+
+        // ── IDisposable ────────────────────────────────────────────────────────
+
         public void Dispose()
         {
             Dispose(true);
             GC.SuppressFinalize(this);
         }
 
-        /// <summary>
-        /// Dispose resources.
-        /// </summary>
         protected virtual void Dispose(bool disposing)
         {
-            if (_disposed)
-                return;
-
-            if (disposing)
-            {
-                _httpClient?.Dispose();
-            }
-
+            if (_disposed) return;
+            if (disposing) _httpClient?.Dispose();
             _disposed = true;
         }
 
-        /// <summary>
-        /// Finalizer.
-        /// </summary>
-        ~WhisperBinaryManager()
-        {
-            Dispose(false);
-        }
+        ~WhisperBinaryManager() => Dispose(false);
     }
 }

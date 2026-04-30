@@ -1,11 +1,9 @@
 using System;
 using System.IO;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Jellyfin.Plugin.WhisperSubtitles.Configuration;
 using Jellyfin.Plugin.WhisperSubtitles.Services;
-using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Library;
 using MediaBrowser.Model.Tasks;
 using Microsoft.Extensions.Logging;
@@ -13,8 +11,7 @@ using Microsoft.Extensions.Logging;
 namespace Jellyfin.Plugin.WhisperSubtitles.Tasks
 {
     /// <summary>
-    /// Library post-scan task. This runs after a library scan completes and can optionally
-    /// generate subtitles for newly added media.
+    /// Runs after a library scan and optionally generates subtitles for new media.
     /// </summary>
     public class WhisperPostScanTask : ILibraryPostScanTask
     {
@@ -24,36 +21,23 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Tasks
         private readonly IWhisperService _whisperService;
         private readonly ISubtitleDetectionService _subtitleDetectionService;
 
-        /// <summary>
-        /// Initializes a new instance of the <see cref="WhisperPostScanTask"/> class.
-        /// </summary>
-        /// <param name="libraryManager">Library manager instance.</param>
-        /// <param name="logger">Logger instance.</param>
-        /// <param name="loggerFactory">Logger factory for creating service loggers.</param>
         public WhisperPostScanTask(
             ILibraryManager libraryManager,
             ILogger<WhisperPostScanTask> logger,
             ILoggerFactory loggerFactory)
         {
-            _libraryManager = libraryManager;
-            _logger = logger;
-            _loggerFactory = loggerFactory;
-            
-            // Create service instances directly since Jellyfin 10.11 doesn't support plugin DI registration
-            _whisperService = new WhisperService(_loggerFactory.CreateLogger<WhisperService>());
+            _libraryManager  = libraryManager;
+            _logger          = logger;
+            _loggerFactory   = loggerFactory;
+
+            _whisperService           = new WhisperService(_loggerFactory.CreateLogger<WhisperService>());
             _subtitleDetectionService = new SubtitleDetectionService(_loggerFactory.CreateLogger<SubtitleDetectionService>());
         }
 
-        /// <inheritdoc />
-        public string Name => "Whisper Post-Scan Processor";
-
-        /// <inheritdoc />
-        public string Key => "WhisperPostScan";
-
-        /// <inheritdoc />
+        public string Name        => "Whisper Post-Scan Processor";
+        public string Key         => "WhisperPostScan";
         public string Description => "Generates subtitles for newly scanned media when enabled in plugin configuration.";
 
-        /// <inheritdoc />
         public async Task Run(IProgress<double> progress, CancellationToken cancellationToken)
         {
             var config = Plugin.Instance?.Configuration ?? new PluginConfiguration();
@@ -64,12 +48,17 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Tasks
                 return;
             }
 
-            _logger.LogInformation("Whisper post-scan starting. Scanning for new media...");
+            _logger.LogInformation("Whisper post-scan starting...");
 
-            // Find recently added items (use library manager's LastScan property)
-            var items = _libraryManager.GetItemList(new InternalItemsQuery
+            // Include Video so Home Video libraries are covered
+            var items = _libraryManager.GetItemList(new MediaBrowser.Controller.Entities.InternalItemsQuery
             {
-                IncludeItemTypes = new[] { Jellyfin.Data.Enums.BaseItemKind.Movie, Jellyfin.Data.Enums.BaseItemKind.Episode },
+                IncludeItemTypes = new[]
+                {
+                    Jellyfin.Data.Enums.BaseItemKind.Movie,
+                    Jellyfin.Data.Enums.BaseItemKind.Episode,
+                    Jellyfin.Data.Enums.BaseItemKind.Video
+                },
                 Recursive = true
             });
 
@@ -85,23 +74,22 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Tasks
                 {
                     var path = item.Path;
                     if (string.IsNullOrEmpty(path) || !File.Exists(path))
+                        continue;
+
+                    if (_subtitleDetectionService.HasSubtitles(
+                            path, config.TargetLanguage, config.AIIdentifier) && !config.RegenerateAI)
                     {
+                        _logger.LogDebug("Skipping {Path} — subtitle already present", path);
                         continue;
                     }
 
-                    if (_subtitleDetectionService.HasSubtitles(path, config.TargetLanguage, config.AIIdentifier) && !config.RegenerateAI)
-                    {
-                        _logger.LogDebug("Skipping {Path}, subtitles already present", path);
-                        continue;
-                    }
+                    var subtitlePath = _subtitleDetectionService.GetSubtitlePath(
+                        path, config.TargetLanguage, config.AIIdentifier, "srt");
 
-                    var subtitlePath = _subtitleDetectionService.GetSubtitlePath(path, config.TargetLanguage, config.AIIdentifier, "srt");
-
-                    _logger.LogInformation("Generating subtitles for new item: {Path}", path);
+                    _logger.LogInformation("Post-scan: generating subtitles for {Path}", path);
 
                     await _whisperService.GenerateSubtitleAsync(
-                        path,
-                        subtitlePath,
+                        path, subtitlePath,
                         config.WhisperModel.ToString(),
                         config.TargetLanguage,
                         config.TranslateToEnglish,
@@ -110,11 +98,11 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Tasks
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error generating subtitles during post-scan for {Item}", item.Path);
+                    _logger.LogError(ex, "Error during post-scan subtitle generation for {Item}", item.Path);
                 }
             }
 
-            _logger.LogInformation("Whisper post-scan processing complete.");
+            _logger.LogInformation("Whisper post-scan complete.");
         }
     }
 }

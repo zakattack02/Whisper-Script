@@ -25,16 +25,28 @@
                                 <span>Download Selected Model</span>
                             </button>
                         </div>
-                        <div id="binaryInstructions" style="padding: 15px; margin-top: 15px; border-radius: 4px; background-color: rgba(255, 152, 0, 0.2); color: #ff9800; border-left: 4px solid #ff9800;">
+
+                        <!-- Hidden by default; shown only when binary is missing -->
+                        <div id="binaryInstructions" style="display: none; padding: 15px; margin-top: 15px; border-radius: 4px; background-color: rgba(255, 152, 0, 0.2); color: #ff9800; border-left: 4px solid #ff9800;">
                             <div style="font-weight: bold; margin-bottom: 10px;">⚠ Whisper Binary Setup Required</div>
-                            <div style="margin-bottom: 8px;">The whisper-cli binary is bundled with the plugin but must be manually copied to the cache directory:</div>
+                            <div style="margin-bottom: 8px;">The whisper-whisper-cli binary is bundled with the plugin but must be deployed to the cache directory. Click <strong>Install Binary</strong> below, or run manually:</div>
                             <div style="font-family: monospace; background-color: rgba(0, 0, 0, 0.3); padding: 10px; margin-bottom: 8px; border-radius: 3px;">
-                                # Copy binary from plugin directory to cache<br/>
-                                sudo cp ~/.config/jellyfin/plugins/Whisper\ Subtitles_*/whisper/linux-x64/whisper-cli ~/.cache/whisper-cpp/<br/>
-                                sudo chmod +x ~/.cache/whisper-cpp/whisper-cli
+                                sudo cp ~/.config/jellyfin/plugins/Whisper\ Subtitles_*/whisper/linux-x64/whisper-whisper-cli ~/.cache/whisper-cpp/<br/>
+                                sudo chmod +x ~/.cache/whisper-cpp/whisper-whisper-cli
                             </div>
-                            <div style="font-size: 0.9em; color: #b39ddb;">Replace <span style="font-family: monospace;">~/.config/jellyfin</span> with your Jellyfin config path if different. Adjust paths for macOS (~/Library) or Windows (AppData\\Roaming\\Jellyfin).</div>
+                            <div style="margin-top: 10px;">
+                                <button is="emby-button" type="button" id="InstallBinaryButton" class="raised emby-button">
+                                    <span>Install Binary</span>
+                                </button>
+                            </div>
+                            <div style="font-size: 0.9em; color: #b39ddb; margin-top: 8px;">Replace <span style="font-family: monospace;">~/.config/jellyfin</span> with your Jellyfin config path if different.</div>
                         </div>
+
+                        <!-- Shown when binary is confirmed present -->
+                        <div id="binaryOk" style="display: none; padding: 10px; margin-top: 15px; border-radius: 4px; background-color: rgba(0, 200, 83, 0.15); color: #00c853; border-left: 4px solid #00c853;">
+                            ✓ Whisper binary is installed and ready.
+                        </div>
+
                         <div id="downloadStatus" class="fieldDescription" style="display: none; padding: 10px; margin-top: 10px; border-radius: 4px;"></div>
                     </div>
 
@@ -98,7 +110,7 @@
                         <div class="fieldDescription">Use CUDA/Vulkan for faster processing (requires compatible GPU)</div>
                     </div>
 
-                    <h3 style="margin-top: 30px;">Library & Folder Selection</h3>
+                    <h3 style="margin-top: 30px;">Library &amp; Folder Selection</h3>
 
                     <div style="margin-bottom: 20px;">
                         <label style="display: block; margin-bottom: 10px; font-weight: bold;">Libraries to Process</label>
@@ -111,7 +123,7 @@
                     <div style="margin-bottom: 20px;">
                         <label class="inputLabel" for="FoldersToExclude">Folders to Exclude</label>
                         <textarea is="emby-input" id="FoldersToExclude" name="FoldersToExclude" class="emby-input" style="height: 150px; width: 100%; padding: 8px; border: 1px solid #555; border-radius: 4px; font-family: monospace; box-sizing: border-box;"></textarea>
-                        <div class="fieldDescription">Enter folder paths to exclude, one per line (e.g., /path/to/folder). Use wildcards if supported by your system.</div>
+                        <div class="fieldDescription">Enter folder paths to exclude, one per line.</div>
                     </div>
 
                     <div>
@@ -124,176 +136,178 @@
         </div>
 
         <script type="text/javascript">
-            (function() {
+            (function () {
                 'use strict';
-                
+
                 var WhisperSubtitlesConfig = {
                     pluginUniqueId: 'a8b7c6d5-e4f3-4a5b-9c8d-7e6f5a4b3c2d'
                 };
 
                 var configPage = document.getElementById('WhisperSubtitlesConfigPage');
-                
+
+                /// ── Binary status ──────────────────────────────────────────────
+
+function setBinaryStatus(isReady) {
+    // Only show binaryInstructions if no binary is found (isReady is false)
+    document.getElementById('binaryInstructions').style.display = isReady ? 'none' : 'block';
+    
+    // Always keep binaryOk hidden to meet the "only show instructions if missing" requirement
+    // or you can set it to 'none' to ensure it never pops up and clutters the UI.
+    document.getElementById('binaryOk').style.display = 'none';
+}
+
+function checkBinaryStatus() {
+    if (typeof ApiClient === 'undefined') return;
+
+    ApiClient.fetch({
+        type: 'GET',
+        url: ApiClient.getUrl('api/WhisperSubtitles/BinaryStatus')
+    }).then(function (response) {
+        // resolves with the parsed JSON body
+        setBinaryStatus(response && response.IsReady === true);
+    }).catch(function () {
+        // If the endpoint fails (binary definitely missing or API error), show the warning
+        setBinaryStatus(false);
+    });
+}
+
+                // ── Config load / save ─────────────────────────────────────────
+
                 function loadConfig() {
-                    console.log('[WhisperSubtitles] Loading configuration...');
-                    
-                    if (typeof ApiClient === 'undefined') {
-                        console.error('[WhisperSubtitles] ApiClient not available');
-                        return;
-                    }
-                    
+                    if (typeof ApiClient === 'undefined') return;
+
                     Dashboard.showLoadingMsg();
-                    
-                    ApiClient.getPluginConfiguration(WhisperSubtitlesConfig.pluginUniqueId).then(function(config) {
-                        console.log('[WhisperSubtitles] Config loaded:', config);
-                        
-                        document.getElementById('WhisperModel').value = config.WhisperModel || 'Small';
-                        document.getElementById('TargetLanguage').value = config.TargetLanguage || 'en';
-                        document.getElementById('AIIdentifier').value = config.AIIdentifier || 'whisper';
-                        document.getElementById('TranslateToEnglish').checked = config.TranslateToEnglish !== false;
-                        document.getElementById('WordTimestamps').checked = config.WordTimestamps || false;
-                        document.getElementById('ProcessOnLibraryScan').checked = config.ProcessOnLibraryScan || false;
-                        document.getElementById('SkipExisting').checked = config.SkipExisting !== false;
-                        document.getElementById('RegenerateAI').checked = config.RegenerateAI || false;
-                        document.getElementById('UseGPUAcceleration').checked = config.UseGPUAcceleration || false;
-                        
-                        // Load folders to exclude
+
+                    ApiClient.getPluginConfiguration(WhisperSubtitlesConfig.pluginUniqueId).then(function (config) {
+                        document.getElementById('WhisperModel').value            = config.WhisperModel || 'Small';
+                        document.getElementById('TargetLanguage').value          = config.TargetLanguage || 'en';
+                        document.getElementById('AIIdentifier').value            = config.AIIdentifier || 'whisper';
+                        document.getElementById('TranslateToEnglish').checked    = config.TranslateToEnglish || false;
+                        document.getElementById('WordTimestamps').checked         = config.WordTimestamps || false;
+                        document.getElementById('ProcessOnLibraryScan').checked   = config.ProcessOnLibraryScan || false;
+                        document.getElementById('SkipExisting').checked           = config.SkipExisting !== false;
+                        document.getElementById('RegenerateAI').checked           = config.RegenerateAI || false;
+                        document.getElementById('UseGPUAcceleration').checked     = config.UseGPUAcceleration || false;
+
                         var foldersToExclude = config.FoldersToExclude || [];
                         document.getElementById('FoldersToExclude').value = foldersToExclude.join('\n');
-                        
-                        // Load libraries to process
+
                         loadLibraries(config.LibrariesToProcess || []);
-                        
                         Dashboard.hideLoadingMsg();
-                    }).catch(function(error) {
+                    }).catch(function (error) {
                         console.error('[WhisperSubtitles] Error loading config:', error);
                         Dashboard.hideLoadingMsg();
                     });
                 }
 
                 function loadLibraries(selectedLibraries) {
-    if (typeof ApiClient === 'undefined') {
-        console.error('[WhisperSubtitles] ApiClient not available for loading libraries');
-        return;
-    }
-    
-    // Ensure selectedLibraries is an array to prevent .indexOf crashes
-    selectedLibraries = selectedLibraries || [];
+                    if (typeof ApiClient === 'undefined') return;
+                    selectedLibraries = selectedLibraries || [];
 
-    ApiClient.getVirtualFolders().then(function(librariesResponse) {
-        var container = document.getElementById('LibrariesToProcessContainer');
-        if (!container) return;
-        container.innerHTML = '';
-        
-        // getVirtualFolders usually returns the array directly. 
-        // We handle both cases (direct array or .Items wrapper) for compatibility.
-        var folders = Array.isArray(librariesResponse) ? librariesResponse : (librariesResponse.Items || []);
-        
-        // Filter out non-video libraries (optional but recommended)
-        var videoFolders = folders.filter(function(f) {
-            return f.CollectionType === 'movies' || f.CollectionType === 'tvshows' || f.CollectionType === 'homevideos';
+                    ApiClient.getJSON(ApiClient.getUrl('Library/VirtualFolders')).then(function (folders) {
+                    var container = document.getElementById('LibrariesToProcessContainer');
+                    if (!container) return;
+                    container.innerHTML = '';
+
+        // Filter for video-based collection types
+        var videoFolders = folders.filter(function (f) {
+            return f.CollectionType === 'movies' || 
+                   f.CollectionType === 'tvshows' || 
+                   f.CollectionType === 'homevideos';
         });
 
         if (videoFolders.length === 0) {
-            container.innerHTML = '<p style="color: #888; text-align: center; margin: 10px 0;">No media libraries found</p>';
+            container.innerHTML = '<p style="color:#888;text-align:center;margin:10px 0;">No media folders found</p>';
             return;
         }
-        
-        videoFolders.forEach(function(library) {
+
+        videoFolders.forEach(function (library) {
             var label = document.createElement('label');
-            label.className = 'checkboxContainer'; // Use Jellyfin's standard class if possible
+            label.className = 'checkboxContainer';
             label.style.display = 'block';
             label.style.padding = '5px 0';
-            
+
             var checkbox = document.createElement('input');
             checkbox.type = 'checkbox';
-            checkbox.id = 'lib_' + library.ItemId; // Note: Virtual folders use ItemId or Id depending on version
+            checkbox.id = 'lib_' + library.ItemId;
             checkbox.className = 'library-checkbox';
-            checkbox.value = library.ItemId || library.Id;
-            checkbox.checked = selectedLibraries.indexOf(checkbox.value) !== -1;
             
-            // Append elements
+            // value MUST be library.ItemId to match the C# backend checks
+            checkbox.value = library.ItemId;
+            checkbox.checked = selectedLibraries.indexOf(library.ItemId) !== -1;
+
+            // Display the library name and its primary physical location
+            var pathDisplay = (library.Locations && library.Locations.length > 0) 
+                ? ' (' + library.Locations[0] + ')' 
+                : '';
+            var displayName = (library.Name || 'Unknown Library') + pathDisplay;
+
             label.appendChild(checkbox);
-            label.appendChild(document.createTextNode(' ' + (library.Name || 'Unknown Library')));
-            
+            label.appendChild(document.createTextNode(' ' + displayName));
             container.appendChild(label);
         });
-    }).catch(function(error) {
-        console.error('[WhisperSubtitles] Error loading libraries:', error);
+    }).catch(function (error) {
+        console.error('[WhisperSubtitles] Error loading virtual folders:', error);
         var container = document.getElementById('LibrariesToProcessContainer');
         if (container) {
-            container.innerHTML = '<p style="color: #f44336; text-align: center; margin: 10px 0;">Error loading libraries</p>';
+            container.innerHTML = '<p style="color:#f44336;text-align:center;margin:10px 0;">Error loading folders</p>';
         }
     });
-}
+}    
 
                 function saveConfig(e) {
                     e.preventDefault();
-                    console.log('[WhisperSubtitles] Saving configuration...');
-                    
-                    if (typeof ApiClient === 'undefined') {
-                        console.error('[WhisperSubtitles] ApiClient not available');
-                        return false;
-                    }
-                    
+                    if (typeof ApiClient === 'undefined') return false;
+
                     Dashboard.showLoadingMsg();
-                    
-                    ApiClient.getPluginConfiguration(WhisperSubtitlesConfig.pluginUniqueId).then(function(config) {
-                        config.WhisperModel = document.getElementById('WhisperModel').value;
-                        config.TargetLanguage = document.getElementById('TargetLanguage').value;
-                        config.AIIdentifier = document.getElementById('AIIdentifier').value;
-                        config.TranslateToEnglish = document.getElementById('TranslateToEnglish').checked;
-                        config.WordTimestamps = document.getElementById('WordTimestamps').checked;
-                        config.ProcessOnLibraryScan = document.getElementById('ProcessOnLibraryScan').checked;
-                        config.SkipExisting = document.getElementById('SkipExisting').checked;
-                        config.RegenerateAI = document.getElementById('RegenerateAI').checked;
-                        config.UseGPUAcceleration = document.getElementById('UseGPUAcceleration').checked;
-                        
-                        // Save selected libraries
+
+                    ApiClient.getPluginConfiguration(WhisperSubtitlesConfig.pluginUniqueId).then(function (config) {
+                        config.WhisperModel          = document.getElementById('WhisperModel').value;
+                        config.TargetLanguage        = document.getElementById('TargetLanguage').value;
+                        config.AIIdentifier          = document.getElementById('AIIdentifier').value;
+                        config.TranslateToEnglish    = document.getElementById('TranslateToEnglish').checked;
+                        config.WordTimestamps         = document.getElementById('WordTimestamps').checked;
+                        config.ProcessOnLibraryScan   = document.getElementById('ProcessOnLibraryScan').checked;
+                        config.SkipExisting           = document.getElementById('SkipExisting').checked;
+                        config.RegenerateAI           = document.getElementById('RegenerateAI').checked;
+                        config.UseGPUAcceleration     = document.getElementById('UseGPUAcceleration').checked;
+
                         var selectedLibraries = [];
-                        var libraryCheckboxes = document.querySelectorAll('.library-checkbox:checked');
-                        libraryCheckboxes.forEach(function(checkbox) {
-                            selectedLibraries.push(checkbox.value);
+                        document.querySelectorAll('.library-checkbox:checked').forEach(function (cb) {
+                            selectedLibraries.push(cb.value);
                         });
                         config.LibrariesToProcess = selectedLibraries;
-                        
-                        // Save folders to exclude
+
                         var foldersText = document.getElementById('FoldersToExclude').value;
-                        var foldersToExclude = foldersText.split('\n')
-                            .map(function(folder) { return folder.trim(); })
-                            .filter(function(folder) { return folder.length > 0; });
-                        config.FoldersToExclude = foldersToExclude;
-                        
+                        config.FoldersToExclude = foldersText.split('\n')
+                            .map(function (f) { return f.trim(); })
+                            .filter(function (f) { return f.length > 0; });
+
                         return ApiClient.updatePluginConfiguration(WhisperSubtitlesConfig.pluginUniqueId, config);
-                    }).then(function() {
-                        console.log('[WhisperSubtitles] Config saved successfully');
+                    }).then(function () {
                         Dashboard.hideLoadingMsg();
                         Dashboard.processPluginConfigurationUpdateResult();
-                    }).catch(function(error) {
+                    }).catch(function (error) {
                         console.error('[WhisperSubtitles] Error saving config:', error);
                         Dashboard.hideLoadingMsg();
                     });
-                    
+
                     return false;
                 }
 
+                // ── Event wiring ───────────────────────────────────────────────
+
                 if (configPage) {
-                    configPage.addEventListener('pageshow', function() {
-                        console.log('[WhisperSubtitles] Page shown, loading config');
-                        
+                    configPage.addEventListener('pageshow', function () {
                         var attempts = 0;
-                        var maxAttempts = 50;
-                        
                         function tryLoad() {
-                            attempts++;
                             if (typeof ApiClient !== 'undefined' && typeof Dashboard !== 'undefined') {
                                 loadConfig();
-                            } else if (attempts < maxAttempts) {
+                                checkBinaryStatus();
+                            } else if (++attempts < 50) {
                                 setTimeout(tryLoad, 100);
-                            } else {
-                                console.error('[WhisperSubtitles] Timeout waiting for ApiClient');
                             }
                         }
-                        
                         tryLoad();
                     });
                 }
@@ -302,39 +316,72 @@
                 if (form) {
                     form.addEventListener('submit', saveConfig);
                 }
-                
+
+                // Download model button
                 var downloadBtn = document.getElementById('DownloadModelButton');
                 if (downloadBtn) {
-                    downloadBtn.addEventListener('click', function() {
-                        var selectedModel = document.getElementById('WhisperModel').value;
-                        var downloadStatusDiv = document.getElementById('downloadStatus');
-                        
-                        console.log('[WhisperSubtitles] Starting download for model:', selectedModel);
-                        
-                        downloadStatusDiv.style.display = 'block';
-                        downloadStatusDiv.style.backgroundColor = 'rgba(0, 164, 220, 0.2)';
-                        downloadStatusDiv.style.color = '#00a4dc';
-                        downloadStatusDiv.innerHTML = '⟳ Downloading model "' + selectedModel + '"...';
-                        
-                        if (typeof ApiClient !== 'undefined') {
-                            ApiClient.fetch({
-                                type: 'POST',
-                                url: ApiClient.getUrl('api/WhisperSubtitles/DownloadModel'),
-                                data: JSON.stringify({ ModelName: selectedModel }),
-                                contentType: 'application/json'
-                            }).then(function(response) {
-                                downloadStatusDiv.style.backgroundColor = 'rgba(0, 200, 83, 0.2)';
-                                downloadStatusDiv.style.color = '#00c853';
-                                downloadStatusDiv.innerHTML = '✓ Model downloaded successfully';
-                                setTimeout(function() { downloadStatusDiv.style.display = 'none'; }, 5000);
-                            }).catch(function(error) {
-                                downloadStatusDiv.style.backgroundColor = 'rgba(220, 0, 0, 0.2)';
-                                downloadStatusDiv.style.color = '#dc0000';
-                                downloadStatusDiv.innerHTML = '✗ Download failed';
-                            });
-                        }
+                    downloadBtn.addEventListener('click', function () {
+                        var selectedModel   = document.getElementById('WhisperModel').value;
+                        var statusDiv       = document.getElementById('downloadStatus');
+
+                        statusDiv.style.display         = 'block';
+                        statusDiv.style.backgroundColor = 'rgba(0, 164, 220, 0.2)';
+                        statusDiv.style.color           = '#00a4dc';
+                        statusDiv.innerHTML             = '⟳ Downloading model "' + selectedModel + '"...';
+
+                        if (typeof ApiClient === 'undefined') return;
+
+                        ApiClient.fetch({
+                            type:        'POST',
+                            url:         ApiClient.getUrl('api/WhisperSubtitles/DownloadModel'),
+                            data:        JSON.stringify({ ModelName: selectedModel }),
+                            contentType: 'application/json'
+                        }).then(function () {
+                            statusDiv.style.backgroundColor = 'rgba(0, 200, 83, 0.2)';
+                            statusDiv.style.color           = '#00c853';
+                            statusDiv.innerHTML             = '✓ Model downloaded successfully';
+                            setTimeout(function () { statusDiv.style.display = 'none'; }, 5000);
+                        }).catch(function () {
+                            statusDiv.style.backgroundColor = 'rgba(220, 0, 0, 0.2)';
+                            statusDiv.style.color           = '#dc0000';
+                            statusDiv.innerHTML             = '✗ Download failed — check server logs';
+                        });
                     });
                 }
+
+                // Install binary button (inside the warning banner)
+                var installBtn = document.getElementById('InstallBinaryButton');
+                if (installBtn) {
+                    installBtn.addEventListener('click', function () {
+                        var statusDiv = document.getElementById('downloadStatus');
+                        statusDiv.style.display         = 'block';
+                        statusDiv.style.backgroundColor = 'rgba(0, 164, 220, 0.2)';
+                        statusDiv.style.color           = '#00a4dc';
+                        statusDiv.innerHTML             = '⟳ Installing binary...';
+
+                        if (typeof ApiClient === 'undefined') return;
+
+                        ApiClient.fetch({
+                            type: 'POST',
+                            url:  ApiClient.getUrl('api/WhisperSubtitles/InstallBinary')
+                        }).then(function (response) {
+                            if (response && response.Success) {
+                                statusDiv.style.backgroundColor = 'rgba(0, 200, 83, 0.2)';
+                                statusDiv.style.color           = '#00c853';
+                                statusDiv.innerHTML             = '✓ Binary installed successfully';
+                                setBinaryStatus(true);
+                            } else {
+                                throw new Error(response && response.Message ? response.Message : 'Unknown error');
+                            }
+                            setTimeout(function () { statusDiv.style.display = 'none'; }, 5000);
+                        }).catch(function (err) {
+                            statusDiv.style.backgroundColor = 'rgba(220, 0, 0, 0.2)';
+                            statusDiv.style.color           = '#dc0000';
+                            statusDiv.innerHTML             = '✗ Install failed — check server logs';
+                        });
+                    });
+                }
+
             })();
         </script>
     </div>

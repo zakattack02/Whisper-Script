@@ -26,18 +26,18 @@ jobs:
         run: |
           cd /tmp/whisper.cpp
           cmake -B build -DWHISPER_BUILD_TESTS=OFF -DWHISPER_BUILD_EXAMPLES=ON
-          cmake --build build --config Release -j$(nproc) --target main
+          cmake --build build --config Release -j$(nproc) --target whisper-cli
 
       - name: Copy binary to repo
         run: |
           mkdir -p Jellyfin.Plugin.WhisperSubtitles/Jellyfin.Plugin.WhisperSubtitles/bin/whisper/linux-x64
-          cp /tmp/whisper.cpp/build/bin/main \
-             Jellyfin.Plugin.WhisperSubtitles/Jellyfin.Plugin.WhisperSubtitles/bin/whisper/linux-x64/main
-          chmod +x Jellyfin.Plugin.WhisperSubtitles/Jellyfin.Plugin.WhisperSubtitles/bin/whisper/linux-x64/main
+          cp /tmp/whisper.cpp/build/bin/whisper-cli \
+             Jellyfin.Plugin.WhisperSubtitles/Jellyfin.Plugin.WhisperSubtitles/bin/whisper/linux-x64/whisper-cli
+          chmod +x Jellyfin.Plugin.WhisperSubtitles/Jellyfin.Plugin.WhisperSubtitles/bin/whisper/linux-x64/whisper-cli
 
       - name: Upload as artifact
         uses: actions/upload-artifact@v4
         with:
           name: whisper-linux-x64
-          path: Jellyfin.Plugin.WhisperSubtitles/Jellyfin.Plugin.WhisperSubtitles/bin/whisper/linux-x64/main
+          path: Jellyfin.Plugin.WhisperSubtitles/Jellyfin.Plugin.WhisperSubtitles/bin/whisper/linux-x64/whisper-cli
           retention-days: 30

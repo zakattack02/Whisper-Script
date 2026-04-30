@@ -9,9 +9,6 @@ using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.WhisperSubtitles.Controllers
 {
-    /// <summary>
-    /// Whisper Subtitles API controller.
-    /// </summary>
     [ApiController]
     [Route("api/[controller]")]
     [Produces("application/json")]
@@ -20,24 +17,15 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Controllers
         private readonly ILogger<WhisperSubtitlesController> _logger;
         private readonly ILoggerFactory _loggerFactory;
 
-        /// <summary>
-        /// Initializes a new instance of the <see cref="WhisperSubtitlesController"/> class.
-        /// </summary>
-        /// <param name="logger">Instance of the <see cref="ILogger{WhisperSubtitlesController}"/> interface.</param>
-        /// <param name="loggerFactory">Instance of the <see cref="ILoggerFactory"/> interface.</param>
         public WhisperSubtitlesController(
             ILogger<WhisperSubtitlesController> logger,
             ILoggerFactory loggerFactory)
         {
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _logger       = logger       ?? throw new ArgumentNullException(nameof(logger));
             _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
             _logger.LogInformation("WhisperSubtitlesController initialized");
         }
 
-        /// <summary>
-        /// Test endpoint to verify controller is working.
-        /// </summary>
-        /// <returns>Test message.</returns>
         [HttpGet("Test")]
         [AllowAnonymous]
         public ActionResult<string> Test()
@@ -46,93 +34,60 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Controllers
             return Ok("WhisperSubtitles controller is working!");
         }
 
-        /// <summary>
-        /// Downloads a Whisper model.
-        /// </summary>
-        /// <param name="request">The download request.</param>
-        /// <param name="cancellationToken">Cancellation token.</param>
-        /// <returns>Download result.</returns>
+        /// <summary>Downloads (deploys from bundle) the requested Whisper model.</summary>
         [HttpPost("DownloadModel")]
         [Authorize(Policy = "RequiresElevation")]
         public async Task<ActionResult<ModelDownloadResponse>> DownloadModel(
             [FromBody] ModelDownloadRequest request,
             CancellationToken cancellationToken = default)
         {
-            _logger.LogInformation("=== DownloadModel API Called ===");
-            _logger.LogInformation("Request: {@Request}", request);
-            
-            if (request == null)
+            _logger.LogInformation("DownloadModel called: {@Request}", request);
+
+            if (request is null || string.IsNullOrWhiteSpace(request.ModelName))
             {
-                _logger.LogError("Request is null");
                 return BadRequest(new ModelDownloadResponse
                 {
                     Success = false,
-                    Message = "Request is null"
-                });
-            }
-            
-            if (string.IsNullOrWhiteSpace(request.ModelName))
-            {
-                _logger.LogError("Model name is empty or null");
-                return BadRequest(new ModelDownloadResponse
-                {
-                    Success = false,
-                    Message = "Model name is required"
+                    Message = "ModelName is required"
                 });
             }
 
-            _logger.LogInformation("Starting download of Whisper model: {ModelName}", request.ModelName);
+            var validModels = new[] { "Tiny", "Base", "Small", "Medium", "Turbo", "Large" };
+            if (!Array.Exists(validModels,
+                    m => m.Equals(request.ModelName, StringComparison.OrdinalIgnoreCase)))
+            {
+                return BadRequest(new ModelDownloadResponse
+                {
+                    Success = false,
+                    Message = $"Invalid model '{request.ModelName}'. Valid: {string.Join(", ", validModels)}"
+                });
+            }
 
             try
             {
-                // Create service instance (Jellyfin 10.11 doesn't support plugin DI)
-                using var whisperService = new WhisperService(_loggerFactory.CreateLogger<WhisperService>());
-                
-                // Validate model name
-                var validModels = new[] { "Tiny", "Base", "Small", "Medium", "Turbo", "Large" };
-                
-                if (!Array.Exists(validModels, m => m.Equals(request.ModelName, StringComparison.OrdinalIgnoreCase)))
-                {
-                    _logger.LogWarning("Invalid model name: {ModelName}", request.ModelName);
-                    return BadRequest(new ModelDownloadResponse
-                    {
-                        Success = false,
-                        Message = $"Invalid model name: {request.ModelName}. Valid models: {string.Join(", ", validModels)}"
-                    });
-                }
+                using var svc = new WhisperService(_loggerFactory.CreateLogger<WhisperService>());
 
-                // First ensure whisper.cpp binary is available
-                _logger.LogInformation("Checking whisper.cpp binary availability...");
-                
-                // This will trigger binary build/download if not present
-                var binaryReady = await EnsureBinaryAvailableAsync(whisperService, cancellationToken);
-                if (!binaryReady)
+                // Ensure binary is in place before downloading the model
+                if (!await EnsureBinaryAsync(svc, cancellationToken))
                 {
                     return StatusCode(500, new ModelDownloadResponse
                     {
                         Success = false,
-                        Message = "Failed to install whisper.cpp binary. Check logs for details."
+                        Message = "Failed to deploy whisper binary. Check server logs."
                     });
                 }
 
-                // Now download the model
-                _logger.LogInformation("Downloading model: {Model}", request.ModelName);
-                
-                var success = await whisperService.DownloadModelAsync(
-                    request.ModelName.ToLowerInvariant(), 
-                    cancellationToken);
-                
-                if (!success)
+                var ok = await svc.DownloadModelAsync(
+                    request.ModelName.ToLowerInvariant(), cancellationToken);
+
+                if (!ok)
                 {
-                    _logger.LogError("Model download failed: {ModelName}", request.ModelName);
                     return StatusCode(500, new ModelDownloadResponse
                     {
                         Success = false,
                         Message = $"Failed to download model '{request.ModelName}'"
                     });
                 }
-
-                _logger.LogInformation("Model downloaded successfully: {ModelName}", request.ModelName);
 
                 return Ok(new ModelDownloadResponse
                 {
@@ -142,7 +97,6 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Controllers
             }
             catch (OperationCanceledException)
             {
-                _logger.LogWarning("Model download cancelled: {ModelName}", request.ModelName);
                 return StatusCode(499, new ModelDownloadResponse
                 {
                     Success = false,
@@ -151,56 +105,46 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error downloading model: {ModelName}", request.ModelName);
+                _logger.LogError(ex, "Error downloading model {Model}", request.ModelName);
                 return StatusCode(500, new ModelDownloadResponse
                 {
                     Success = false,
-                    Message = "Failed to download model. Check server logs for details."
+                    Message = "Download failed. Check server logs."
                 });
             }
         }
 
-        /// <summary>
-        /// Install/build whisper.cpp binary from the configuration page.
-        /// </summary>
-        /// <param name="cancellationToken">Cancellation token.</param>
-        /// <returns>Installation result with GPU type and binary path.</returns>
+        /// <summary>Deploys the bundled whisper binary from the plugin to the cache.</summary>
         [HttpPost("InstallBinary")]
         [Authorize(Policy = "RequiresElevation")]
-        public async Task<ActionResult<BinaryInstallResponse>> InstallBinary(CancellationToken cancellationToken = default)
+        public async Task<ActionResult<BinaryInstallResponse>> InstallBinary(
+            CancellationToken cancellationToken = default)
         {
-            _logger.LogInformation("=== InstallBinary API Called ===");
-            
+            _logger.LogInformation("InstallBinary called");
+
             try
             {
-                using var whisperService = new WhisperService(_loggerFactory.CreateLogger<WhisperService>());
-                
-                _logger.LogInformation("Checking whisper.cpp binary availability...");
-                
-                var binaryReady = await EnsureBinaryAvailableAsync(whisperService, cancellationToken);
-                if (!binaryReady)
+                using var svc = new WhisperService(_loggerFactory.CreateLogger<WhisperService>());
+
+                if (!await EnsureBinaryAsync(svc, cancellationToken))
                 {
-                    _logger.LogError("Failed to ensure binary availability");
                     return StatusCode(500, new BinaryInstallResponse
                     {
                         Success = false,
-                        Message = "Failed to install whisper.cpp binary. Check logs for details."
+                        Message = "Failed to deploy whisper binary. Check server logs."
                     });
                 }
 
-                _logger.LogInformation("Binary installation completed successfully");
-
                 return Ok(new BinaryInstallResponse
                 {
-                    Success = true,
-                    Message = "Whisper.cpp binary installed successfully",
-                    BinaryPath = whisperService.BinaryPath,
-                    GpuType = whisperService.DetectedGpuType
+                    Success    = true,
+                    Message    = "whisper binary deployed successfully",
+                    BinaryPath = svc.BinaryPath,
+                    GpuType    = svc.DetectedGpuType
                 });
             }
             catch (OperationCanceledException)
             {
-                _logger.LogWarning("Binary installation cancelled");
                 return StatusCode(499, new BinaryInstallResponse
                 {
                     Success = false,
@@ -218,99 +162,58 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Controllers
             }
         }
 
+        // ── Private helpers ────────────────────────────────────────────────────
+
         /// <summary>
-        /// Ensure whisper.cpp binary is available (build/download if needed).
+        /// Calls the private EnsureBinaryAvailableAsync on WhisperService via reflection.
+        /// This indirection exists because IWhisperService intentionally doesn't expose it.
         /// </summary>
-        private async Task<bool> EnsureBinaryAvailableAsync(WhisperService whisperService, CancellationToken cancellationToken)
+        private async Task<bool> EnsureBinaryAsync(WhisperService svc, CancellationToken ct)
         {
-            // Use reflection to access private EnsureBinaryAvailableAsync method
-            // This is a workaround since we can't change IWhisperService interface
             var method = typeof(WhisperService).GetMethod(
-                "EnsureBinaryAvailableAsync", 
+                "EnsureBinaryAvailableAsync",
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance,
                 null,
                 new[] { typeof(CancellationToken) },
                 null);
-            
-            if (method == null)
+
+            if (method is null)
             {
-                _logger.LogError("Could not find EnsureBinaryAvailableAsync method via reflection");
+                _logger.LogError("EnsureBinaryAvailableAsync not found via reflection");
                 return false;
             }
 
             try
             {
-                var task = method.Invoke(whisperService, new object[] { cancellationToken }) as Task<bool>;
-                if (task != null)
-                {
-                    return await task;
-                }
+                var task = method.Invoke(svc, new object[] { ct }) as Task<bool>;
+                return task is not null && await task;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error invoking EnsureBinaryAvailableAsync via reflection");
+                _logger.LogError(ex, "Reflection call to EnsureBinaryAvailableAsync failed");
+                return false;
             }
-
-            return false;
         }
     }
 
-    /// <summary>
-    /// Model download request.
-    /// </summary>
     public class ModelDownloadRequest
     {
-        /// <summary>
-        /// Gets or sets the model name.
-        /// </summary>
         [Required]
         public string ModelName { get; set; } = string.Empty;
     }
 
-    /// <summary>
-    /// Model download response.
-    /// </summary>
     public class ModelDownloadResponse
     {
-        /// <summary>
-        /// Gets or sets a value indicating whether the download was successful.
-        /// </summary>
-        public bool Success { get; set; }
-
-        /// <summary>
-        /// Gets or sets the message.
-        /// </summary>
-        public string Message { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Gets or sets the model path.
-        /// </summary>
+        public bool    Success   { get; set; }
+        public string  Message   { get; set; } = string.Empty;
         public string? ModelPath { get; set; }
     }
 
-    /// <summary>
-    /// Binary installation response.
-    /// </summary>
     public class BinaryInstallResponse
     {
-        /// <summary>
-        /// Gets or sets a value indicating whether the installation was successful.
-        /// </summary>
-        public bool Success { get; set; }
-
-        /// <summary>
-        /// Gets or sets the message.
-        /// </summary>
-        public string Message { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Gets or sets the binary path.
-        /// </summary>
+        public bool    Success    { get; set; }
+        public string  Message    { get; set; } = string.Empty;
         public string? BinaryPath { get; set; }
-
-        /// <summary>
-        /// Gets or sets the detected GPU type (e.g., "cuda", "vulkan", "metal", or null for CPU).
-        /// </summary>
-        public string? GpuType { get; set; }
+        public string? GpuType    { get; set; }
     }
 }

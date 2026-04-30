@@ -25,14 +25,14 @@ jobs:
           git clone --depth=1 https://github.com/ggerganov/whisper.cpp /tmp/whisper.cpp
           cd /tmp/whisper.cpp
           cmake -B build -DWHISPER_BUILD_TESTS=OFF -DWHISPER_BUILD_EXAMPLES=ON
-          cmake --build build --config Release -j$(nproc) --target main
+          cmake --build build --config Release -j$(nproc) --target whisper-cli
 
       - name: Stage binary
         run: |
           mkdir -p Jellyfin.Plugin.WhisperSubtitles/Jellyfin.Plugin.WhisperSubtitles/bin/whisper/linux-x64
-          cp /tmp/whisper.cpp/build/bin/main \
-             Jellyfin.Plugin.WhisperSubtitles/Jellyfin.Plugin.WhisperSubtitles/bin/whisper/linux-x64/main
-          chmod +x Jellyfin.Plugin.WhisperSubtitles/Jellyfin.Plugin.WhisperSubtitles/bin/whisper/linux-x64/main
+          cp /tmp/whisper.cpp/build/bin/whisper-cli \
+             Jellyfin.Plugin.WhisperSubtitles/Jellyfin.Plugin.WhisperSubtitles/bin/whisper/linux-x64/whisper-cli
+          chmod +x Jellyfin.Plugin.WhisperSubtitles/Jellyfin.Plugin.WhisperSubtitles/bin/whisper/linux-x64/whisper-cli
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4

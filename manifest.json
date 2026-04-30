@@ -10,6 +10,14 @@
     "versions": [
       {
         "version": "0.0.0.58",
+        "changelog": "FUCK",
+        "targetAbi": "10.11.2.0",
+        "sourceUrl": "https://github.com/zakattack02/Whisper-Script/releases/download/v0.0.0.58/jellyfin-plugin-whispersubtitles_0.0.0.58.zip",
+        "checksum": "bc9c9957c5c711cf8e69de42c3a429e7",
+        "timestamp": "2026-04-30T02:15:43Z"
+      },
+      {
+        "version": "0.0.0.58",
         "changelog": "fuck",
         "targetAbi": "10.11.2.0",
         "sourceUrl": "https://github.com/zakattack02/Whisper-Script/releases/download/v0.0.0.58/jellyfin-plugin-whispersubtitles_0.0.0.58.zip",

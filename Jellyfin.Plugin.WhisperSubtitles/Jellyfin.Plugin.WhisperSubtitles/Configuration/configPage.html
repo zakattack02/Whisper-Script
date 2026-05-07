@@ -145,31 +145,27 @@
 
                 var configPage = document.getElementById('WhisperSubtitlesConfigPage');
 
-                /// ── Binary status ──────────────────────────────────────────────
+                // ── Binary status ──────────────────────────────────────────────
 
-function setBinaryStatus(isReady) {
-    // Only show binaryInstructions if no binary is found (isReady is false)
-    document.getElementById('binaryInstructions').style.display = isReady ? 'none' : 'block';
-    
-    // Always keep binaryOk hidden to meet the "only show instructions if missing" requirement
-    // or you can set it to 'none' to ensure it never pops up and clutters the UI.
-    document.getElementById('binaryOk').style.display = 'none';
-}
+                function setBinaryStatus(isReady) {
+                    document.getElementById('binaryInstructions').style.display = isReady ? 'none'  : 'block';
+                    document.getElementById('binaryOk').style.display           = isReady ? 'block' : 'none';
+                }
 
-function checkBinaryStatus() {
-    if (typeof ApiClient === 'undefined') return;
+                function checkBinaryStatus() {
+                    if (typeof ApiClient === 'undefined') return;
 
-    ApiClient.fetch({
-        type: 'GET',
-        url: ApiClient.getUrl('api/WhisperSubtitles/BinaryStatus')
-    }).then(function (response) {
-        // resolves with the parsed JSON body
-        setBinaryStatus(response && response.IsReady === true);
-    }).catch(function () {
-        // If the endpoint fails (binary definitely missing or API error), show the warning
-        setBinaryStatus(false);
-    });
-}
+                    ApiClient.fetch({
+                        type: 'GET',
+                        url: ApiClient.getUrl('api/WhisperSubtitles/BinaryStatus')
+                    }).then(function (response) {
+                        // ApiClient.fetch resolves with the parsed JSON body
+                        setBinaryStatus(response && response.IsReady === true);
+                    }).catch(function () {
+                        // If the endpoint fails for any reason, show the warning
+                        setBinaryStatus(false);
+                    });
+                }
 
                 // ── Config load / save ─────────────────────────────────────────
 
@@ -202,58 +198,54 @@ function checkBinaryStatus() {
 
                 function loadLibraries(selectedLibraries) {
                     if (typeof ApiClient === 'undefined') return;
+
                     selectedLibraries = selectedLibraries || [];
 
-                    ApiClient.getJSON(ApiClient.getUrl('Library/VirtualFolders')).then(function (folders) {
-                    var container = document.getElementById('LibrariesToProcessContainer');
-                    if (!container) return;
-                    container.innerHTML = '';
+                    ApiClient.getVirtualFolders().then(function (librariesResponse) {
+                        var container = document.getElementById('LibrariesToProcessContainer');
+                        if (!container) return;
+                        container.innerHTML = '';
 
-        // Filter for video-based collection types
-        var videoFolders = folders.filter(function (f) {
-            return f.CollectionType === 'movies' || 
-                   f.CollectionType === 'tvshows' || 
-                   f.CollectionType === 'homevideos';
-        });
+                        var folders = Array.isArray(librariesResponse)
+                            ? librariesResponse
+                            : (librariesResponse.Items || []);
 
-        if (videoFolders.length === 0) {
-            container.innerHTML = '<p style="color:#888;text-align:center;margin:10px 0;">No media folders found</p>';
-            return;
-        }
+                        var videoFolders = folders.filter(function (f) {
+                            return f.CollectionType === 'movies' ||
+                                   f.CollectionType === 'tvshows' ||
+                                   f.CollectionType === 'homevideos';
+                        });
 
-        videoFolders.forEach(function (library) {
-            var label = document.createElement('label');
-            label.className = 'checkboxContainer';
-            label.style.display = 'block';
-            label.style.padding = '5px 0';
+                        if (videoFolders.length === 0) {
+                            container.innerHTML = '<p style="color:#888;text-align:center;margin:10px 0;">No media libraries found</p>';
+                            return;
+                        }
 
-            var checkbox = document.createElement('input');
-            checkbox.type = 'checkbox';
-            checkbox.id = 'lib_' + library.ItemId;
-            checkbox.className = 'library-checkbox';
-            
-            // value MUST be library.ItemId to match the C# backend checks
-            checkbox.value = library.ItemId;
-            checkbox.checked = selectedLibraries.indexOf(library.ItemId) !== -1;
+                        videoFolders.forEach(function (library) {
+                            var label    = document.createElement('label');
+                            label.className    = 'checkboxContainer';
+                            label.style.display = 'block';
+                            label.style.padding = '5px 0';
 
-            // Display the library name and its primary physical location
-            var pathDisplay = (library.Locations && library.Locations.length > 0) 
-                ? ' (' + library.Locations[0] + ')' 
-                : '';
-            var displayName = (library.Name || 'Unknown Library') + pathDisplay;
+                            var checkbox       = document.createElement('input');
+                            checkbox.type      = 'checkbox';
+                            checkbox.id        = 'lib_' + library.ItemId;
+                            checkbox.className = 'library-checkbox';
+                            checkbox.value     = library.ItemId || library.Id;
+                            checkbox.checked   = selectedLibraries.indexOf(checkbox.value) !== -1;
 
-            label.appendChild(checkbox);
-            label.appendChild(document.createTextNode(' ' + displayName));
-            container.appendChild(label);
-        });
-    }).catch(function (error) {
-        console.error('[WhisperSubtitles] Error loading virtual folders:', error);
-        var container = document.getElementById('LibrariesToProcessContainer');
-        if (container) {
-            container.innerHTML = '<p style="color:#f44336;text-align:center;margin:10px 0;">Error loading folders</p>';
-        }
-    });
-}    
+                            label.appendChild(checkbox);
+                            label.appendChild(document.createTextNode(' ' + (library.Name || 'Unknown Library')));
+                            container.appendChild(label);
+                        });
+                    }).catch(function (error) {
+                        console.error('[WhisperSubtitles] Error loading libraries:', error);
+                        var container = document.getElementById('LibrariesToProcessContainer');
+                        if (container) {
+                            container.innerHTML = '<p style="color:#f44336;text-align:center;margin:10px 0;">Error loading libraries</p>';
+                        }
+                    });
+                }
 
                 function saveConfig(e) {
                     e.preventDefault();
@@ -361,20 +353,32 @@ function checkBinaryStatus() {
 
                         if (typeof ApiClient === 'undefined') return;
 
+                        // POST to trigger the install, then immediately re-check the binary
+                        // status via the GET endpoint — don't trust ApiClient.fetch response
+                        // body parsing, which is unreliable across Jellyfin versions.
                         ApiClient.fetch({
                             type: 'POST',
                             url:  ApiClient.getUrl('api/WhisperSubtitles/InstallBinary')
-                        }).then(function (response) {
-                            if (response && response.Success) {
+                        }).then(function () {
+                            // HTTP 2xx means the server didn't crash — ask the status
+                            // endpoint for ground truth instead of parsing the body.
+                            return ApiClient.fetch({
+                                type: 'GET',
+                                url:  ApiClient.getUrl('api/WhisperSubtitles/BinaryStatus')
+                            });
+                        }).then(function (statusResponse) {
+                            if (statusResponse && statusResponse.IsReady) {
                                 statusDiv.style.backgroundColor = 'rgba(0, 200, 83, 0.2)';
                                 statusDiv.style.color           = '#00c853';
                                 statusDiv.innerHTML             = '✓ Binary installed successfully';
                                 setBinaryStatus(true);
                             } else {
-                                throw new Error(response && response.Message ? response.Message : 'Unknown error');
+                                statusDiv.style.backgroundColor = 'rgba(220, 0, 0, 0.2)';
+                                statusDiv.style.color           = '#dc0000';
+                                statusDiv.innerHTML             = '✗ Install failed — binary not found after install. Check server logs.';
                             }
                             setTimeout(function () { statusDiv.style.display = 'none'; }, 5000);
-                        }).catch(function (err) {
+                        }).catch(function () {
                             statusDiv.style.backgroundColor = 'rgba(220, 0, 0, 0.2)';
                             statusDiv.style.color           = '#dc0000';
                             statusDiv.innerHTML             = '✗ Install failed — check server logs';

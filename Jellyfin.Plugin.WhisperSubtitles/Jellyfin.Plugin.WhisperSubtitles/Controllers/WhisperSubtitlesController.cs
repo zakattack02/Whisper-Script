@@ -114,6 +114,37 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Controllers
             }
         }
 
+        /// <summary>Checks if the whisper binary is available and ready to use.</summary>
+        [HttpGet("BinaryStatus")]
+        [AllowAnonymous]
+        public ActionResult<BinaryStatusResponse> BinaryStatus()
+        {
+            _logger.LogInformation("BinaryStatus called");
+
+            try
+            {
+                using var svc = new WhisperService(_loggerFactory.CreateLogger<WhisperService>());
+
+                var isReady = svc.IsBinaryAvailable();
+
+                return Ok(new BinaryStatusResponse
+                {
+                    IsReady    = isReady,
+                    BinaryPath = svc.BinaryPath,
+                    GpuType    = svc.DetectedGpuType
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error checking binary status");
+                return Ok(new BinaryStatusResponse
+                {
+                    IsReady = false,
+                    Message = $"Error: {ex.Message}"
+                });
+            }
+        }
+
         /// <summary>Deploys the bundled whisper binary from the plugin to the cache.</summary>
         [HttpPost("InstallBinary")]
         [Authorize(Policy = "RequiresElevation")]
@@ -207,6 +238,14 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Controllers
         public bool    Success   { get; set; }
         public string  Message   { get; set; } = string.Empty;
         public string? ModelPath { get; set; }
+    }
+
+    public class BinaryStatusResponse
+    {
+        public bool    IsReady    { get; set; }
+        public string  Message    { get; set; } = string.Empty;
+        public string? BinaryPath { get; set; }
+        public string? GpuType    { get; set; }
     }
 
     public class BinaryInstallResponse

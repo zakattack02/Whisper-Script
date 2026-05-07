@@ -124,13 +124,19 @@ echo -e "${YELLOW}[3/8] Building whisper.cpp using Build-whisper.sh...${NC}"
 WHISPER_OUTPUT="$(cd "$PLUGIN_FOLDER" && pwd)/bin/whisper/linux-x64"
 mkdir -p "$WHISPER_OUTPUT"
 
+# Docker is now the default build method for GLIBC compatibility
+# Use --no-docker flag to force native build if needed
+# Example: bash make-release.sh (will use Docker by default)
+# Or: bash Scripts/Build-whisper.sh --no-docker <output> (for native build)
+
 # Call the build script with the plugin directory as output
+# Docker is used by default if available; falls back to native build if not
 bash "${PLUGIN_FOLDER}/../Scripts/Build-whisper.sh" "$WHISPER_OUTPUT" "/tmp/whisper-cache" || {
     error_exit "whisper.cpp build failed"
 }
 
 # Verify binary was built
-[ ! -f "$WHISPER_OUTPUT/whisper-cli" ] && error_exit "whisper binary not found at $WHISPER_OUTPUT/whisper-cli"
+[ ! -f "$WHISPER_OUTPUT/whisper-whisper-cli" ] && error_exit "whisper binary not found at $WHISPER_OUTPUT/whisper-whisper-cli"
 
 echo -e "${GREEN}✓ whisper.cpp built${NC}"
 echo ""
@@ -138,9 +144,9 @@ echo ""
 # ── Step 4: Verify binary ────────────────────────────────────────────────────
 echo -e "${YELLOW}[4/8] Verifying whisper binary...${NC}"
 # Note: WHISPER_OUTPUT was computed in Step 3
-[ -f "$WHISPER_OUTPUT/whisper-cli" ] || error_exit "Binary not found at $WHISPER_OUTPUT/whisper-cli"
-chmod +x "$WHISPER_OUTPUT/whisper-cli"
-echo -e "${GREEN}✓ Binary verified: $WHISPER_OUTPUT/whisper-cli${NC}"
+[ -f "$WHISPER_OUTPUT/whisper-whisper-cli" ] || error_exit "Binary not found at $WHISPER_OUTPUT/whisper-whisper-cli"
+chmod +x "$WHISPER_OUTPUT/whisper-whisper-cli"
+echo -e "${GREEN}✓ Binary verified: $WHISPER_OUTPUT/whisper-whisper-cli${NC}"
 echo ""
 
 # ── Step 5: Build C# plugin ───────────────────────────────────────────────────
@@ -157,8 +163,8 @@ dotnet publish \
 echo "  Copying whisper binary into publish output..."
 # Note: WHISPER_OUTPUT was computed in Step 3
 mkdir -p "$BUILD_OUTPUT/whisper/linux-x64"
-cp "$WHISPER_OUTPUT/whisper-cli" "$BUILD_OUTPUT/whisper/linux-x64/whisper-cli"
-chmod +x "$BUILD_OUTPUT/whisper/linux-x64/whisper-cli"
+cp "$WHISPER_OUTPUT/whisper-whisper-cli" "$BUILD_OUTPUT/whisper/linux-x64/whisper-whisper-cli"
+chmod +x "$BUILD_OUTPUT/whisper/linux-x64/whisper-whisper-cli"
 
 echo -e "${GREEN}✓ C# plugin built${NC}"
 echo ""

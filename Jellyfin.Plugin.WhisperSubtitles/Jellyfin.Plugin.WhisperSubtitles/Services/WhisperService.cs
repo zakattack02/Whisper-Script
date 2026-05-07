@@ -50,6 +50,9 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
         public string  BinaryPath      => _binaryManager.BinaryPath;
         public string? DetectedGpuType => _binaryManager.DetectedGPUType;
 
+        /// <summary>Returns true if the whisper binary is available and ready to use.</summary>
+        public bool IsBinaryAvailable() => _binaryManager.IsBinaryAvailable();
+
         // ── IWhisperService ────────────────────────────────────────────────────
 
         public async Task<bool> DownloadModelAsync(

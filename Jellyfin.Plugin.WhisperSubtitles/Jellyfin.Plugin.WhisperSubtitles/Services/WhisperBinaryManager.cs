@@ -59,9 +59,14 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
             _downloadPath  = whisperDir;
             _binaryPath    = Path.Combine(whisperDir, BundledBinaryName);
 
-            _logger.LogInformation("Whisper cache binary path : {Path}", _binaryPath);
+            _logger.LogInformation("=== WhisperBinaryManager Init ===");
+            _logger.LogInformation("JELLYFIN_CACHE_DIR env    : {Env}", Environment.GetEnvironmentVariable("JELLYFIN_CACHE_DIR") ?? "(not set)");
+            _logger.LogInformation("Resolved cache dir        : {CacheDir}", cacheDir);
+            _logger.LogInformation("Whisper cache directory   : {WhisperDir}", whisperDir);
+            _logger.LogInformation("Expected binary path      : {BinaryPath}", _binaryPath);
             _logger.LogInformation("Jellyfin FFmpeg           : {Path}", _jellyfinFFmpegPath ?? "not found");
             _logger.LogInformation("Detected GPU              : {GPU}",  _detectedGPUType   ?? "none (CPU only)");
+            _logger.LogInformation("=====================================");
 
             try
             {
@@ -87,25 +92,68 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
         /// <summary>Returns true if the binary is present and executable in the cache.</summary>
         public bool IsBinaryAvailable()
         {
-            if (!File.Exists(_binaryPath))
+            // Check for any of the known binary names (supports migration across versions)
+            var binaryNames = new[] { "whisper-whisper-cli", "whisper-cli", "main" };
+            
+            _logger.LogInformation("Checking for whisper binary in: {Path}", _downloadPath);
+            
+            foreach (var binaryName in binaryNames)
             {
-                _logger.LogDebug("Whisper binary not found at {Path}", _binaryPath);
-                return false;
+                var candidatePath = Path.Combine(_downloadPath, binaryName);
+                var exists = File.Exists(candidatePath);
+                _logger.LogDebug("  Checking {BinaryName}: {Path} — {Exists}", 
+                    binaryName, candidatePath, exists ? "FOUND" : "not found");
+                
+                if (exists)
+                {
+                    EnsureExecutable(candidatePath);
+                    _logger.LogInformation("✓ Whisper binary found at {Path}", candidatePath);
+                    return true;
+                }
             }
 
-            EnsureExecutable(_binaryPath);
-            _logger.LogInformation("Whisper binary found at {Path}", _binaryPath);
-            return true;
+            _logger.LogWarning("✗ Whisper binary NOT found in {Path}", _downloadPath);
+            _logger.LogWarning("  Expected one of: {Names}", string.Join(", ", binaryNames));
+            
+            // List what files actually exist in the directory for debugging
+            try
+            {
+                if (Directory.Exists(_downloadPath))
+                {
+                    var files = Directory.GetFiles(_downloadPath);
+                    _logger.LogWarning("  Files in {Path}: {Files}", 
+                        _downloadPath, 
+                        files.Length > 0 ? string.Join(", ", files.Select(Path.GetFileName)) : "(empty)");
+                }
+                else
+                {
+                    _logger.LogWarning("  Directory does not exist: {Path}", _downloadPath);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Could not list directory contents: {Path}", _downloadPath);
+            }
+            
+            return false;
         }
 
         /// <summary>
         /// Deploys the bundled binary from the plugin's installation directory into the cache.
         /// This is the only "download" path — we ship the binary, we just need to copy it.
+        /// Skips deployment if a binary already exists in the cache.
         /// </summary>
         public async Task<bool> DownloadBinaryAsync(CancellationToken cancellationToken = default)
         {
             try
             {
+                // Skip deployment if any binary already exists
+                if (IsBinaryAvailable())
+                {
+                    _logger.LogInformation("Binary already available in cache, skipping deployment");
+                    return true;
+                }
+
                 _logger.LogInformation("Deploying bundled whisper binary from plugin directory...");
 
                 var source = FindBundledBinary();
@@ -170,6 +218,7 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
         /// <summary>
         /// Locates the bundled binary inside the plugin's own installation folder.
         /// Uses the assembly location so version-stamped folder names are handled automatically.
+        /// Checks for all known binary names for backward compatibility.
         /// </summary>
         private string? FindBundledBinary()
         {
@@ -186,26 +235,33 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
             }
 
             var platform = GetPlatformString();
+            var binaryNames = new[] { "whisper-whisper-cli", "whisper-cli", "main" };
 
             // Primary layout produced by make-release.sh / build.yaml:
-            //   <plugin-dir>/whisper/<platform>/whisper-whisper-cli
-            var candidate = Path.Combine(assemblyDir, "whisper", platform, BundledBinaryName);
-            _logger.LogDebug("Looking for bundled binary at: {Path}", candidate);
-
-            if (File.Exists(candidate))
+            //   <plugin-dir>/whisper/<platform>/{binary-name}
+            foreach (var binaryName in binaryNames)
             {
-                _logger.LogInformation("Located bundled binary: {Path}", candidate);
-                return candidate;
+                var candidate = Path.Combine(assemblyDir, "whisper", platform, binaryName);
+                _logger.LogDebug("Looking for bundled binary at: {Path}", candidate);
+
+                if (File.Exists(candidate))
+                {
+                    _logger.LogInformation("Located bundled binary: {Path}", candidate);
+                    return candidate;
+                }
             }
 
-            // Fallback: flat layout
-            candidate = Path.Combine(assemblyDir, platform, BundledBinaryName);
-            _logger.LogDebug("Fallback path: {Path}", candidate);
-
-            if (File.Exists(candidate))
+            // Fallback: flat layout - check all binary names
+            foreach (var binaryName in binaryNames)
             {
-                _logger.LogInformation("Located bundled binary (fallback): {Path}", candidate);
-                return candidate;
+                var candidate = Path.Combine(assemblyDir, platform, binaryName);
+                _logger.LogDebug("Fallback path: {Path}", candidate);
+
+                if (File.Exists(candidate))
+                {
+                    _logger.LogInformation("Located bundled binary (fallback): {Path}", candidate);
+                    return candidate;
+                }
             }
 
             return null;

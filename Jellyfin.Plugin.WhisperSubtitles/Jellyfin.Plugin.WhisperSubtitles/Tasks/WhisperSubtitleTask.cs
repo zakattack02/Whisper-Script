@@ -136,6 +136,11 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Tasks
         {
             var enabledLibraries = config.LibrariesToProcess ?? new List<string>();
 
+            _logger.LogInformation(
+                "Configured library IDs ({Count}): [{Ids}]",
+                enabledLibraries.Count,
+                string.Join(", ", enabledLibraries));
+
             // Include Video so "Home Videos" libraries are not silently ignored.
             var query = new InternalItemsQuery
             {
@@ -157,6 +162,18 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Tasks
                     .ToList();
             }
 
+            // The config page stores ItemIds from getVirtualFolders() which are hex strings
+            // WITHOUT hyphens (e.g. "ff6fbd42ce07adfc36b566506eba4f82").
+            // Guid.ToString() produces hyphenated format (e.g. "ff6fbd42-ce07-adfc-36b5-66506eba4f82").
+            // Normalize both sides to hyphenless lowercase so they always match.
+            var normalizedEnabled = new HashSet<string>(
+                enabledLibraries
+                    .Where(id => !string.IsNullOrWhiteSpace(id))
+                    .Select(NormalizeId),
+                StringComparer.OrdinalIgnoreCase);
+
+            _logger.LogDebug("Normalized enabled IDs: [{Ids}]", string.Join(", ", normalizedEnabled));
+
             var filtered = new List<BaseItem>();
 
             foreach (var item in allItems)
@@ -171,19 +188,22 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Tasks
                     var parentFolders = _libraryManager.GetCollectionFolders(item);
 
                     // Check whether any of the item's parent libraries are in our allow-list.
-                    // Config stores library IDs as strings (Guid.ToString()).
-                    var inEnabledLibrary = parentFolders.Any(
-                        f => enabledLibraries.Contains(f.Id.ToString()));
-
-                    if (inEnabledLibrary)
+                    // Normalize the folder ID to match the config format.
+                    if (parentFolders.Any(f => normalizedEnabled.Contains(NormalizeId(f.Id.ToString()))))
                     {
                         filtered.Add(item);
+                        _logger.LogDebug("Item '{Name}' matched library filter", item.Name);
+                    }
+                    else if (parentFolders.Count > 0)
+                    {
+                        _logger.LogDebug(
+                            "Skipping '{Name}' — parent libraries: [{Folders}]",
+                            item.Name,
+                            string.Join(", ", parentFolders.Select(f => NormalizeId(f.Id.ToString()))));
                     }
                     else
                     {
-                        _logger.LogDebug(
-                            "Skipping '{Name}' — its library is not in the enabled list",
-                            item.Name);
+                        _logger.LogDebug("Item '{Name}' has no parent collection folders", item.Name);
                     }
                 }
                 catch (Exception ex)
@@ -198,6 +218,14 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Tasks
 
             return filtered;
         }
+
+        /// <summary>
+        /// Strips hyphens and lowercases a GUID/ItemId string so that
+        /// "ff6fbd42ce07adfc36b566506eba4f82" and "ff6fbd42-ce07-adfc-36b5-66506eba4f82"
+        /// both normalize to the same value.
+        /// </summary>
+        private static string NormalizeId(string id) =>
+            id.Replace("-", string.Empty).ToLowerInvariant();
 
         private bool ShouldSkip(string videoPath, PluginConfiguration config)
         {

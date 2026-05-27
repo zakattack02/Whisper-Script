@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/zakattack02/Whisper-Script/feature/jellyfin-plugin/logo.png",
     "versions": [
       {
+        "version": "0.0.0.92",
+        "changelog": "Fixed whisper-cli arguments: removed unsupported --output-dir and -vv flags, added -ng for CPU-only mode",
+        "targetAbi": "10.11.2.0",
+        "sourceUrl": "https://github.com/zakattack02/Whisper-Script/releases/download/v0.0.0.92/jellyfin-plugin-whispersubtitles_0.0.0.92.zip",
+        "checksum": "ce55182e34edfd3f469a5f7ca067a105",
+        "timestamp": "2026-05-27T19:51:59Z"
+      },
+      {
         "version": "0.0.0.91",
         "changelog": "Add FFmpeg audio extraction for MP4/MKV support, polished card-based config page, fix PluginPageInfo for Jellyfin 10.11.2",
         "targetAbi": "10.11.2.0",

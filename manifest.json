@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/zakattack02/Whisper-Script/feature/jellyfin-plugin/logo.png",
     "versions": [
       {
+        "version": "0.0.0.91",
+        "changelog": "Add FFmpeg audio extraction for MP4/MKV support, polished card-based config page, fix PluginPageInfo for Jellyfin 10.11.2",
+        "targetAbi": "10.11.2.0",
+        "sourceUrl": "https://github.com/zakattack02/Whisper-Script/releases/download/v0.0.0.91/jellyfin-plugin-whispersubtitles_0.0.0.91.zip",
+        "checksum": "ae190b9d4ef6361a6eb4ce3bf5b67b46",
+        "timestamp": "2026-05-27T19:37:47Z"
+      },
+      {
         "version": "0.0.0.90",
         "changelog": "Fixed SIGILL (exit 132) by disabling AVX2/FMA in whisper.cpp build",
         "targetAbi": "10.11.2.0",

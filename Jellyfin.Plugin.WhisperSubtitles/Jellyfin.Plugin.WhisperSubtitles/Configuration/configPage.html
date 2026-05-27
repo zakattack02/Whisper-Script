@@ -3,155 +3,228 @@
 <head>
     <meta charset="utf-8" />
     <title>Whisper Subtitles</title>
+    <style>
+        .ws-config { max-width: 1100px; margin: 0 auto; padding: 1rem; }
+        .ws-config .ws-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; align-items: start; }
+        
+        @media (max-width: 900px) { 
+            .ws-config .ws-grid { grid-template-columns: 1fr; gap: 1rem; } 
+        }
+        
+        .ws-config .ws-card { background: var(--card-background, #1e1e1e); border: 1px solid var(--border-color, #333); border-radius: 10px; padding: 1.5rem; margin-bottom: 1.5rem; }
+        .ws-config .ws-card:last-child { margin-bottom: 0; }
+        .ws-config .ws-card h3 { margin: 0 0 1.25rem; font-size: 1.05rem; font-weight: 700; color: var(--text-color, #fff); display: flex; align-items: center; gap: 0.5rem; border-bottom: 1px solid var(--border-color, #333); padding-bottom: 0.5rem; }
+        .ws-config .ws-card h3 .material-icons { font-size: 1.3rem; color: var(--accent, #00a4dc); }
+        
+        .ws-config .ws-field { margin-bottom: 1.5rem; }
+        .ws-config .ws-field:last-child { margin-bottom: 0; }
+        .ws-config .ws-label { display: block; font-weight: 600; color: var(--text-color, #eee); margin-bottom: 0.4rem; font-size: 0.9rem; }
+        .ws-config .ws-desc { color: var(--text-color-secondary, #aaa); font-size: 0.8rem; margin-top: 0.3rem; line-height: 1.4; }
+        
+        .ws-config .ws-banner { padding: 0.85rem 1.1rem; border-radius: 6px; margin-bottom: 1rem; display: none; font-size: 0.9rem; line-height: 1.5; border-left: 4px solid transparent; }
+        .ws-config .ws-banner.show { display: block; }
+        .ws-config .ws-banner.warning { background: rgba(255,152,0,0.08); color: var(--warning-color, #ff9800); border-left-color: var(--warning-color, #ff9800); }
+        .ws-config .ws-banner.success { background: rgba(0,200,83,0.08); color: var(--success-color, #00c853); border-left-color: var(--success-color, #00c853); }
+        .ws-config .ws-banner.error { background: rgba(220,0,0,0.08); color: var(--error-color, #dc0000); border-left-color: var(--error-color, #dc0000); }
+        .ws-config .ws-banner.info { background: rgba(0,164,220,0.08); color: var(--info-color, #00a4dc); border-left-color: var(--info-color, #00a4dc); }
+        
+        .ws-config .ws-library-list { border: 1px solid var(--border-color, #444); background: rgba(0,0,0,0.2); border-radius: 6px; padding: 0.75rem; max-height: 200px; overflow-y: auto; }
+        .ws-config .ws-library-list label { display: flex; align-items: center; gap: 0.5rem; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.03); cursor: pointer; }
+        .ws-config .ws-library-list label:last-child { border-bottom: none; }
+        
+        .ws-config textarea.emby-input { height: 100px; width: 100%; font-family: monospace; box-sizing: border-box; background: rgba(0,0,0,0.2); border-radius: 6px; padding: 0.5rem; }
+        .ws-config .ws-about-table { width: 100%; max-width: 500px; border-collapse: collapse; font-size: 0.9rem; }
+        .ws-config .ws-about-table td { padding: 6px 12px 6px 0; vertical-align: top; border-bottom: 1px solid rgba(255,255,255,0.03); }
+        .ws-config .ws-about-table tr:last-child td { border-bottom: none; }
+        .ws-config .ws-about-table td:first-child { font-weight: 600; color: var(--text-color-secondary, #aaa); white-space: nowrap; width: 30%; }
+        .ws-config .ws-about-desc { color: var(--text-color-secondary, #aaa); font-size: 0.85rem; line-height: 1.6; margin-top: 1rem; }
+        
+        .ws-config .ws-save-bar { margin-top: 2rem; padding: 1rem 0; border-top: 1px solid var(--border-color, #333); display: flex; align-items: center; justify-content: flex-end; gap: 1rem; }
+        .ws-config .dirty-indicator { color: var(--warning-color, #ff9800); font-size: 0.85rem; display: none; font-weight: 600; }
+        .ws-config code { font-family: monospace; background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; color: #ff9800; }
+        .ws-config .ws-inline-flex { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+    </style>
 </head>
 <body>
     <div id="WhisperSubtitlesConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-select,emby-checkbox">
         <div data-role="content">
-            <div class="content-primary">
-                <form id="WhisperSubtitlesConfigForm">
-                    <div class="cardContainer" style="display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 20px;">
+            <div class="content-primary ws-config">
+                <div class="pageHeader">
+                    <span class="material-icons pageHeaderIcon" style="font-size:1.5rem;vertical-align:middle;margin-right:8px;color:var(--accent,#00a4dc);">subtitles</span>
+                    <h1 style="display:inline;vertical-align:middle;font-size:1.4rem;margin:0;font-weight:normal;">Whisper Subtitles</h1>
+                </div>
 
-                        <!-- Card: Model Selection -->
-                        <div class="card" style="flex: 1; min-width: 280px; background: rgba(0,0,0,0.3); border-radius: 8px; padding: 20px; border: 1px solid rgba(255,255,255,0.1);">
-                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
-                                <span style="font-size: 24px;">🧠</span>
-                                <h3 style="margin: 0; font-size: 1.1em;">Whisper Model</h3>
+                <form id="WhisperSubtitlesConfigForm" style="margin-top:1.5rem;">
+                    <div class="ws-grid">
+
+                        <div class="ws-col">
+                            <div class="ws-card">
+                                <h3><span class="material-icons">settings</span> Model &amp; Engine</h3>
+
+                                <div class="selectContainer ws-field">
+                                    <label class="ws-label" for="WhisperModel">Whisper Model</label>
+                                    <select is="emby-select" id="WhisperModel" name="WhisperModel" class="emby-select-withcolor emby-select">
+                                        <option value="Tiny">Tiny (~10x speed, ~1GB VRAM, ~75MB)</option>
+                                        <option value="Base">Base (~7x speed, ~1GB VRAM, ~140MB)</option>
+                                        <option value="Small" selected>Small (~4x speed, ~2GB VRAM, ~460MB) — Recommended</option>
+                                        <option value="Medium">Medium (~2x speed, ~5GB VRAM, ~1.5GB)</option>
+                                        <option value="Turbo">Turbo (~8x speed, ~6GB VRAM, ~1.6GB)</option>
+                                        <option value="Large">Large (Best quality, ~10GB VRAM, ~3GB)</option>
+                                    </select>
+                                    <div class="ws-desc">Larger models are more accurate but slower and use more VRAM.</div>
+                                </div>
+
+                                <div class="ws-field">
+                                    <div class="ws-inline-flex">
+                                        <button is="emby-button" type="button" id="DownloadModelButton" class="raised button-submit emby-button">
+                                            <span>Download Model</span>
+                                        </button>
+                                    </div>
+                                    <div id="downloadStatus" class="ws-banner" style="margin-top:0.75rem;"></div>
+                                </div>
+
+                                <div class="inputContainer ws-field">
+                                    <label class="ws-label" for="TargetLanguage">Target Language</label>
+                                    <input is="emby-input" type="text" id="TargetLanguage" name="TargetLanguage" class="emby-input" />
+                                    <div class="ws-desc">Language code format (e.g., en, es, fr, de, ja, zh)</div>
+                                </div>
+
+                                <div class="inputContainer ws-field">
+                                    <label class="ws-label" for="AIIdentifier">AI Identifier</label>
+                                    <input is="emby-input" type="text" id="AIIdentifier" name="AIIdentifier" class="emby-input" />
+                                    <div class="ws-desc">Appends to file tag layout: <code>movie.en.IDENTIFIER.srt</code>. Leave blank to disable.</div>
+                                </div>
                             </div>
-                            <div class="selectContainer" style="margin-bottom: 12px;">
-                                <select is="emby-select" id="WhisperModel" name="WhisperModel" class="emby-select-withcolor emby-select">
-                                    <option value="Tiny">Tiny (~10x speed, ~75MB)</option>
-                                    <option value="Base">Base (~7x speed, ~140MB)</option>
-                                    <option value="Small">Small (~4x speed, ~460MB) - Recommended</option>
-                                    <option value="Medium">Medium (~2x speed, ~1.5GB)</option>
-                                    <option value="Turbo">Turbo (~8x speed, ~1.6GB)</option>
-                                    <option value="Large">Large (Best quality, ~3GB)</option>
-                                </select>
-                                <div class="fieldDescription">Larger models are more accurate but slower</div>
+
+                            <div class="ws-card">
+                                <h3><span class="material-icons">speed</span> Acceleration</h3>
+
+                                <div class="checkboxContainer checkboxContainer-withDescription ws-field">
+                                    <label class="emby-checkbox-label">
+                                        <input id="UseGPUAcceleration" name="UseGPUAcceleration" type="checkbox" is="emby-checkbox" />
+                                        <span>Enable GPU Acceleration</span>
+                                    </label>
+                                    <div class="ws-desc" style="padding-left: 2rem;">Utilizes CUDA/Vulkan computing layers (requires functional NVIDIA/AMD runtime stacks).</div>
+                                </div>
+
+                                <div id="gpuInfo" class="ws-banner info">
+                                    <strong>Runtime Hardware Status:</strong> <span id="gpuTypeText">detecting hardware profile...</span>
+                                </div>
                             </div>
-                            <button is="emby-button" type="button" id="DownloadModelButton" class="raised button-submit emby-button" style="width: 100%;">
-                                <span>⬇ Download Model</span>
-                            </button>
-                            <div id="downloadStatus" class="fieldDescription" style="display: none; padding: 8px; margin-top: 10px; border-radius: 4px;"></div>
                         </div>
 
-                        <!-- Card: Binary Status -->
-                        <div class="card" style="flex: 1; min-width: 280px; background: rgba(0,0,0,0.3); border-radius: 8px; padding: 20px; border: 1px solid rgba(255,255,255,0.1);">
-                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
-                                <span style="font-size: 24px;">⚙️</span>
-                                <h3 style="margin: 0; font-size: 1.1em;">Whisper Binary</h3>
+                        <div class="ws-col">
+                            <div class="ws-card">
+                                <h3><span class="material-icons">auto_awesome</span> Library Automation</h3>
+
+                                <div class="checkboxContainer checkboxContainer-withDescription ws-field">
+                                    <label class="emby-checkbox-label">
+                                        <input id="ProcessOnLibraryScan" name="ProcessOnLibraryScan" type="checkbox" is="emby-checkbox" />
+                                        <span>Process on Library Scan</span>
+                                    </label>
+                                    <div class="ws-desc" style="padding-left: 2rem;">Trigger execution loop hooks instantly upon catalog folder discovery passes.</div>
+                                </div>
+
+                                <div class="checkboxContainer checkboxContainer-withDescription ws-field">
+                                    <label class="emby-checkbox-label">
+                                        <input id="SkipExisting" name="SkipExisting" type="checkbox" is="emby-checkbox" />
+                                        <span>Skip Existing Subtitles</span>
+                                    </label>
+                                    <div class="ws-desc" style="padding-left: 2rem;">Bypass parsing logic for assets that possess pre-existing subtitle structures.</div>
+                                </div>
+
+                                <div class="checkboxContainer checkboxContainer-withDescription ws-field">
+                                    <label class="emby-checkbox-label">
+                                        <input id="RegenerateAI" name="RegenerateAI" type="checkbox" is="emby-checkbox" />
+                                        <span>Regenerate AI Subtitles</span>
+                                    </label>
+                                    <div class="ws-desc" style="padding-left: 2rem;">Force overwrite parsing routines if existing targets match internal AI hashes.</div>
+                                </div>
+
+                                <div class="checkboxContainer checkboxContainer-withDescription ws-field">
+                                    <label class="emby-checkbox-label">
+                                        <input id="TranslateToEnglish" name="TranslateToEnglish" type="checkbox" is="emby-checkbox" />
+                                        <span>Translate to English</span>
+                                    </label>
+                                    <div class="ws-desc" style="padding-left: 2rem;">Forced conversion tracking maps multilingual content blocks direct to English matrices.</div>
+                                </div>
+
+                                <div class="checkboxContainer checkboxContainer-withDescription ws-field">
+                                    <label class="emby-checkbox-label">
+                                        <input id="WordTimestamps" name="WordTimestamps" type="checkbox" is="emby-checkbox" />
+                                        <span>Enable Word-Level Timestamps</span>
+                                    </label>
+                                    <div class="ws-desc" style="padding-left: 2rem;">Improves granular frame syncing timelines, but lengthens compute run-times.</div>
+                                </div>
+
+                                <div class="ws-field">
+                                    <label class="ws-label">Libraries to Process</label>
+                                    <div id="LibrariesToProcessContainer" class="ws-library-list">
+                                        <p style="color:var(--text-color-secondary,#888);text-align:center;margin:10px 0;">Loading target server libraries...</p>
+                                    </div>
+                                    <div class="ws-desc">Isolate parsing runs to targeted libraries. Empty sets default to checking all media folders.</div>
+                                </div>
+
+                                <div class="inputContainer ws-field">
+                                    <label class="ws-label" for="FoldersToExclude">Folders to Exclude</label>
+                                    <textarea is="emby-input" id="FoldersToExclude" name="FoldersToExclude" class="emby-input"></textarea>
+                                    <div class="ws-desc">Exclude local absolute paths (one folder rule entry per line).</div>
+                                </div>
                             </div>
-                            <div id="binaryOk" style="display: none; padding: 12px; border-radius: 4px; background-color: rgba(0, 200, 83, 0.15); color: #00c853; border-left: 4px solid #00c853; margin-bottom: 10px;">
-                                ✓ Binary is installed and ready
-                            </div>
-                            <div id="binaryInstructions" style="display: none; padding: 12px; border-radius: 4px; background-color: rgba(255, 152, 0, 0.2); color: #ff9800; border-left: 4px solid #ff9800; margin-bottom: 10px;">
-                                <div style="font-weight: bold; margin-bottom: 8px;">⚠ Binary not installed</div>
-                                <button is="emby-button" type="button" id="InstallBinaryButton" class="raised button-submit emby-button" style="width: 100%;">
-                                    <span>▶ Install Binary</span>
+                        </div>
+
+                    </div><div class="ws-card" style="margin-top: 1.5rem;">
+                        <h3><span class="material-icons">memory</span> System Status</h3>
+
+                        <div id="binaryInstructions" class="ws-banner warning show">
+                            <div style="font-weight:700;margin-bottom:6px;font-size:1rem;">System Execution Binary Absent</div>
+                            <div style="margin-bottom:12px;">The underlying runtime binary is packed into local directories but must register access configurations via the system cache space.</div>
+                            <div style="margin:10px 0;">
+                                <button is="emby-button" type="button" id="InstallBinaryButton" class="raised emby-button" style="background:var(--accent,#00a4dc);color:#fff;">
+                                    <span>Deploy Runtime Binary</span>
                                 </button>
                             </div>
-                            <div id="binaryMeta" style="font-size: 0.85em; color: #888;">
-                                <span id="binaryPath">Checking...</span>
+                            <div style="font-size:0.8rem;color:var(--text-color-secondary,#aaa);">
+                                Manual target fallback location path: copy from <code>~/.config/jellyfin/plugins/Whisper Subtitles_*/whisper/</code> straight to <code>~/.cache/whisper-cpp/</code>
                             </div>
                         </div>
 
-                        <!-- Card: Language & Identifier -->
-                        <div class="card" style="flex: 1; min-width: 280px; background: rgba(0,0,0,0.3); border-radius: 8px; padding: 20px; border: 1px solid rgba(255,255,255,0.1);">
-                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
-                                <span style="font-size: 24px;">🌐</span>
-                                <h3 style="margin: 0; font-size: 1.1em;">Language & Naming</h3>
-                            </div>
-                            <div class="inputContainer" style="margin-bottom: 10px;">
-                                <label class="inputLabel" for="TargetLanguage">Target Language</label>
-                                <input is="emby-input" type="text" id="TargetLanguage" name="TargetLanguage" class="emby-input" />
-                                <div class="fieldDescription">Language code (en, es, fr, de, ja, etc.)</div>
-                            </div>
-                            <div class="inputContainer" style="margin-bottom: 0;">
-                                <label class="inputLabel" for="AIIdentifier">AI Identifier</label>
-                                <input is="emby-input" type="text" id="AIIdentifier" name="AIIdentifier" class="emby-input" />
-                                <div class="fieldDescription">Added to filename (e.g., "whisper" → video.en.whisper.srt)</div>
-                            </div>
+                        <div id="binaryOk" class="ws-banner success">
+                            <strong>✓ Whisper core environment validation passed. Ready.</strong>
                         </div>
 
-                        <!-- Card: Processing Options -->
-                        <div class="card" style="flex: 1; min-width: 280px; background: rgba(0,0,0,0.3); border-radius: 8px; padding: 20px; border: 1px solid rgba(255,255,255,0.1);">
-                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
-                                <span style="font-size: 24px;">⚡</span>
-                                <h3 style="margin: 0; font-size: 1.1em;">Processing</h3>
-                            </div>
-                            <div class="checkboxContainer checkboxContainer-withDescription">
-                                <label class="emby-checkbox-label">
-                                    <input id="TranslateToEnglish" name="TranslateToEnglish" type="checkbox" is="emby-checkbox" />
-                                    <span>Translate to English</span>
-                                </label>
-                            </div>
-                            <div class="checkboxContainer checkboxContainer-withDescription">
-                                <label class="emby-checkbox-label">
-                                    <input id="WordTimestamps" name="WordTimestamps" type="checkbox" is="emby-checkbox" />
-                                    <span>Word-Level Timestamps</span>
-                                </label>
-                            </div>
-                            <div class="checkboxContainer checkboxContainer-withDescription">
-                                <label class="emby-checkbox-label">
-                                    <input id="UseGPUAcceleration" name="UseGPUAcceleration" type="checkbox" is="emby-checkbox" />
-                                    <span>GPU Acceleration</span>
-                                </label>
-                            </div>
-                            <div class="checkboxContainer checkboxContainer-withDescription" style="margin-bottom: 0;">
-                                <label class="emby-checkbox-label">
-                                    <input id="ProcessOnLibraryScan" name="ProcessOnLibraryScan" type="checkbox" is="emby-checkbox" />
-                                    <span>Process on Library Scan</span>
-                                </label>
-                            </div>
+                        <div id="binaryStatusText" class="ws-banner info" style="margin-top:8px;">
+                            <strong>Binary System Node Point:</strong> <span id="binaryPathText">unknown</span><br/>
+                            <strong>Active Thread Allocations:</strong> <span id="cpuThreadsText">-</span> available logical processor units
                         </div>
 
-                        <!-- Card: Subtitle Management -->
-                        <div class="card" style="flex: 1; min-width: 280px; background: rgba(0,0,0,0.3); border-radius: 8px; padding: 20px; border: 1px solid rgba(255,255,255,0.1);">
-                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
-                                <span style="font-size: 24px;">📄</span>
-                                <h3 style="margin: 0; font-size: 1.1em;">Subtitle Management</h3>
-                            </div>
-                            <div class="checkboxContainer checkboxContainer-withDescription">
-                                <label class="emby-checkbox-label">
-                                    <input id="SkipExisting" name="SkipExisting" type="checkbox" is="emby-checkbox" />
-                                    <span>Skip Existing Subtitles</span>
-                                </label>
-                            </div>
-                            <div class="checkboxContainer checkboxContainer-withDescription" style="margin-bottom: 0;">
-                                <label class="emby-checkbox-label">
-                                    <input id="RegenerateAI" name="RegenerateAI" type="checkbox" is="emby-checkbox" />
-                                    <span>Regenerate AI Subtitles</span>
-                                </label>
-                            </div>
+                        <div id="diagnosticsInfo" class="ws-banner info" style="margin-top:8px;">
+                            Analyzing platform performance metrics...
                         </div>
-
-                        <!-- Card: Library Selection -->
-                        <div class="card" style="flex: 1; min-width: 280px; background: rgba(0,0,0,0.3); border-radius: 8px; padding: 20px; border: 1px solid rgba(255,255,255,0.1);">
-                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
-                                <span style="font-size: 24px;">📁</span>
-                                <h3 style="margin: 0; font-size: 1.1em;">Library & Folders</h3>
-                            </div>
-                            <div style="margin-bottom: 12px;">
-                                <label style="display: block; margin-bottom: 5px; font-weight: bold; font-size: 0.9em;">Libraries to Process</label>
-                                <div id="LibrariesToProcessContainer" style="border: 1px solid #333; padding: 8px; border-radius: 4px; max-height: 180px; overflow-y: auto;">
-                                    <p style="color: #888; text-align: center; margin: 10px 0;">Loading libraries...</p>
-                                </div>
-                                <div class="fieldDescription">Leave empty to process all libraries</div>
-                            </div>
-                            <div style="margin-bottom: 0;">
-                                <label class="inputLabel" for="FoldersToExclude" style="font-size: 0.9em;">Folders to Exclude</label>
-                                <textarea is="emby-input" id="FoldersToExclude" name="FoldersToExclude" class="emby-input" style="height: 80px; width: 100%; padding: 6px; border: 1px solid #555; border-radius: 4px; font-family: monospace; box-sizing: border-box;"></textarea>
-                                <div class="fieldDescription">One per line</div>
-                            </div>
-                        </div>
-
                     </div>
 
-                    <!-- Save Button -->
-                    <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px;">
-                        <button is="emby-button" type="submit" class="raised button-submit block emby-button">
-                            <span>💾 Save</span>
+                    <div class="ws-card">
+                        <h3><span class="material-icons">info</span> About Module</h3>
+
+                        <table class="ws-about-table">
+                            <tr><td>Version</td><td id="aboutVersion">-</td></tr>
+                            <tr><td>Repository Source</td><td><a href="https://github.com/zakattack02/Whisper-Script" target="_blank">github.com/zakattack02/Whisper-Script</a></td></tr>
+                            <tr><td>License Profile</td><td>MIT Open Source Agreement</td></tr>
+                            <tr><td>Transcription Core</td><td>whisper.cpp standalone optimization layer (ggerganov)</td></tr>
+                        </table>
+
+                        <div class="ws-about-desc">
+                            <p>Generates high-fidelity subtitle tracking sheets automatically. Harnesses advanced local transcription engines without needing to route external data packets out to third party provider cloud spaces.</p>
+                        </div>
+                    </div>
+
+                    <div class="ws-save-bar">
+                        <span class="dirty-indicator" id="dirtyIndicator">● Unsaved Workspace Configuration Changes</span>
+                        <button is="emby-button" type="submit" class="raised button-submit emby-button" style="padding: 0.5rem 2rem;">
+                            <span>Save Configuration</span>
                         </button>
                     </div>
+
                 </form>
             </div>
         </div>
@@ -165,10 +238,34 @@
                 };
 
                 var configPage = document.getElementById('WhisperSubtitlesConfigPage');
+                var currentConfig = null;
 
-                function setBinaryStatus(isReady) {
-                    document.getElementById('binaryInstructions').style.display = isReady ? 'none'  : 'block';
-                    document.getElementById('binaryOk').style.display           = isReady ? 'block' : 'none';
+                function showBanner(id) { var e = document.getElementById(id); if (e) e.classList.add('show'); }
+                function hideBanner(id) { var e = document.getElementById(id); if (e) e.classList.remove('show'); }
+
+                function setBinaryStatus(isReady, binaryPath, gpuType) {
+                    if (isReady) {
+                        hideBanner('binaryInstructions');
+                        showBanner('binaryOk');
+                        showBanner('binaryStatusText');
+                        var p = document.getElementById('binaryPathText');
+                        if (p) p.textContent = binaryPath || 'unknown';
+                    } else {
+                        showBanner('binaryInstructions');
+                        hideBanner('binaryOk');
+                        hideBanner('binaryStatusText');
+                    }
+
+                    if (gpuType) {
+                        showBanner('gpuInfo');
+                        var g = document.getElementById('gpuTypeText');
+                        if (g) g.textContent = gpuType;
+                    } else {
+                        hideBanner('gpuInfo');
+                    }
+
+                    var c = document.getElementById('cpuThreadsText');
+                    if (c) c.textContent = navigator.hardwareConcurrency || '?';
                 }
 
                 function checkBinaryStatus() {
@@ -177,10 +274,11 @@
                         type: 'GET',
                         url: ApiClient.getUrl('api/WhisperSubtitles/BinaryStatus')
                     }).then(function (response) {
-                        setBinaryStatus(response && response.IsReady === true);
-                        if (response && response.BinaryPath) {
-                            document.getElementById('binaryPath').textContent = response.BinaryPath;
-                        }
+                        setBinaryStatus(
+                            response && response.IsReady === true,
+                            response && response.BinaryPath,
+                            response && response.GpuType
+                        );
                     }).catch(function () {
                         setBinaryStatus(false);
                     });
@@ -189,90 +287,221 @@
                 function loadConfig() {
                     if (typeof ApiClient === 'undefined') return;
                     Dashboard.showLoadingMsg();
+
                     ApiClient.getPluginConfiguration(WhisperSubtitlesConfig.pluginUniqueId).then(function (config) {
-                        document.getElementById('WhisperModel').value          = config.WhisperModel || 'Small';
-                        document.getElementById('TargetLanguage').value        = config.TargetLanguage || 'en';
-                        document.getElementById('AIIdentifier').value          = config.AIIdentifier || 'whisper';
-                        document.getElementById('TranslateToEnglish').checked  = config.TranslateToEnglish || false;
-                        document.getElementById('WordTimestamps').checked      = config.WordTimestamps || false;
+                        currentConfig = deepClone(config);
+
+                        document.getElementById('WhisperModel').value = config.WhisperModel || 'Small';
+                        document.getElementById('TargetLanguage').value = config.TargetLanguage || 'en';
+                        document.getElementById('AIIdentifier').value = config.AIIdentifier || 'whisper';
+                        document.getElementById('TranslateToEnglish').checked = config.TranslateToEnglish || false;
+                        document.getElementById('WordTimestamps').checked = config.WordTimestamps || false;
                         document.getElementById('ProcessOnLibraryScan').checked = config.ProcessOnLibraryScan || false;
-                        document.getElementById('SkipExisting').checked        = config.SkipExisting !== false;
-                        document.getElementById('RegenerateAI').checked        = config.RegenerateAI || false;
-                        document.getElementById('UseGPUAcceleration').checked  = config.UseGPUAcceleration || false;
+                        document.getElementById('SkipExisting').checked = config.SkipExisting !== false;
+                        document.getElementById('RegenerateAI').checked = config.RegenerateAI || false;
+                        document.getElementById('UseGPUAcceleration').checked = config.UseGPUAcceleration || false;
+
                         var foldersToExclude = config.FoldersToExclude || [];
                         document.getElementById('FoldersToExclude').value = foldersToExclude.join('\n');
+
                         loadLibraries(config.LibrariesToProcess || []);
+                        loadDiagnostics();
                         Dashboard.hideLoadingMsg();
+                        markClean();
+                    }).catch(function (error) {
+                        console.error('[WhisperSubtitles] Error loading config:', error);
+                        Dashboard.hideLoadingMsg();
+                    });
+                }
+
+                function deepClone(obj) {
+                    return JSON.parse(JSON.stringify(obj));
+                }
+
+                function loadDiagnostics() {
+                    if (typeof ApiClient === 'undefined') return;
+                    ApiClient.fetch({
+                        type: 'GET',
+                        url: ApiClient.getUrl('api/WhisperSubtitles/stats')
+                    }).then(function (stats) {
+                        var el = document.getElementById('diagnosticsInfo');
+                        if (!el) return;
+                        var html = '';
+                        if (stats) {
+                            html += '<strong>Binary Environment System Node:</strong> ' + (stats.binaryReady ? '✓ Operational' : '✗ Unconfigured');
+                            if (stats.gpuType) html += '<br/><strong>Hardware Target Stack:</strong> ' + stats.gpuType;
+                            if (stats.modelsDownloaded !== undefined) html += '<br/><strong>Models Cached:</strong> ' + stats.modelsDownloaded + ' / ' + stats.modelsAvailable;
+                            if (stats.queueLength !== undefined) html += '<br/><strong>Current Processing Queue:</strong> ' + stats.queueLength + ' job nodes actively waiting';
+                        }
+                        el.innerHTML = html || 'Diagnostics polling context empty.';
+                        showBanner('diagnosticsInfo');
                     }).catch(function () {
-                        Dashboard.hideLoadingMsg();
+                        var el = document.getElementById('diagnosticsInfo');
+                        if (el) { el.innerHTML = 'Diagnostics unavailable'; showBanner('diagnosticsInfo'); }
                     });
                 }
 
                 function loadLibraries(selectedLibraries) {
                     if (typeof ApiClient === 'undefined') return;
                     selectedLibraries = selectedLibraries || [];
+
                     ApiClient.getVirtualFolders().then(function (librariesResponse) {
                         var container = document.getElementById('LibrariesToProcessContainer');
                         if (!container) return;
                         container.innerHTML = '';
-                        var folders = Array.isArray(librariesResponse) ? librariesResponse : (librariesResponse.Items || []);
+
+                        var folders = Array.isArray(librariesResponse)
+                            ? librariesResponse
+                            : (librariesResponse.Items || []);
+
                         var videoFolders = folders.filter(function (f) {
-                            return f.CollectionType === 'movies' || f.CollectionType === 'tvshows' || f.CollectionType === 'homevideos';
+                            return f.CollectionType === 'movies' ||
+                                   f.CollectionType === 'tvshows' ||
+                                   f.CollectionType === 'homevideos';
                         });
+
                         if (videoFolders.length === 0) {
-                            container.innerHTML = '<p style="color:#888;text-align:center;margin:10px 0;">No media libraries found</p>';
+                            container.innerHTML = '<p style="color:var(--text-color-secondary,#888);text-align:center;margin:10px 0;">No matching server libraries mapped.</p>';
                             return;
                         }
+
                         videoFolders.forEach(function (library) {
                             var label = document.createElement('label');
-                            label.className = 'checkboxContainer';
-                            label.style.display = 'block';
-                            label.style.padding = '4px 0';
                             var checkbox = document.createElement('input');
                             checkbox.type = 'checkbox';
+                            checkbox.id = 'lib_' + library.ItemId;
                             checkbox.className = 'library-checkbox';
                             checkbox.value = library.ItemId || library.Id;
                             checkbox.checked = selectedLibraries.indexOf(checkbox.value) !== -1;
+
                             label.appendChild(checkbox);
-                            label.appendChild(document.createTextNode(' ' + (library.Name || 'Unknown')));
+                            label.appendChild(document.createTextNode(' ' + (library.Name || 'Unnamed Media Library Source')));
                             container.appendChild(label);
                         });
-                    }).catch(function () {
+                    }).catch(function (error) {
+                        console.error('[WhisperSubtitles] Error loading target server libraries:', error);
                         var container = document.getElementById('LibrariesToProcessContainer');
-                        if (container) container.innerHTML = '<p style="color:#f44336;text-align:center;margin:10px 0;">Error loading libraries</p>';
+                        if (container) {
+                            container.innerHTML = '<p style="color:var(--error-color,#dc0000);text-align:center;margin:10px 0;">Failed to pull system libraries.</p>';
+                        }
                     });
                 }
+
+                function markDirty() {
+                    var d = document.getElementById('dirtyIndicator');
+                    if (d) d.style.display = 'inline';
+                }
+
+                function markClean() {
+                    var d = document.getElementById('dirtyIndicator');
+                    if (d) d.style.display = 'none';
+                }
+
+                document.getElementById('WhisperSubtitlesConfigForm').addEventListener('change', markDirty);
+                document.querySelectorAll('input, select, textarea').forEach(function (el) {
+                    el.addEventListener('input', markDirty);
+                });
 
                 function saveConfig(e) {
                     e.preventDefault();
                     if (typeof ApiClient === 'undefined') return false;
+
                     Dashboard.showLoadingMsg();
-                    ApiClient.getPluginConfiguration(WhisperSubtitlesConfig.pluginUniqueId).then(function (config) {
-                        config.WhisperModel          = document.getElementById('WhisperModel').value;
-                        config.TargetLanguage        = document.getElementById('TargetLanguage').value;
-                        config.AIIdentifier          = document.getElementById('AIIdentifier').value;
-                        config.TranslateToEnglish    = document.getElementById('TranslateToEnglish').checked;
-                        config.WordTimestamps        = document.getElementById('WordTimestamps').checked;
-                        config.ProcessOnLibraryScan  = document.getElementById('ProcessOnLibraryScan').checked;
-                        config.SkipExisting          = document.getElementById('SkipExisting').checked;
-                        config.RegenerateAI          = document.getElementById('RegenerateAI').checked;
-                        config.UseGPUAcceleration    = document.getElementById('UseGPUAcceleration').checked;
+
+                    var p = currentConfig
+                        ? Promise.resolve(currentConfig)
+                        : ApiClient.getPluginConfiguration(WhisperSubtitlesConfig.pluginUniqueId);
+
+                    p.then(function (config) {
+                        config.WhisperModel = document.getElementById('WhisperModel').value;
+                        config.TargetLanguage = document.getElementById('TargetLanguage').value;
+                        config.AIIdentifier = document.getElementById('AIIdentifier').value;
+                        config.TranslateToEnglish = document.getElementById('TranslateToEnglish').checked;
+                        config.WordTimestamps = document.getElementById('WordTimestamps').checked;
+                        config.ProcessOnLibraryScan = document.getElementById('ProcessOnLibraryScan').checked;
+                        config.SkipExisting = document.getElementById('SkipExisting').checked;
+                        config.RegenerateAI = document.getElementById('RegenerateAI').checked;
+                        config.UseGPUAcceleration = document.getElementById('UseGPUAcceleration').checked;
+
                         var selectedLibraries = [];
                         document.querySelectorAll('.library-checkbox:checked').forEach(function (cb) {
                             selectedLibraries.push(cb.value);
                         });
                         config.LibrariesToProcess = selectedLibraries;
+
                         var foldersText = document.getElementById('FoldersToExclude').value;
-                        config.FoldersToExclude = foldersText.split('\n').map(function (f) { return f.trim(); }).filter(function (f) { return f.length > 0; });
+                        config.FoldersToExclude = foldersText.split('\n')
+                            .map(function (f) { return f.trim(); })
+                            .filter(function (f) { return f.length > 0; });
+
                         return ApiClient.updatePluginConfiguration(WhisperSubtitlesConfig.pluginUniqueId, config);
                     }).then(function () {
                         Dashboard.hideLoadingMsg();
+                        markClean();
                         Dashboard.processPluginConfigurationUpdateResult();
-                    }).catch(function () {
+                    }).catch(function (error) {
+                        console.error('[WhisperSubtitles] Exception caught applying configuration update set:', error);
                         Dashboard.hideLoadingMsg();
                     });
+
                     return false;
                 }
+
+                document.getElementById('DownloadModelButton').addEventListener('click', function () {
+                    var selectedModel = document.getElementById('WhisperModel').value;
+                    var statusDiv = document.getElementById('downloadStatus');
+
+                    statusDiv.className = 'ws-banner info show';
+                    statusDiv.innerHTML = '⟳ Downloading language target model definitions: "' + selectedModel + '"...';
+
+                    if (typeof ApiClient === 'undefined') return;
+
+                    ApiClient.fetch({
+                        type: 'POST',
+                        url: ApiClient.getUrl('api/WhisperSubtitles/DownloadModel'),
+                        data: JSON.stringify({ ModelName: selectedModel }),
+                        contentType: 'application/json'
+                    }).then(function () {
+                        statusDiv.className = 'ws-banner success show';
+                        statusDiv.innerHTML = '✓ Model tracking mapping configuration "' + selectedModel + '" pulled successfully.';
+                        setTimeout(function () { statusDiv.className = 'ws-banner'; }, 5000);
+                    }).catch(function () {
+                        statusDiv.className = 'ws-banner error show';
+                        statusDiv.innerHTML = '✗ Target download routine aborted abnormally — review logs on active instance console output layers.';
+                    });
+                });
+
+                document.getElementById('InstallBinaryButton').addEventListener('click', function () {
+                    var statusDiv = document.getElementById('binaryOk');
+
+                    statusDiv.className = 'ws-banner info show';
+                    statusDiv.innerHTML = '⟳ Deploying system execute elements...';
+
+                    if (typeof ApiClient === 'undefined') return;
+
+                    ApiClient.fetch({
+                        type: 'POST',
+                        url: ApiClient.getUrl('api/WhisperSubtitles/InstallBinary')
+                    }).then(function () {
+                        return ApiClient.fetch({
+                            type: 'GET',
+                            url: ApiClient.getUrl('api/WhisperSubtitles/BinaryStatus')
+                        });
+                    }).then(function (statusResponse) {
+                        if (statusResponse && statusResponse.IsReady) {
+                            statusDiv.className = 'ws-banner success show';
+                            statusDiv.innerHTML = '✓ Local binary workspace deployed successfully.';
+                            setBinaryStatus(true, statusResponse.BinaryPath, statusResponse.GpuType);
+                        } else {
+                            statusDiv.className = 'ws-banner error show';
+                            statusDiv.innerHTML = '✗ Failure verifying engine node pointers following install loop execution path mapping passes.';
+                        }
+                        setTimeout(function () { statusDiv.className = 'ws-banner'; }, 5000);
+                    }).catch(function () {
+                        statusDiv.className = 'ws-banner error show';
+                        statusDiv.innerHTML = '✗ Execution thread context caught engine asset registration fault routines.';
+                    });
+                });
 
                 if (configPage) {
                     configPage.addEventListener('pageshow', function () {
@@ -289,55 +518,8 @@
                     });
                 }
 
-                document.getElementById('WhisperSubtitlesConfigForm').addEventListener('submit', saveConfig);
-
-                document.getElementById('DownloadModelButton').addEventListener('click', function () {
-                    var selectedModel = document.getElementById('WhisperModel').value;
-                    var statusDiv = document.getElementById('downloadStatus');
-                    statusDiv.style.display = 'block';
-                    statusDiv.style.backgroundColor = 'rgba(0, 164, 220, 0.2)';
-                    statusDiv.style.color = '#00a4dc';
-                    statusDiv.innerHTML = '⟳ Downloading "' + selectedModel + '"...';
-                    ApiClient.fetch({
-                        type: 'POST',
-                        url: ApiClient.getUrl('api/WhisperSubtitles/DownloadModel'),
-                        data: JSON.stringify({ ModelName: selectedModel }),
-                        contentType: 'application/json'
-                    }).then(function () {
-                        statusDiv.style.backgroundColor = 'rgba(0, 200, 83, 0.2)';
-                        statusDiv.style.color = '#00c853';
-                        statusDiv.innerHTML = '✓ Model downloaded';
-                        setTimeout(function () { statusDiv.style.display = 'none'; }, 5000);
-                    }).catch(function () {
-                        statusDiv.style.backgroundColor = 'rgba(220, 0, 0, 0.2)';
-                        statusDiv.style.color = '#dc0000';
-                        statusDiv.innerHTML = '✗ Download failed';
-                    });
-                });
-
-                document.getElementById('InstallBinaryButton').addEventListener('click', function () {
-                    var btn = this;
-                    btn.disabled = true;
-                    btn.querySelector('span').textContent = '⟳ Installing...';
-                    ApiClient.fetch({
-                        type: 'POST',
-                        url: ApiClient.getUrl('api/WhisperSubtitles/InstallBinary')
-                    }).then(function () {
-                        return ApiClient.fetch({
-                            type: 'GET',
-                            url: ApiClient.getUrl('api/WhisperSubtitles/BinaryStatus')
-                        });
-                    }).then(function (statusResponse) {
-                        if (statusResponse && statusResponse.IsReady) {
-                            setBinaryStatus(true);
-                        }
-                        btn.disabled = false;
-                        btn.querySelector('span').textContent = '▶ Install Binary';
-                    }).catch(function () {
-                        btn.disabled = false;
-                        btn.querySelector('span').textContent = '▶ Install Binary';
-                    });
-                });
+                var form = document.getElementById('WhisperSubtitlesConfigForm');
+                if (form) { form.addEventListener('submit', saveConfig); }
 
             })();
         </script>

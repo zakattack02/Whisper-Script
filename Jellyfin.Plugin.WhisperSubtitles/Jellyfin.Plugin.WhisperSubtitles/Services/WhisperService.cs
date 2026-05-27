@@ -152,103 +152,111 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
             try
             {
                 var outputDir  = Path.GetDirectoryName(outputPath) ?? Directory.GetCurrentDirectory();
-                // whisper-cli writes <stem>.srt; we strip the .srt extension from outputPath.
                 var outputStem = Path.GetFileNameWithoutExtension(outputPath);
 
-                // ── Build argument list ────────────────────────────────────────
-                // IMPORTANT: do NOT wrap the whole string in extra quotes.
-                // Each path that may contain spaces must be individually quoted.
-                var args = BuildArguments(
-                    modelFile, videoPath, outputDir, outputStem,
-                    language, translate, wordTimestamps,
-                    config.UseGPUAcceleration ? _binaryManager.DetectedGPUType : null);
+                // ── Extract audio from video ───────────────────────────────────
+                // whisper-cli only supports WAV/FLAC/MP3/OGG, not MP4/MKV.
+                var tempWav = Path.Combine(
+                    Path.GetTempPath(),
+                    $"whisper_{Guid.NewGuid():N}.wav");
 
-                var acceleration = config.UseGPUAcceleration && _binaryManager.DetectedGPUType is not null
-                    ? $"GPU ({_binaryManager.DetectedGPUType})"
-                    : "CPU";
-
-                _logger.LogInformation(
-                    "Generating subtitles: video={Video}, model={Model}, lang={Lang}, translate={T}, accel={A}",
-                    videoPath, modelName, language, translate, acceleration);
-                _logger.LogInformation("Command: {Binary} {Args}", _binaryManager.BinaryPath, args);
-
-                var psi = new ProcessStartInfo
+                if (!await ExtractAudioAsync(videoPath, tempWav, cancellationToken))
                 {
-                    FileName               = _binaryManager.BinaryPath,
-                    Arguments              = args,          // plain string, no outer quotes
-                    RedirectStandardOutput = true,
-                    RedirectStandardError  = true,
-                    UseShellExecute        = false,
-                    CreateNoWindow         = true,
-                    WorkingDirectory       = outputDir
-                };
-
-                // Prepend Jellyfin's FFmpeg directory to PATH so whisper-cli can find it
-                if (!string.IsNullOrEmpty(_binaryManager.JellyfinFFmpegPath))
-                {
-                    var ffmpegDir = Path.GetDirectoryName(_binaryManager.JellyfinFFmpegPath)!;
-                    var currentPath = Environment.GetEnvironmentVariable("PATH") ?? string.Empty;
-                    psi.EnvironmentVariables["PATH"] = $"{ffmpegDir}:{currentPath}";
-                }
-
-                using var process = Process.Start(psi);
-                if (process is null)
-                {
-                    _logger.LogError("Failed to start whisper-whisper-cli process");
+                    _logger.LogError("Failed to extract audio from {Video}", videoPath);
                     return false;
                 }
 
-                var stdout = new StringBuilder();
-                var stderr = new StringBuilder();
-
-                using var outDone = new ManualResetEventSlim(false);
-                using var errDone = new ManualResetEventSlim(false);
-
-                process.OutputDataReceived += (_, e) =>
+                try
                 {
-                    if (e.Data is null) { outDone.Set(); return; }
-                    stdout.AppendLine(e.Data);
-                    _logger.LogDebug("whisper: {L}", e.Data);
-                };
+                    // ── Build argument list ────────────────────────────────────
+                    var args = BuildArguments(
+                        modelFile, tempWav, outputDir, outputStem,
+                        language, translate, wordTimestamps,
+                        config.UseGPUAcceleration ? _binaryManager.DetectedGPUType : null);
 
-                process.ErrorDataReceived += (_, e) =>
-                {
-                    if (e.Data is null) { errDone.Set(); return; }
-                    stderr.AppendLine(e.Data);
-                    // Surface GPU init and progress at Info level; rest is Debug
-                    if (e.Data.Contains("CUDA") || e.Data.Contains("GPU") ||
-                        e.Data.Contains("progress") || e.Data.Contains("processing"))
-                        _logger.LogInformation("whisper: {L}", e.Data);
-                    else
+                    var acceleration = config.UseGPUAcceleration && _binaryManager.DetectedGPUType is not null
+                        ? $"GPU ({_binaryManager.DetectedGPUType})"
+                        : "CPU";
+
+                    _logger.LogInformation(
+                        "Generating subtitles: video={Video}, model={Model}, lang={Lang}, translate={T}, accel={A}",
+                        videoPath, modelName, language, translate, acceleration);
+                    _logger.LogInformation("Command: {Binary} {Args}", _binaryManager.BinaryPath, args);
+
+                    var psi = new ProcessStartInfo
+                    {
+                        FileName               = _binaryManager.BinaryPath,
+                        Arguments              = args,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError  = true,
+                        UseShellExecute        = false,
+                        CreateNoWindow         = true,
+                        WorkingDirectory       = outputDir
+                    };
+
+                    using var process = Process.Start(psi);
+                    if (process is null)
+                    {
+                        _logger.LogError("Failed to start whisper-whisper-cli process");
+                        return false;
+                    }
+
+                    var stdout = new StringBuilder();
+                    var stderr = new StringBuilder();
+
+                    using var outDone = new ManualResetEventSlim(false);
+                    using var errDone = new ManualResetEventSlim(false);
+
+                    process.OutputDataReceived += (_, e) =>
+                    {
+                        if (e.Data is null) { outDone.Set(); return; }
+                        stdout.AppendLine(e.Data);
                         _logger.LogDebug("whisper: {L}", e.Data);
-                };
+                    };
 
-                process.BeginOutputReadLine();
-                process.BeginErrorReadLine();
+                    process.ErrorDataReceived += (_, e) =>
+                    {
+                        if (e.Data is null) { errDone.Set(); return; }
+                        stderr.AppendLine(e.Data);
+                        if (e.Data.Contains("CUDA") || e.Data.Contains("GPU") ||
+                            e.Data.Contains("progress") || e.Data.Contains("processing"))
+                            _logger.LogInformation("whisper: {L}", e.Data);
+                        else
+                            _logger.LogDebug("whisper: {L}", e.Data);
+                    };
 
-                await process.WaitForExitAsync(cancellationToken);
-                outDone.Wait(5_000);
-                errDone.Wait(5_000);
+                    process.BeginOutputReadLine();
+                    process.BeginErrorReadLine();
 
-                if (process.ExitCode != 0)
-                {
-                    _logger.LogError(
-                        "whisper-whisper-cli exited {Code}.\nstderr: {Err}\nstdout: {Out}",
-                        process.ExitCode,
-                        stderr.Length > 0 ? stderr.ToString() : "(empty)",
-                        stdout.Length > 0 ? stdout.ToString() : "(empty)");
-                    return false;
+                    await process.WaitForExitAsync(cancellationToken);
+                    outDone.Wait(5_000);
+                    errDone.Wait(5_000);
+
+                    if (process.ExitCode != 0)
+                    {
+                        _logger.LogError(
+                            "whisper-whisper-cli exited {Code}.\nstderr: {Err}\nstdout: {Out}",
+                            process.ExitCode,
+                            stderr.Length > 0 ? stderr.ToString() : "(empty)",
+                            stdout.Length > 0 ? stdout.ToString() : "(empty)");
+                        return false;
+                    }
+
+                    if (!File.Exists(outputPath))
+                    {
+                        _logger.LogError("Subtitle file not created: {Path}", outputPath);
+                        return false;
+                    }
+
+                    _logger.LogInformation("Subtitles written: {Path} ({Bytes} bytes)",
+                        outputPath, new FileInfo(outputPath).Length);
+                    return true;
                 }
-
-                if (!File.Exists(outputPath))
+                finally
                 {
-                    _logger.LogError("Subtitle file not created: {Path}", outputPath);
-                    return false;
+                    try { if (File.Exists(tempWav)) File.Delete(tempWav); }
+                    catch (Exception ex) { _logger.LogWarning(ex, "Failed to clean up temp audio: {Path}", tempWav); }
                 }
-
-                _logger.LogInformation("Subtitles written: {Path} ({Bytes} bytes)",
-                    outputPath, new FileInfo(outputPath).Length);
-                return true;
             }
             catch (OperationCanceledException)
             {
@@ -337,6 +345,58 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
                 _logger.LogError("Deployed binary failed self-test");
 
             return tested;
+        }
+
+        private async Task<bool> ExtractAudioAsync(
+            string videoPath, string wavPath, CancellationToken cancellationToken)
+        {
+            var ffmpeg = _binaryManager.JellyfinFFmpegPath ?? "ffmpeg";
+
+            _logger.LogInformation("Extracting audio: {Video} → {Wav}", videoPath, wavPath);
+
+            try
+            {
+                var psi = new ProcessStartInfo
+                {
+                    FileName               = ffmpeg,
+                    Arguments              = $"-i \"{videoPath}\" -ar 16000 -ac 1 -c:a pcm_s16le -f wav \"{wavPath}\" -y -loglevel error",
+                    RedirectStandardOutput = true,
+                    RedirectStandardError  = true,
+                    UseShellExecute        = false,
+                    CreateNoWindow         = true
+                };
+
+                using var process = Process.Start(psi);
+                if (process is null)
+                {
+                    _logger.LogError("Failed to start FFmpeg process");
+                    return false;
+                }
+
+                var stderr = await process.StandardError.ReadToEndAsync(cancellationToken);
+                await process.WaitForExitAsync(cancellationToken);
+
+                if (process.ExitCode != 0)
+                {
+                    _logger.LogError("FFmpeg exited {Code}: {Err}", process.ExitCode, stderr);
+                    return false;
+                }
+
+                if (!File.Exists(wavPath))
+                {
+                    _logger.LogError("FFmpeg did not produce output: {Wav}", wavPath);
+                    return false;
+                }
+
+                _logger.LogInformation("Audio extracted: {Wav} ({Bytes} bytes)",
+                    wavPath, new FileInfo(wavPath).Length);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Exception during audio extraction from {Video}", videoPath);
+                return false;
+            }
         }
 
         private async Task<string?> EnsureModelDownloadedAsync(

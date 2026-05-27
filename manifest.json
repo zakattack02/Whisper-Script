@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/zakattack02/Whisper-Script/feature/jellyfin-plugin/logo.png",
     "versions": [
       {
+        "version": "0.0.0.90",
+        "changelog": "Fixed SIGILL (exit 132) by disabling AVX2/FMA in whisper.cpp build",
+        "targetAbi": "10.11.2.0",
+        "sourceUrl": "https://github.com/zakattack02/Whisper-Script/releases/download/v0.0.0.90/jellyfin-plugin-whispersubtitles_0.0.0.90.zip",
+        "checksum": "fdd55c5bcda9a0db21ef36e88c317ee0",
+        "timestamp": "2026-05-27T18:56:22Z"
+      },
+      {
         "version": "0.0.0.89",
         "changelog": "Bug fixes and improvements",
         "targetAbi": "10.11.2.0",

@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/zakattack02/Whisper-Script/feature/jellyfin-plugin/logo.png",
     "versions": [
       {
+        "version": "0.0.0.94",
+        "changelog": "Fixed -ngl 999 -> -dev 0 for GPU path (whisper-cli doesn't support -ngl). CPU path already fixed in 0.0.0.92/93.",
+        "targetAbi": "10.11.2.0",
+        "sourceUrl": "https://github.com/zakattack02/Whisper-Script/releases/download/v0.0.0.94/jellyfin-plugin-whispersubtitles_0.0.0.94.zip",
+        "checksum": "de4d2066900c50e57ed0bd5d3f8a7590",
+        "timestamp": "2026-05-27T20:06:55Z"
+      },
+      {
         "version": "0.0.0.93",
         "changelog": "Fixed AVX-512 SIGILL: added GGML_NATIVE=OFF to cmake so binary doesn't include AVX-512 instructions from build machine (Ryzen 9950X3D)",
         "targetAbi": "10.11.2.0",

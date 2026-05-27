@@ -49,7 +49,11 @@ namespace Jellyfin.Plugin.WhisperSubtitles
                 new PluginPageInfo
                 {
                     Name = "Whisper Subtitles",
-                    EmbeddedResourcePath = GetType().Namespace + ".Configuration.configPage.html"
+                    EmbeddedResourcePath = GetType().Namespace + ".Configuration.configPage.html",
+                    DisplayUrl = "whispersubtitles",
+                    MenuSection = "server",
+                    MenuIcon = "subtitles",
+                    EnableInMainMenu = true
                 }
             };
         }

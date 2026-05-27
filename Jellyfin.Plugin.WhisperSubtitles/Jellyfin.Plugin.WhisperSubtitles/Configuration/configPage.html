@@ -9,126 +9,147 @@
         <div data-role="content">
             <div class="content-primary">
                 <form id="WhisperSubtitlesConfigForm">
-                    <div class="selectContainer">
-                        <label class="selectLabel" for="WhisperModel">Whisper Model</label>
-                        <select is="emby-select" id="WhisperModel" name="WhisperModel" class="emby-select-withcolor emby-select">
-                            <option value="Tiny">Tiny (~10x speed, ~1GB VRAM, ~75MB download)</option>
-                            <option value="Base">Base (~7x speed, ~1GB VRAM, ~140MB download)</option>
-                            <option value="Small">Small (~4x speed, ~2GB VRAM, ~460MB download) - Recommended</option>
-                            <option value="Medium">Medium (~2x speed, ~5GB VRAM, ~1.5GB download)</option>
-                            <option value="Turbo">Turbo (~8x speed, ~6GB VRAM, ~1.6GB download)</option>
-                            <option value="Large">Large (Best quality, ~10GB VRAM, ~3GB download)</option>
-                        </select>
-                        <div class="fieldDescription">Larger models are more accurate but slower</div>
-                        <div class="inputContainer" style="margin-top: 15px;">
-                            <button is="emby-button" type="button" id="DownloadModelButton" class="raised button-submit emby-button">
-                                <span>Download Selected Model</span>
+                    <div class="cardContainer" style="display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 20px;">
+
+                        <!-- Card: Model Selection -->
+                        <div class="card" style="flex: 1; min-width: 280px; background: rgba(0,0,0,0.3); border-radius: 8px; padding: 20px; border: 1px solid rgba(255,255,255,0.1);">
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
+                                <span style="font-size: 24px;">🧠</span>
+                                <h3 style="margin: 0; font-size: 1.1em;">Whisper Model</h3>
+                            </div>
+                            <div class="selectContainer" style="margin-bottom: 12px;">
+                                <select is="emby-select" id="WhisperModel" name="WhisperModel" class="emby-select-withcolor emby-select">
+                                    <option value="Tiny">Tiny (~10x speed, ~75MB)</option>
+                                    <option value="Base">Base (~7x speed, ~140MB)</option>
+                                    <option value="Small">Small (~4x speed, ~460MB) - Recommended</option>
+                                    <option value="Medium">Medium (~2x speed, ~1.5GB)</option>
+                                    <option value="Turbo">Turbo (~8x speed, ~1.6GB)</option>
+                                    <option value="Large">Large (Best quality, ~3GB)</option>
+                                </select>
+                                <div class="fieldDescription">Larger models are more accurate but slower</div>
+                            </div>
+                            <button is="emby-button" type="button" id="DownloadModelButton" class="raised button-submit emby-button" style="width: 100%;">
+                                <span>⬇ Download Model</span>
                             </button>
+                            <div id="downloadStatus" class="fieldDescription" style="display: none; padding: 8px; margin-top: 10px; border-radius: 4px;"></div>
                         </div>
 
-                        <!-- Hidden by default; shown only when binary is missing -->
-                        <div id="binaryInstructions" style="display: none; padding: 15px; margin-top: 15px; border-radius: 4px; background-color: rgba(255, 152, 0, 0.2); color: #ff9800; border-left: 4px solid #ff9800;">
-                            <div style="font-weight: bold; margin-bottom: 10px;">⚠ Whisper Binary Setup Required</div>
-                            <div style="margin-bottom: 8px;">The whisper-whisper-cli binary is bundled with the plugin but must be deployed to the cache directory. Click <strong>Install Binary</strong> below, or run manually:</div>
-                            <div style="font-family: monospace; background-color: rgba(0, 0, 0, 0.3); padding: 10px; margin-bottom: 8px; border-radius: 3px;">
-                                sudo cp ~/.config/jellyfin/plugins/Whisper\ Subtitles_*/whisper/linux-x64/whisper-whisper-cli ~/.cache/whisper-cpp/<br/>
-                                sudo chmod +x ~/.cache/whisper-cpp/whisper-whisper-cli
+                        <!-- Card: Binary Status -->
+                        <div class="card" style="flex: 1; min-width: 280px; background: rgba(0,0,0,0.3); border-radius: 8px; padding: 20px; border: 1px solid rgba(255,255,255,0.1);">
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
+                                <span style="font-size: 24px;">⚙️</span>
+                                <h3 style="margin: 0; font-size: 1.1em;">Whisper Binary</h3>
                             </div>
-                            <div style="margin-top: 10px;">
-                                <button is="emby-button" type="button" id="InstallBinaryButton" class="raised emby-button">
-                                    <span>Install Binary</span>
+                            <div id="binaryOk" style="display: none; padding: 12px; border-radius: 4px; background-color: rgba(0, 200, 83, 0.15); color: #00c853; border-left: 4px solid #00c853; margin-bottom: 10px;">
+                                ✓ Binary is installed and ready
+                            </div>
+                            <div id="binaryInstructions" style="display: none; padding: 12px; border-radius: 4px; background-color: rgba(255, 152, 0, 0.2); color: #ff9800; border-left: 4px solid #ff9800; margin-bottom: 10px;">
+                                <div style="font-weight: bold; margin-bottom: 8px;">⚠ Binary not installed</div>
+                                <button is="emby-button" type="button" id="InstallBinaryButton" class="raised button-submit emby-button" style="width: 100%;">
+                                    <span>▶ Install Binary</span>
                                 </button>
                             </div>
-                            <div style="font-size: 0.9em; color: #b39ddb; margin-top: 8px;">Replace <span style="font-family: monospace;">~/.config/jellyfin</span> with your Jellyfin config path if different.</div>
+                            <div id="binaryMeta" style="font-size: 0.85em; color: #888;">
+                                <span id="binaryPath">Checking...</span>
+                            </div>
                         </div>
 
-                        <!-- Shown when binary is confirmed present -->
-                        <div id="binaryOk" style="display: none; padding: 10px; margin-top: 15px; border-radius: 4px; background-color: rgba(0, 200, 83, 0.15); color: #00c853; border-left: 4px solid #00c853;">
-                            ✓ Whisper binary is installed and ready.
+                        <!-- Card: Language & Identifier -->
+                        <div class="card" style="flex: 1; min-width: 280px; background: rgba(0,0,0,0.3); border-radius: 8px; padding: 20px; border: 1px solid rgba(255,255,255,0.1);">
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
+                                <span style="font-size: 24px;">🌐</span>
+                                <h3 style="margin: 0; font-size: 1.1em;">Language & Naming</h3>
+                            </div>
+                            <div class="inputContainer" style="margin-bottom: 10px;">
+                                <label class="inputLabel" for="TargetLanguage">Target Language</label>
+                                <input is="emby-input" type="text" id="TargetLanguage" name="TargetLanguage" class="emby-input" />
+                                <div class="fieldDescription">Language code (en, es, fr, de, ja, etc.)</div>
+                            </div>
+                            <div class="inputContainer" style="margin-bottom: 0;">
+                                <label class="inputLabel" for="AIIdentifier">AI Identifier</label>
+                                <input is="emby-input" type="text" id="AIIdentifier" name="AIIdentifier" class="emby-input" />
+                                <div class="fieldDescription">Added to filename (e.g., "whisper" → video.en.whisper.srt)</div>
+                            </div>
                         </div>
 
-                        <div id="downloadStatus" class="fieldDescription" style="display: none; padding: 10px; margin-top: 10px; border-radius: 4px;"></div>
-                    </div>
-
-                    <div class="inputContainer">
-                        <label class="inputLabel" for="TargetLanguage">Target Language</label>
-                        <input is="emby-input" type="text" id="TargetLanguage" name="TargetLanguage" class="emby-input" />
-                        <div class="fieldDescription">Language code (e.g., en, es, fr, de, ja)</div>
-                    </div>
-
-                    <div class="inputContainer">
-                        <label class="inputLabel" for="AIIdentifier">AI Identifier</label>
-                        <input is="emby-input" type="text" id="AIIdentifier" name="AIIdentifier" class="emby-input" />
-                        <div class="fieldDescription">Added to subtitle filename (e.g., movie.en.whisper.srt). Leave empty to disable.</div>
-                    </div>
-
-                    <div class="checkboxContainer checkboxContainer-withDescription">
-                        <label class="emby-checkbox-label">
-                            <input id="TranslateToEnglish" name="TranslateToEnglish" type="checkbox" is="emby-checkbox" />
-                            <span>Translate to English</span>
-                        </label>
-                        <div class="fieldDescription">Translate audio to English regardless of source language</div>
-                    </div>
-
-                    <div class="checkboxContainer checkboxContainer-withDescription">
-                        <label class="emby-checkbox-label">
-                            <input id="WordTimestamps" name="WordTimestamps" type="checkbox" is="emby-checkbox" />
-                            <span>Enable Word-Level Timestamps</span>
-                        </label>
-                        <div class="fieldDescription">More precise timing but slower processing</div>
-                    </div>
-
-                    <div class="checkboxContainer checkboxContainer-withDescription">
-                        <label class="emby-checkbox-label">
-                            <input id="ProcessOnLibraryScan" name="ProcessOnLibraryScan" type="checkbox" is="emby-checkbox" />
-                            <span>Process on Library Scan</span>
-                        </label>
-                        <div class="fieldDescription">Automatically generate subtitles when library is scanned</div>
-                    </div>
-
-                    <div class="checkboxContainer checkboxContainer-withDescription">
-                        <label class="emby-checkbox-label">
-                            <input id="SkipExisting" name="SkipExisting" type="checkbox" is="emby-checkbox" />
-                            <span>Skip Existing Subtitles</span>
-                        </label>
-                        <div class="fieldDescription">Don't process files that already have subtitles</div>
-                    </div>
-
-                    <div class="checkboxContainer checkboxContainer-withDescription">
-                        <label class="emby-checkbox-label">
-                            <input id="RegenerateAI" name="RegenerateAI" type="checkbox" is="emby-checkbox" />
-                            <span>Regenerate AI Subtitles</span>
-                        </label>
-                        <div class="fieldDescription">Re-process files with AI-generated subtitles</div>
-                    </div>
-
-                    <div class="checkboxContainer checkboxContainer-withDescription">
-                        <label class="emby-checkbox-label">
-                            <input id="UseGPUAcceleration" name="UseGPUAcceleration" type="checkbox" is="emby-checkbox" />
-                            <span>Enable GPU Acceleration</span>
-                        </label>
-                        <div class="fieldDescription">Use CUDA/Vulkan for faster processing (requires compatible GPU)</div>
-                    </div>
-
-                    <h3 style="margin-top: 30px;">Library &amp; Folder Selection</h3>
-
-                    <div style="margin-bottom: 20px;">
-                        <label style="display: block; margin-bottom: 10px; font-weight: bold;">Libraries to Process</label>
-                        <div id="LibrariesToProcessContainer" style="border: 1px solid #333; padding: 10px; border-radius: 4px; max-height: 300px; overflow-y: auto;">
-                            <p style="color: #888; text-align: center; margin: 10px 0;">Loading libraries...</p>
+                        <!-- Card: Processing Options -->
+                        <div class="card" style="flex: 1; min-width: 280px; background: rgba(0,0,0,0.3); border-radius: 8px; padding: 20px; border: 1px solid rgba(255,255,255,0.1);">
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
+                                <span style="font-size: 24px;">⚡</span>
+                                <h3 style="margin: 0; font-size: 1.1em;">Processing</h3>
+                            </div>
+                            <div class="checkboxContainer checkboxContainer-withDescription">
+                                <label class="emby-checkbox-label">
+                                    <input id="TranslateToEnglish" name="TranslateToEnglish" type="checkbox" is="emby-checkbox" />
+                                    <span>Translate to English</span>
+                                </label>
+                            </div>
+                            <div class="checkboxContainer checkboxContainer-withDescription">
+                                <label class="emby-checkbox-label">
+                                    <input id="WordTimestamps" name="WordTimestamps" type="checkbox" is="emby-checkbox" />
+                                    <span>Word-Level Timestamps</span>
+                                </label>
+                            </div>
+                            <div class="checkboxContainer checkboxContainer-withDescription">
+                                <label class="emby-checkbox-label">
+                                    <input id="UseGPUAcceleration" name="UseGPUAcceleration" type="checkbox" is="emby-checkbox" />
+                                    <span>GPU Acceleration</span>
+                                </label>
+                            </div>
+                            <div class="checkboxContainer checkboxContainer-withDescription" style="margin-bottom: 0;">
+                                <label class="emby-checkbox-label">
+                                    <input id="ProcessOnLibraryScan" name="ProcessOnLibraryScan" type="checkbox" is="emby-checkbox" />
+                                    <span>Process on Library Scan</span>
+                                </label>
+                            </div>
                         </div>
-                        <div class="fieldDescription" style="margin-top: 5px;">Select which libraries to process. Leave empty to process all libraries.</div>
+
+                        <!-- Card: Subtitle Management -->
+                        <div class="card" style="flex: 1; min-width: 280px; background: rgba(0,0,0,0.3); border-radius: 8px; padding: 20px; border: 1px solid rgba(255,255,255,0.1);">
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
+                                <span style="font-size: 24px;">📄</span>
+                                <h3 style="margin: 0; font-size: 1.1em;">Subtitle Management</h3>
+                            </div>
+                            <div class="checkboxContainer checkboxContainer-withDescription">
+                                <label class="emby-checkbox-label">
+                                    <input id="SkipExisting" name="SkipExisting" type="checkbox" is="emby-checkbox" />
+                                    <span>Skip Existing Subtitles</span>
+                                </label>
+                            </div>
+                            <div class="checkboxContainer checkboxContainer-withDescription" style="margin-bottom: 0;">
+                                <label class="emby-checkbox-label">
+                                    <input id="RegenerateAI" name="RegenerateAI" type="checkbox" is="emby-checkbox" />
+                                    <span>Regenerate AI Subtitles</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Card: Library Selection -->
+                        <div class="card" style="flex: 1; min-width: 280px; background: rgba(0,0,0,0.3); border-radius: 8px; padding: 20px; border: 1px solid rgba(255,255,255,0.1);">
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
+                                <span style="font-size: 24px;">📁</span>
+                                <h3 style="margin: 0; font-size: 1.1em;">Library & Folders</h3>
+                            </div>
+                            <div style="margin-bottom: 12px;">
+                                <label style="display: block; margin-bottom: 5px; font-weight: bold; font-size: 0.9em;">Libraries to Process</label>
+                                <div id="LibrariesToProcessContainer" style="border: 1px solid #333; padding: 8px; border-radius: 4px; max-height: 180px; overflow-y: auto;">
+                                    <p style="color: #888; text-align: center; margin: 10px 0;">Loading libraries...</p>
+                                </div>
+                                <div class="fieldDescription">Leave empty to process all libraries</div>
+                            </div>
+                            <div style="margin-bottom: 0;">
+                                <label class="inputLabel" for="FoldersToExclude" style="font-size: 0.9em;">Folders to Exclude</label>
+                                <textarea is="emby-input" id="FoldersToExclude" name="FoldersToExclude" class="emby-input" style="height: 80px; width: 100%; padding: 6px; border: 1px solid #555; border-radius: 4px; font-family: monospace; box-sizing: border-box;"></textarea>
+                                <div class="fieldDescription">One per line</div>
+                            </div>
+                        </div>
+
                     </div>
 
-                    <div style="margin-bottom: 20px;">
-                        <label class="inputLabel" for="FoldersToExclude">Folders to Exclude</label>
-                        <textarea is="emby-input" id="FoldersToExclude" name="FoldersToExclude" class="emby-input" style="height: 150px; width: 100%; padding: 8px; border: 1px solid #555; border-radius: 4px; font-family: monospace; box-sizing: border-box;"></textarea>
-                        <div class="fieldDescription">Enter folder paths to exclude, one per line.</div>
-                    </div>
-
-                    <div>
+                    <!-- Save Button -->
+                    <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px;">
                         <button is="emby-button" type="submit" class="raised button-submit block emby-button">
-                            <span>Save</span>
+                            <span>💾 Save</span>
                         </button>
                     </div>
                 </form>
@@ -145,8 +166,6 @@
 
                 var configPage = document.getElementById('WhisperSubtitlesConfigPage');
 
-                // ── Binary status ──────────────────────────────────────────────
-
                 function setBinaryStatus(isReady) {
                     document.getElementById('binaryInstructions').style.display = isReady ? 'none'  : 'block';
                     document.getElementById('binaryOk').style.display           = isReady ? 'block' : 'none';
@@ -154,140 +173,106 @@
 
                 function checkBinaryStatus() {
                     if (typeof ApiClient === 'undefined') return;
-
                     ApiClient.fetch({
                         type: 'GET',
                         url: ApiClient.getUrl('api/WhisperSubtitles/BinaryStatus')
                     }).then(function (response) {
-                        // ApiClient.fetch resolves with the parsed JSON body
                         setBinaryStatus(response && response.IsReady === true);
+                        if (response && response.BinaryPath) {
+                            document.getElementById('binaryPath').textContent = response.BinaryPath;
+                        }
                     }).catch(function () {
-                        // If the endpoint fails for any reason, show the warning
                         setBinaryStatus(false);
                     });
                 }
 
-                // ── Config load / save ─────────────────────────────────────────
-
                 function loadConfig() {
                     if (typeof ApiClient === 'undefined') return;
-
                     Dashboard.showLoadingMsg();
-
                     ApiClient.getPluginConfiguration(WhisperSubtitlesConfig.pluginUniqueId).then(function (config) {
-                        document.getElementById('WhisperModel').value            = config.WhisperModel || 'Small';
-                        document.getElementById('TargetLanguage').value          = config.TargetLanguage || 'en';
-                        document.getElementById('AIIdentifier').value            = config.AIIdentifier || 'whisper';
-                        document.getElementById('TranslateToEnglish').checked    = config.TranslateToEnglish || false;
-                        document.getElementById('WordTimestamps').checked         = config.WordTimestamps || false;
-                        document.getElementById('ProcessOnLibraryScan').checked   = config.ProcessOnLibraryScan || false;
-                        document.getElementById('SkipExisting').checked           = config.SkipExisting !== false;
-                        document.getElementById('RegenerateAI').checked           = config.RegenerateAI || false;
-                        document.getElementById('UseGPUAcceleration').checked     = config.UseGPUAcceleration || false;
-
+                        document.getElementById('WhisperModel').value          = config.WhisperModel || 'Small';
+                        document.getElementById('TargetLanguage').value        = config.TargetLanguage || 'en';
+                        document.getElementById('AIIdentifier').value          = config.AIIdentifier || 'whisper';
+                        document.getElementById('TranslateToEnglish').checked  = config.TranslateToEnglish || false;
+                        document.getElementById('WordTimestamps').checked      = config.WordTimestamps || false;
+                        document.getElementById('ProcessOnLibraryScan').checked = config.ProcessOnLibraryScan || false;
+                        document.getElementById('SkipExisting').checked        = config.SkipExisting !== false;
+                        document.getElementById('RegenerateAI').checked        = config.RegenerateAI || false;
+                        document.getElementById('UseGPUAcceleration').checked  = config.UseGPUAcceleration || false;
                         var foldersToExclude = config.FoldersToExclude || [];
                         document.getElementById('FoldersToExclude').value = foldersToExclude.join('\n');
-
                         loadLibraries(config.LibrariesToProcess || []);
                         Dashboard.hideLoadingMsg();
-                    }).catch(function (error) {
-                        console.error('[WhisperSubtitles] Error loading config:', error);
+                    }).catch(function () {
                         Dashboard.hideLoadingMsg();
                     });
                 }
 
                 function loadLibraries(selectedLibraries) {
                     if (typeof ApiClient === 'undefined') return;
-
                     selectedLibraries = selectedLibraries || [];
-
                     ApiClient.getVirtualFolders().then(function (librariesResponse) {
                         var container = document.getElementById('LibrariesToProcessContainer');
                         if (!container) return;
                         container.innerHTML = '';
-
-                        var folders = Array.isArray(librariesResponse)
-                            ? librariesResponse
-                            : (librariesResponse.Items || []);
-
+                        var folders = Array.isArray(librariesResponse) ? librariesResponse : (librariesResponse.Items || []);
                         var videoFolders = folders.filter(function (f) {
-                            return f.CollectionType === 'movies' ||
-                                   f.CollectionType === 'tvshows' ||
-                                   f.CollectionType === 'homevideos';
+                            return f.CollectionType === 'movies' || f.CollectionType === 'tvshows' || f.CollectionType === 'homevideos';
                         });
-
                         if (videoFolders.length === 0) {
                             container.innerHTML = '<p style="color:#888;text-align:center;margin:10px 0;">No media libraries found</p>';
                             return;
                         }
-
                         videoFolders.forEach(function (library) {
-                            var label    = document.createElement('label');
-                            label.className    = 'checkboxContainer';
+                            var label = document.createElement('label');
+                            label.className = 'checkboxContainer';
                             label.style.display = 'block';
-                            label.style.padding = '5px 0';
-
-                            var checkbox       = document.createElement('input');
-                            checkbox.type      = 'checkbox';
-                            checkbox.id        = 'lib_' + library.ItemId;
+                            label.style.padding = '4px 0';
+                            var checkbox = document.createElement('input');
+                            checkbox.type = 'checkbox';
                             checkbox.className = 'library-checkbox';
-                            checkbox.value     = library.ItemId || library.Id;
-                            checkbox.checked   = selectedLibraries.indexOf(checkbox.value) !== -1;
-
+                            checkbox.value = library.ItemId || library.Id;
+                            checkbox.checked = selectedLibraries.indexOf(checkbox.value) !== -1;
                             label.appendChild(checkbox);
-                            label.appendChild(document.createTextNode(' ' + (library.Name || 'Unknown Library')));
+                            label.appendChild(document.createTextNode(' ' + (library.Name || 'Unknown')));
                             container.appendChild(label);
                         });
-                    }).catch(function (error) {
-                        console.error('[WhisperSubtitles] Error loading libraries:', error);
+                    }).catch(function () {
                         var container = document.getElementById('LibrariesToProcessContainer');
-                        if (container) {
-                            container.innerHTML = '<p style="color:#f44336;text-align:center;margin:10px 0;">Error loading libraries</p>';
-                        }
+                        if (container) container.innerHTML = '<p style="color:#f44336;text-align:center;margin:10px 0;">Error loading libraries</p>';
                     });
                 }
 
                 function saveConfig(e) {
                     e.preventDefault();
                     if (typeof ApiClient === 'undefined') return false;
-
                     Dashboard.showLoadingMsg();
-
                     ApiClient.getPluginConfiguration(WhisperSubtitlesConfig.pluginUniqueId).then(function (config) {
                         config.WhisperModel          = document.getElementById('WhisperModel').value;
                         config.TargetLanguage        = document.getElementById('TargetLanguage').value;
                         config.AIIdentifier          = document.getElementById('AIIdentifier').value;
                         config.TranslateToEnglish    = document.getElementById('TranslateToEnglish').checked;
-                        config.WordTimestamps         = document.getElementById('WordTimestamps').checked;
-                        config.ProcessOnLibraryScan   = document.getElementById('ProcessOnLibraryScan').checked;
-                        config.SkipExisting           = document.getElementById('SkipExisting').checked;
-                        config.RegenerateAI           = document.getElementById('RegenerateAI').checked;
-                        config.UseGPUAcceleration     = document.getElementById('UseGPUAcceleration').checked;
-
+                        config.WordTimestamps        = document.getElementById('WordTimestamps').checked;
+                        config.ProcessOnLibraryScan  = document.getElementById('ProcessOnLibraryScan').checked;
+                        config.SkipExisting          = document.getElementById('SkipExisting').checked;
+                        config.RegenerateAI          = document.getElementById('RegenerateAI').checked;
+                        config.UseGPUAcceleration    = document.getElementById('UseGPUAcceleration').checked;
                         var selectedLibraries = [];
                         document.querySelectorAll('.library-checkbox:checked').forEach(function (cb) {
                             selectedLibraries.push(cb.value);
                         });
                         config.LibrariesToProcess = selectedLibraries;
-
                         var foldersText = document.getElementById('FoldersToExclude').value;
-                        config.FoldersToExclude = foldersText.split('\n')
-                            .map(function (f) { return f.trim(); })
-                            .filter(function (f) { return f.length > 0; });
-
+                        config.FoldersToExclude = foldersText.split('\n').map(function (f) { return f.trim(); }).filter(function (f) { return f.length > 0; });
                         return ApiClient.updatePluginConfiguration(WhisperSubtitlesConfig.pluginUniqueId, config);
                     }).then(function () {
                         Dashboard.hideLoadingMsg();
                         Dashboard.processPluginConfigurationUpdateResult();
-                    }).catch(function (error) {
-                        console.error('[WhisperSubtitles] Error saving config:', error);
+                    }).catch(function () {
                         Dashboard.hideLoadingMsg();
                     });
-
                     return false;
                 }
-
-                // ── Event wiring ───────────────────────────────────────────────
 
                 if (configPage) {
                     configPage.addEventListener('pageshow', function () {
@@ -304,87 +289,55 @@
                     });
                 }
 
-                var form = document.getElementById('WhisperSubtitlesConfigForm');
-                if (form) {
-                    form.addEventListener('submit', saveConfig);
-                }
+                document.getElementById('WhisperSubtitlesConfigForm').addEventListener('submit', saveConfig);
 
-                // Download model button
-                var downloadBtn = document.getElementById('DownloadModelButton');
-                if (downloadBtn) {
-                    downloadBtn.addEventListener('click', function () {
-                        var selectedModel   = document.getElementById('WhisperModel').value;
-                        var statusDiv       = document.getElementById('downloadStatus');
-
-                        statusDiv.style.display         = 'block';
-                        statusDiv.style.backgroundColor = 'rgba(0, 164, 220, 0.2)';
-                        statusDiv.style.color           = '#00a4dc';
-                        statusDiv.innerHTML             = '⟳ Downloading model "' + selectedModel + '"...';
-
-                        if (typeof ApiClient === 'undefined') return;
-
-                        ApiClient.fetch({
-                            type:        'POST',
-                            url:         ApiClient.getUrl('api/WhisperSubtitles/DownloadModel'),
-                            data:        JSON.stringify({ ModelName: selectedModel }),
-                            contentType: 'application/json'
-                        }).then(function () {
-                            statusDiv.style.backgroundColor = 'rgba(0, 200, 83, 0.2)';
-                            statusDiv.style.color           = '#00c853';
-                            statusDiv.innerHTML             = '✓ Model downloaded successfully';
-                            setTimeout(function () { statusDiv.style.display = 'none'; }, 5000);
-                        }).catch(function () {
-                            statusDiv.style.backgroundColor = 'rgba(220, 0, 0, 0.2)';
-                            statusDiv.style.color           = '#dc0000';
-                            statusDiv.innerHTML             = '✗ Download failed — check server logs';
-                        });
+                document.getElementById('DownloadModelButton').addEventListener('click', function () {
+                    var selectedModel = document.getElementById('WhisperModel').value;
+                    var statusDiv = document.getElementById('downloadStatus');
+                    statusDiv.style.display = 'block';
+                    statusDiv.style.backgroundColor = 'rgba(0, 164, 220, 0.2)';
+                    statusDiv.style.color = '#00a4dc';
+                    statusDiv.innerHTML = '⟳ Downloading "' + selectedModel + '"...';
+                    ApiClient.fetch({
+                        type: 'POST',
+                        url: ApiClient.getUrl('api/WhisperSubtitles/DownloadModel'),
+                        data: JSON.stringify({ ModelName: selectedModel }),
+                        contentType: 'application/json'
+                    }).then(function () {
+                        statusDiv.style.backgroundColor = 'rgba(0, 200, 83, 0.2)';
+                        statusDiv.style.color = '#00c853';
+                        statusDiv.innerHTML = '✓ Model downloaded';
+                        setTimeout(function () { statusDiv.style.display = 'none'; }, 5000);
+                    }).catch(function () {
+                        statusDiv.style.backgroundColor = 'rgba(220, 0, 0, 0.2)';
+                        statusDiv.style.color = '#dc0000';
+                        statusDiv.innerHTML = '✗ Download failed';
                     });
-                }
+                });
 
-                // Install binary button (inside the warning banner)
-                var installBtn = document.getElementById('InstallBinaryButton');
-                if (installBtn) {
-                    installBtn.addEventListener('click', function () {
-                        var statusDiv = document.getElementById('downloadStatus');
-                        statusDiv.style.display         = 'block';
-                        statusDiv.style.backgroundColor = 'rgba(0, 164, 220, 0.2)';
-                        statusDiv.style.color           = '#00a4dc';
-                        statusDiv.innerHTML             = '⟳ Installing binary...';
-
-                        if (typeof ApiClient === 'undefined') return;
-
-                        // POST to trigger the install, then immediately re-check the binary
-                        // status via the GET endpoint — don't trust ApiClient.fetch response
-                        // body parsing, which is unreliable across Jellyfin versions.
-                        ApiClient.fetch({
-                            type: 'POST',
-                            url:  ApiClient.getUrl('api/WhisperSubtitles/InstallBinary')
-                        }).then(function () {
-                            // HTTP 2xx means the server didn't crash — ask the status
-                            // endpoint for ground truth instead of parsing the body.
-                            return ApiClient.fetch({
-                                type: 'GET',
-                                url:  ApiClient.getUrl('api/WhisperSubtitles/BinaryStatus')
-                            });
-                        }).then(function (statusResponse) {
-                            if (statusResponse && statusResponse.IsReady) {
-                                statusDiv.style.backgroundColor = 'rgba(0, 200, 83, 0.2)';
-                                statusDiv.style.color           = '#00c853';
-                                statusDiv.innerHTML             = '✓ Binary installed successfully';
-                                setBinaryStatus(true);
-                            } else {
-                                statusDiv.style.backgroundColor = 'rgba(220, 0, 0, 0.2)';
-                                statusDiv.style.color           = '#dc0000';
-                                statusDiv.innerHTML             = '✗ Install failed — binary not found after install. Check server logs.';
-                            }
-                            setTimeout(function () { statusDiv.style.display = 'none'; }, 5000);
-                        }).catch(function () {
-                            statusDiv.style.backgroundColor = 'rgba(220, 0, 0, 0.2)';
-                            statusDiv.style.color           = '#dc0000';
-                            statusDiv.innerHTML             = '✗ Install failed — check server logs';
+                document.getElementById('InstallBinaryButton').addEventListener('click', function () {
+                    var btn = this;
+                    btn.disabled = true;
+                    btn.querySelector('span').textContent = '⟳ Installing...';
+                    ApiClient.fetch({
+                        type: 'POST',
+                        url: ApiClient.getUrl('api/WhisperSubtitles/InstallBinary')
+                    }).then(function () {
+                        return ApiClient.fetch({
+                            type: 'GET',
+                            url: ApiClient.getUrl('api/WhisperSubtitles/BinaryStatus')
                         });
+                    }).then(function (statusResponse) {
+                        if (statusResponse && statusResponse.IsReady) {
+                            setBinaryStatus(true);
+                        }
+                        btn.disabled = false;
+                        btn.querySelector('span').textContent = '▶ Install Binary';
+                    }).catch(function () {
+                        btn.disabled = false;
+                        btn.querySelector('span').textContent = '▶ Install Binary';
                     });
-                }
+                });
 
             })();
         </script>

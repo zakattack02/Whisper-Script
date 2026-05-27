@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/zakattack02/Whisper-Script/feature/jellyfin-plugin/logo.png",
     "versions": [
       {
+        "version": "0.0.0.87",
+        "changelog": "Fixed 132 error",
+        "targetAbi": "10.11.2.0",
+        "sourceUrl": "https://github.com/zakattack02/Whisper-Script/releases/download/v0.0.0.87/jellyfin-plugin-whispersubtitles_0.0.0.87.zip",
+        "checksum": "62a4c02c4396b03cb1aa70950d825fe4",
+        "timestamp": "2026-05-27T04:02:33Z"
+      },
+      {
         "version": "0.0.0.86",
         "changelog": "Fixes to Build Args and side panel",
         "targetAbi": "10.11.2.0",

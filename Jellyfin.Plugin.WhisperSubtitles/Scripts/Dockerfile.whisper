@@ -17,6 +17,7 @@ RUN cmake -B whisper.cpp/build -S whisper.cpp \
     -DWHISPER_BUILD_EXAMPLES=ON \
     -DBUILD_SHARED_LIBS=OFF \
     -DGGML_OPENMP=OFF \
+    -DGGML_NATIVE=OFF \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_C_FLAGS="-march=x86-64 -mtune=generic" \
     -DCMAKE_CXX_FLAGS="-march=x86-64 -mtune=generic" \

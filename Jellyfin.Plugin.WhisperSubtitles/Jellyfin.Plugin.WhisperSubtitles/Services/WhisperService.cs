@@ -1,6 +1,13 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
+using System.Linq;
+using System.Text;
+using System.Text.RegularExpressions;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Net.Http;
 using System.Text;
 using System.Threading;
@@ -117,6 +124,8 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
             }
         }
 
+        private const int ChunkDurationMs = 30 * 60 * 1000; // 30 min per chunk to stay under ~2GB RAM
+
         public async Task<bool> GenerateSubtitleAsync(
             string videoPath,
             string outputPath,
@@ -155,7 +164,6 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
                 var outputStem = Path.GetFileNameWithoutExtension(outputPath);
 
                 // ── Extract audio from video ───────────────────────────────────
-                // whisper-cli only supports WAV/FLAC/MP3/OGG, not MP4/MKV.
                 var tempWav = Path.Combine(
                     Path.GetTempPath(),
                     $"whisper_{Guid.NewGuid():N}.wav");
@@ -166,97 +174,65 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
                     return false;
                 }
 
-                try
+                var gpuType = config.UseGPUAcceleration ? _binaryManager.DetectedGPUType : null;
+                var acceleration = gpuType is not null ? $"GPU ({gpuType})" : "CPU";
+
+                _logger.LogInformation(
+                    "Generating subtitles: video={Video}, model={Model}, lang={Lang}, translate={T}, accel={A}",
+                    videoPath, modelName, language, translate, acceleration);
+
+                var wavDurationMs = await GetWavDurationMsAsync(tempWav, cancellationToken);
+
+                if (wavDurationMs <= ChunkDurationMs)
                 {
-                    // ── Build argument list ────────────────────────────────────
-                    var args = BuildArguments(
+                    if (!await RunWhisperCli(
                         modelFile, tempWav, outputDir, outputStem,
-                        language, translate, wordTimestamps,
-                        config.UseGPUAcceleration ? _binaryManager.DetectedGPUType : null);
-
-                    var acceleration = config.UseGPUAcceleration && _binaryManager.DetectedGPUType is not null
-                        ? $"GPU ({_binaryManager.DetectedGPUType})"
-                        : "CPU";
-
-                    _logger.LogInformation(
-                        "Generating subtitles: video={Video}, model={Model}, lang={Lang}, translate={T}, accel={A}",
-                        videoPath, modelName, language, translate, acceleration);
-                    _logger.LogInformation("Command: {Binary} {Args}", _binaryManager.BinaryPath, args);
-
-                    var psi = new ProcessStartInfo
-                    {
-                        FileName               = _binaryManager.BinaryPath,
-                        Arguments              = args,
-                        RedirectStandardOutput = true,
-                        RedirectStandardError  = true,
-                        UseShellExecute        = false,
-                        CreateNoWindow         = true,
-                        WorkingDirectory       = outputDir
-                    };
-
-                    using var process = Process.Start(psi);
-                    if (process is null)
-                    {
-                        _logger.LogError("Failed to start whisper-whisper-cli process");
+                        language, translate, wordTimestamps, gpuType, cancellationToken))
                         return false;
-                    }
-
-                    var stdout = new StringBuilder();
-                    var stderr = new StringBuilder();
-
-                    using var outDone = new ManualResetEventSlim(false);
-                    using var errDone = new ManualResetEventSlim(false);
-
-                    process.OutputDataReceived += (_, e) =>
-                    {
-                        if (e.Data is null) { outDone.Set(); return; }
-                        stdout.AppendLine(e.Data);
-                        _logger.LogDebug("whisper: {L}", e.Data);
-                    };
-
-                    process.ErrorDataReceived += (_, e) =>
-                    {
-                        if (e.Data is null) { errDone.Set(); return; }
-                        stderr.AppendLine(e.Data);
-                        if (e.Data.Contains("CUDA") || e.Data.Contains("GPU") ||
-                            e.Data.Contains("progress") || e.Data.Contains("processing"))
-                            _logger.LogInformation("whisper: {L}", e.Data);
-                        else
-                            _logger.LogDebug("whisper: {L}", e.Data);
-                    };
-
-                    process.BeginOutputReadLine();
-                    process.BeginErrorReadLine();
-
-                    await process.WaitForExitAsync(cancellationToken);
-                    outDone.Wait(5_000);
-                    errDone.Wait(5_000);
-
-                    if (process.ExitCode != 0)
-                    {
-                        _logger.LogError(
-                            "whisper-whisper-cli exited {Code}.\nstderr: {Err}\nstdout: {Out}",
-                            process.ExitCode,
-                            stderr.Length > 0 ? stderr.ToString() : "(empty)",
-                            stdout.Length > 0 ? stdout.ToString() : "(empty)");
-                        return false;
-                    }
-
-                    if (!File.Exists(outputPath))
-                    {
-                        _logger.LogError("Subtitle file not created: {Path}", outputPath);
-                        return false;
-                    }
-
-                    _logger.LogInformation("Subtitles written: {Path} ({Bytes} bytes)",
-                        outputPath, new FileInfo(outputPath).Length);
-                    return true;
                 }
-                finally
+                else
                 {
-                    try { if (File.Exists(tempWav)) File.Delete(tempWav); }
-                    catch (Exception ex) { _logger.LogWarning(ex, "Failed to clean up temp audio: {Path}", tempWav); }
+                    var chunks = await SplitWavAsync(tempWav, ChunkDurationMs, cancellationToken);
+                    try
+                    {
+                        var mergedSrt = new StringBuilder();
+                        int segmentOffset = 0;
+
+                        for (int i = 0; i < chunks.Count; i++)
+                        {
+                            var chunkStem = $"{outputStem}.part{i:D3}";
+
+                            if (!await RunWhisperCli(
+                                modelFile, chunks[i], outputDir, chunkStem,
+                                language, translate, wordTimestamps, gpuType, cancellationToken))
+                                return false;
+
+                            var chunkSrtPath = Path.Combine(outputDir, $"{chunkStem}.srt");
+                            segmentOffset = MergeSrtInto(chunkSrtPath, mergedSrt, segmentOffset);
+                            File.Delete(chunkSrtPath);
+                        }
+
+                        await File.WriteAllTextAsync(outputPath, mergedSrt.ToString(), cancellationToken);
+                    }
+                    finally
+                    {
+                        foreach (var cp in chunks)
+                        {
+                            try { if (File.Exists(cp)) File.Delete(cp); }
+                            catch { }
+                        }
+                    }
                 }
+
+                if (!File.Exists(outputPath))
+                {
+                    _logger.LogError("Subtitle file not created: {Path}", outputPath);
+                    return false;
+                }
+
+                _logger.LogInformation("Subtitles written: {Path} ({Bytes} bytes)",
+                    outputPath, new FileInfo(outputPath).Length);
+                return true;
             }
             catch (OperationCanceledException)
             {
@@ -268,6 +244,194 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
                 _logger.LogError(ex, "Unexpected error generating subtitles for {Video}", videoPath);
                 return false;
             }
+        }
+
+        private async Task<bool> RunWhisperCli(
+            string modelFile, string wavPath, string outputDir, string outputStem,
+            string language, bool translate, bool wordTimestamps, string? gpuType,
+            CancellationToken cancellationToken)
+        {
+            var args = BuildArguments(
+                modelFile, wavPath, outputDir, outputStem,
+                language, translate, wordTimestamps, gpuType);
+
+            _logger.LogInformation("Command: {Binary} {Args}", _binaryManager.BinaryPath, args);
+
+            var psi = new ProcessStartInfo
+            {
+                FileName               = _binaryManager.BinaryPath,
+                Arguments              = args,
+                RedirectStandardOutput = true,
+                RedirectStandardError  = true,
+                UseShellExecute        = false,
+                CreateNoWindow         = true,
+                WorkingDirectory       = outputDir
+            };
+
+            using var process = Process.Start(psi);
+            if (process is null)
+            {
+                _logger.LogError("Failed to start whisper-whisper-cli process");
+                return false;
+            }
+
+            var stdout = new StringBuilder();
+            var stderr = new StringBuilder();
+
+            using var outDone = new ManualResetEventSlim(false);
+            using var errDone = new ManualResetEventSlim(false);
+
+            process.OutputDataReceived += (_, e) =>
+            {
+                if (e.Data is null) { outDone.Set(); return; }
+                stdout.AppendLine(e.Data);
+                _logger.LogDebug("whisper: {L}", e.Data);
+            };
+
+            process.ErrorDataReceived += (_, e) =>
+            {
+                if (e.Data is null) { errDone.Set(); return; }
+                stderr.AppendLine(e.Data);
+                if (e.Data.Contains("CUDA") || e.Data.Contains("GPU") ||
+                    e.Data.Contains("progress") || e.Data.Contains("processing"))
+                    _logger.LogInformation("whisper: {L}", e.Data);
+                else
+                    _logger.LogDebug("whisper: {L}", e.Data);
+            };
+
+            process.BeginOutputReadLine();
+            process.BeginErrorReadLine();
+
+            await process.WaitForExitAsync(cancellationToken);
+            outDone.Wait(5_000);
+            errDone.Wait(5_000);
+
+            if (process.ExitCode != 0)
+            {
+                _logger.LogError(
+                    "whisper-whisper-cli exited {Code}.\nstderr: {Err}\nstdout: {Out}",
+                    process.ExitCode,
+                    stderr.Length > 0 ? stderr.ToString() : "(empty)",
+                    stdout.Length > 0 ? stdout.ToString() : "(empty)");
+                return false;
+            }
+
+            var outputPath = Path.Combine(outputDir, $"{outputStem}.srt");
+            if (!File.Exists(outputPath))
+            {
+                _logger.LogError(
+                    "Subtitle file not created: {Path}\nExit code: {Code}\nstderr: {Err}\nstdout: {Out}",
+                    outputPath,
+                    process.ExitCode,
+                    stderr.Length > 0 ? stderr.ToString() : "(empty)",
+                    stdout.Length > 0 ? stdout.ToString() : "(empty)");
+                return false;
+            }
+
+            return true;
+        }
+
+        private async Task<int> GetWavDurationMsAsync(string wavPath, CancellationToken ct)
+        {
+            var ffprobe = (_binaryManager.JellyfinFFmpegPath ?? "ffmpeg")
+                .Replace("ffmpeg", "ffprobe");
+            var psi = new ProcessStartInfo
+            {
+                FileName               = ffprobe,
+                Arguments              = $"-v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 \"{wavPath}\"",
+                RedirectStandardOutput = true,
+                UseShellExecute        = false,
+                CreateNoWindow         = true
+            };
+
+            using var proc = Process.Start(psi);
+            if (proc is null) return 0;
+
+            var output = await proc.StandardOutput.ReadToEndAsync(ct);
+            await proc.WaitForExitAsync(ct);
+
+            if (double.TryParse(output.Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out var seconds))
+                return (int)(seconds * 1000);
+            return 0;
+        }
+
+        private async Task<List<string>> SplitWavAsync(string wavPath, int chunkMs, CancellationToken ct)
+        {
+            var ffmpeg = _binaryManager.JellyfinFFmpegPath ?? "ffmpeg";
+            var chunkSec = chunkMs / 1000.0;
+            var dir = Path.GetDirectoryName(wavPath) ?? Path.GetTempPath();
+            var prefix = $"whisper_chunk_{Guid.NewGuid():N}_";
+            var pattern = Path.Combine(dir, $"{prefix}%03d.wav");
+
+            _logger.LogInformation("Splitting audio ({Chunk}s chunks): {Wav} → {Pattern}",
+                chunkSec, wavPath, pattern);
+
+            var psi = new ProcessStartInfo
+            {
+                FileName               = ffmpeg,
+                Arguments              = $"-i \"{wavPath}\" -f segment -segment_time {chunkSec} -c:a pcm_s16le -ar 16000 -ac 1 \"{pattern}\" -y -loglevel error",
+                RedirectStandardOutput = true,
+                RedirectStandardError  = true,
+                UseShellExecute        = false,
+                CreateNoWindow         = true
+            };
+
+            using var proc = Process.Start(psi);
+            if (proc is null)
+            {
+                _logger.LogError("Failed to start FFmpeg for audio splitting");
+                return new List<string> { wavPath };
+            }
+
+            var err = await proc.StandardError.ReadToEndAsync(ct);
+            await proc.WaitForExitAsync(ct);
+
+            if (proc.ExitCode != 0)
+            {
+                _logger.LogError("FFmpeg split failed ({Code}): {Err}", proc.ExitCode, err);
+                return new List<string> { wavPath };
+            }
+
+            var files = Directory.GetFiles(dir, $"{prefix}*.wav")
+                .OrderBy(f => f)
+                .ToList();
+
+            if (files.Count == 0)
+            {
+                _logger.LogWarning("FFmpeg split produced no files, using original");
+                return new List<string> { wavPath };
+            }
+
+            _logger.LogInformation("Audio split into {Count} chunk(s)", files.Count);
+            return files;
+        }
+
+        private static int MergeSrtInto(string chunkSrtPath, StringBuilder merged, int offset)
+        {
+            var lines = File.ReadAllLines(chunkSrtPath);
+            bool expectNumber = true; // start of file → expect segment number
+            int localMax = 0;
+
+            foreach (var line in lines)
+            {
+                if (expectNumber && line.Length > 0 && int.TryParse(line, out var n))
+                {
+                    merged.AppendLine((n + offset).ToString());
+                    if (n > localMax) localMax = n;
+                    expectNumber = false;
+                }
+                else
+                {
+                    merged.AppendLine(line);
+                    if (line.Length == 0)
+                        expectNumber = true; // blank line → next line is segment number
+                }
+            }
+
+            if (lines.Length > 0 && lines[^1] != "")
+                merged.AppendLine();
+
+            return offset + localMax;
         }
 
         // ── Private helpers ────────────────────────────────────────────────────
@@ -295,10 +459,10 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
             // Language
             sb.Append($"-l {language} ");
 
-            // Output — SRT format, stem only (no extension), output directory
+            // Output — SRT format, stem only (no extension)
+            // Output file is created in the process WorkingDirectory (set to outputDir)
             sb.Append("-osrt ");
             sb.Append($"-of \"{outputStem}\" ");
-            sb.Append($"--output-dir \"{outputDir}\" ");
 
             if (translate)
                 sb.Append("-tr ");
@@ -310,18 +474,18 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
             var threads = Math.Min(Environment.ProcessorCount, 16);
             sb.Append($"-t {threads} ");
 
-            // GPU offload
+            // GPU offload (whisper-cli only supports -dev N, not -ngl)
             if (gpuType is not null)
             {
-                sb.Append("-ngl 999 ");
+                sb.Append("-dev 0 ");
                 _logger.LogInformation("{GPU} acceleration enabled", gpuType);
             }
             else
             {
+                // whisper-cli defaults to use_gpu=true; explicitly disable it
+                sb.Append("-ng ");
                 _logger.LogInformation("CPU-only processing");
             }
-
-            sb.Append("-vv");
 
             return sb.ToString();
         }

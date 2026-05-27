@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/zakattack02/Whisper-Script/feature/jellyfin-plugin/logo.png",
     "versions": [
       {
+        "version": "0.0.0.85",
+        "changelog": "Bug fixes and improvements",
+        "targetAbi": "10.11.2.0",
+        "sourceUrl": "https://github.com/zakattack02/Whisper-Script/releases/download/v0.0.0.85/jellyfin-plugin-whispersubtitles_0.0.0.85.zip",
+        "checksum": "4aaa9e4e6abce75007de4885220c81fb",
+        "timestamp": "2026-05-27T03:24:20Z"
+      },
+      {
         "version": "0.0.0.84",
         "changelog": "Bug fixes and improvements",
         "targetAbi": "10.11.2.0",

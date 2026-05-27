@@ -10,6 +10,14 @@
     "versions": [
       {
         "version": "0.0.0.95",
+        "changelog": "Split long audio into 30-minute chunks to prevent OOM killer on low-RAM servers (4GB). Process each chunk separately and merge SRTs.",
+        "targetAbi": "10.11.2.0",
+        "sourceUrl": "https://github.com/zakattack02/Whisper-Script/releases/download/v0.0.0.95/jellyfin-plugin-whispersubtitles_0.0.0.95.zip",
+        "checksum": "27ea9f29cf676210cd581852934d641d",
+        "timestamp": "2026-05-27T20:22:23Z"
+      },
+      {
+        "version": "0.0.0.95",
         "changelog": "Bug fixes and improvements",
         "targetAbi": "10.11.2.0",
         "sourceUrl": "https://github.com/zakattack02/Whisper-Script/releases/download/v0.0.0.95/jellyfin-plugin-whispersubtitles_0.0.0.95.zip",

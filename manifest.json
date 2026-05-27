@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/zakattack02/Whisper-Script/feature/jellyfin-plugin/logo.png",
     "versions": [
       {
+        "version": "0.0.0.96",
+        "changelog": "Fixed ffprobe path detection. Added FfprobePath config field + FindFfprobe() fallback chain + configPage.html input.",
+        "targetAbi": "10.11.2.0",
+        "sourceUrl": "https://github.com/zakattack02/Whisper-Script/releases/download/v0.0.0.96/jellyfin-plugin-whispersubtitles_0.0.0.96.zip",
+        "checksum": "10577c4c601dbc58bdd0e8445e0a01c3",
+        "timestamp": "2026-05-27T21:10:39Z"
+      },
+      {
         "version": "0.0.0.95",
         "changelog": "Split long audio into 30-minute chunks to prevent OOM killer on low-RAM servers (4GB). Process each chunk separately and merge SRTs.",
         "targetAbi": "10.11.2.0",

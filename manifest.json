@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/zakattack02/Whisper-Script/feature/jellyfin-plugin/logo.png",
     "versions": [
       {
+        "version": "0.0.0.88",
+        "changelog": "AVX2 removed",
+        "targetAbi": "10.11.2.0",
+        "sourceUrl": "https://github.com/zakattack02/Whisper-Script/releases/download/v0.0.0.88/jellyfin-plugin-whispersubtitles_0.0.0.88.zip",
+        "checksum": "ceeb06d9a038c206e7c48730c047867e",
+        "timestamp": "2026-05-27T04:16:02Z"
+      },
+      {
         "version": "0.0.0.87",
         "changelog": "Fixed 132 error",
         "targetAbi": "10.11.2.0",

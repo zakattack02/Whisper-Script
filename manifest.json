@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/zakattack02/Whisper-Script/feature/jellyfin-plugin/logo.png",
     "versions": [
       {
+        "version": "0.0.0.86",
+        "changelog": "Fixes to Build Args and side panel",
+        "targetAbi": "10.11.2.0",
+        "sourceUrl": "https://github.com/zakattack02/Whisper-Script/releases/download/v0.0.0.86/jellyfin-plugin-whispersubtitles_0.0.0.86.zip",
+        "checksum": "1179e90ef948f122ae7af8fa4ea72aff",
+        "timestamp": "2026-05-27T03:25:53Z"
+      },
+      {
         "version": "0.0.0.85",
         "changelog": "Bug fixes and improvements",
         "targetAbi": "10.11.2.0",

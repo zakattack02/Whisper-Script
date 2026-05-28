@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/zakattack02/Whisper-Script/feature/jellyfin-plugin/logo.png",
     "versions": [
       {
+        "version": "0.0.0.98",
+        "changelog": "Dual CPU+GPU binaries with CUDA support. Dockerfile now builds both whisper-whisper-cli (CPU) and whisper-whisper-cli-cuda (CUDA) + bundles libcudart/libcublas. Plugin auto-selects CUDA binary when GPU is enabled and cuda binary is deployed.",
+        "targetAbi": "10.11.2.0",
+        "sourceUrl": "https://github.com/zakattack02/Whisper-Script/releases/download/v0.0.0.98/jellyfin-plugin-whispersubtitles_0.0.0.98.zip",
+        "checksum": "81025f1323720d7b136e2f2d30692aea",
+        "timestamp": "2026-05-28T00:44:58Z"
+      },
+      {
         "version": "0.0.0.97",
         "changelog": "Per-video sub-progress reporting. The scheduled task now reports progress as each chunk finishes, so the percentage bar updates smoothly instead of freezing per video.",
         "targetAbi": "10.11.2.0",

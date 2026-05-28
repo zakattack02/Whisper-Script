@@ -13,10 +13,10 @@ jobs:
   build:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: '9.0.x'
 
@@ -24,4 +24,4 @@ jobs:
         run: dotnet restore Jellyfin.Plugin.WhisperSubtitles.sln
 
       - name: Build
-        run: dotnet build Jellyfin.Plugin.WhisperSubtitles.sln --configuration Release --no-restore --warnings-as-errors
+        run: dotnet build Jellyfin.Plugin.WhisperSubtitles.sln --configuration Release --no-restore -warnaserror

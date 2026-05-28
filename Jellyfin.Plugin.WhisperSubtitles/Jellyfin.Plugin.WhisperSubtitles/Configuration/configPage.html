@@ -6,43 +6,50 @@
     <style>
         .ws-config { max-width: 1100px; margin: 0 auto; padding: 1rem; }
         .ws-config .ws-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; align-items: start; }
-        
-        @media (max-width: 900px) { 
-            .ws-config .ws-grid { grid-template-columns: 1fr; gap: 1rem; } 
+
+        @media (max-width: 900px) {
+            .ws-config .ws-grid { grid-template-columns: 1fr; gap: 1rem; }
         }
-        
+
         .ws-config .ws-card { background: var(--card-background, #1e1e1e); border: 1px solid var(--border-color, #333); border-radius: 10px; padding: 1.5rem; margin-bottom: 1.5rem; }
         .ws-config .ws-card:last-child { margin-bottom: 0; }
         .ws-config .ws-card h3 { margin: 0 0 1.25rem; font-size: 1.05rem; font-weight: 700; color: var(--text-color, #fff); display: flex; align-items: center; gap: 0.5rem; border-bottom: 1px solid var(--border-color, #333); padding-bottom: 0.5rem; }
         .ws-config .ws-card h3 .material-icons { font-size: 1.3rem; color: var(--accent, #00a4dc); }
-        
+
         .ws-config .ws-field { margin-bottom: 1.5rem; }
         .ws-config .ws-field:last-child { margin-bottom: 0; }
         .ws-config .ws-label { display: block; font-weight: 600; color: var(--text-color, #eee); margin-bottom: 0.4rem; font-size: 0.9rem; }
         .ws-config .ws-desc { color: var(--text-color-secondary, #aaa); font-size: 0.8rem; margin-top: 0.3rem; line-height: 1.4; }
-        
+
         .ws-config .ws-banner { padding: 0.85rem 1.1rem; border-radius: 6px; margin-bottom: 1rem; display: none; font-size: 0.9rem; line-height: 1.5; border-left: 4px solid transparent; }
         .ws-config .ws-banner.show { display: block; }
         .ws-config .ws-banner.warning { background: rgba(255,152,0,0.08); color: var(--warning-color, #ff9800); border-left-color: var(--warning-color, #ff9800); }
         .ws-config .ws-banner.success { background: rgba(0,200,83,0.08); color: var(--success-color, #00c853); border-left-color: var(--success-color, #00c853); }
         .ws-config .ws-banner.error { background: rgba(220,0,0,0.08); color: var(--error-color, #dc0000); border-left-color: var(--error-color, #dc0000); }
         .ws-config .ws-banner.info { background: rgba(0,164,220,0.08); color: var(--info-color, #00a4dc); border-left-color: var(--info-color, #00a4dc); }
-        
-        .ws-config .ws-library-list { border: 1px solid var(--border-color, #444); background: rgba(0,0,0,0.2); border-radius: 6px; padding: 0.75rem; max-height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.25rem; }
-        .ws-config .ws-library-list label { display: flex; align-items: center; gap: 0.5rem; padding: 6px 8px; border-radius: 4px; cursor: pointer; white-space: nowrap; }
-        
+
+        .ws-config .ws-library-list { border: 1px solid var(--border-color, #444); background: rgba(0,0,0,0.2); border-radius: 6px; padding: 0.5rem; max-height: 220px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.15rem; }
+        .ws-config .ws-library-list label { display: flex; align-items: center; gap: 0.5rem; padding: 6px 8px; border-radius: 4px; cursor: pointer; }
+        .ws-config .ws-library-list label:hover { background: rgba(255,255,255,0.05); }
+
         .ws-config textarea.emby-input { height: 100px; width: 100%; font-family: monospace; box-sizing: border-box; background: rgba(0,0,0,0.2); border-radius: 6px; padding: 0.5rem; }
         .ws-config .ws-about-table { width: 100%; max-width: 500px; border-collapse: collapse; font-size: 0.9rem; }
         .ws-config .ws-about-table td { padding: 6px 12px 6px 0; vertical-align: top; border-bottom: 1px solid rgba(255,255,255,0.03); }
         .ws-config .ws-about-table tr:last-child td { border-bottom: none; }
         .ws-config .ws-about-table td:first-child { font-weight: 600; color: var(--text-color-secondary, #aaa); white-space: nowrap; width: 30%; }
         .ws-config .ws-about-desc { color: var(--text-color-secondary, #aaa); font-size: 0.85rem; line-height: 1.6; margin-top: 1rem; }
-        
+
         .ws-config .ws-save-bar { margin-top: 2rem; padding: 1rem 0; border-top: 1px solid var(--border-color, #333); display: flex; align-items: center; justify-content: flex-end; gap: 1rem; }
         .ws-config .dirty-indicator { color: var(--warning-color, #ff9800); font-size: 0.85rem; display: none; font-weight: 600; }
         .ws-config code { font-family: monospace; background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; color: #ff9800; }
         .ws-config .ws-inline-flex { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
         .ws-config .ws-label-hint { color: var(--text-color-secondary, #aaa); font-size: 0.75rem; font-weight: 400; margin-left: 0.5rem; }
+
+        .ws-config .ws-checkbox-group { border: 1px solid var(--border-color, #333); border-radius: 8px; padding: 0.75rem; background: rgba(0,0,0,0.1); }
+        .ws-config .ws-checkbox-group .checkboxContainer { margin-bottom: 0.5rem; padding: 0.5rem; border-radius: 6px; }
+        .ws-config .ws-checkbox-group .checkboxContainer:last-child { margin-bottom: 0; }
+        .ws-config .ws-checkbox-group .checkboxContainer:hover { background: rgba(255,255,255,0.03); }
+        .ws-config .ws-checkbox-group .ws-desc { padding-left: 2.5rem; }
     </style>
 </head>
 <body>
@@ -52,9 +59,9 @@
                 <div class="pageHeader">
                     <span class="material-icons pageHeaderIcon" style="font-size:1.5rem;vertical-align:middle;margin-right:8px;color:var(--accent,#00a4dc);">subtitles</span>
                     <h1 style="display:inline;vertical-align:middle;font-size:1.4rem;margin:0;font-weight:normal;">Whisper Subtitles</h1>
-                    <a is="emby-linkbutton" class="raised raised-mini emby-button" style="margin-left:2em;" target="_blank" href="https://github.com/IAmParadox27/jellyfin-plugin-file-transformation">
-                        <i class="md-icon button-icon button-icon-left secondaryText"></i>
-                        <span>Help</span>
+                    <a is="emby-linkbutton" class="raised raised-mini emby-button" style="margin-left:2em;" target="_blank" href="https://github.com/zakattack02/Whisper-Script/wiki">
+                        <span class="material-icons" style="font-size:1.2rem;vertical-align:middle;margin-right:4px;">help_outline</span>
+                        <span>Help &amp; Documentation</span>
                     </a>
                 </div>
 
@@ -130,119 +137,108 @@
                             <div class="ws-card">
                                 <h3><span class="material-icons">auto_awesome</span> Library Automation</h3>
 
-                                <div class="checkboxContainer checkboxContainer-withDescription ws-field">
-                                    <label class="emby-checkbox-label">
-                                        <input id="ProcessOnLibraryScan" name="ProcessOnLibraryScan" type="checkbox" is="emby-checkbox" />
-                                        <span>Process on Library Scan</span>
-                                    </label>
-                                    <div class="ws-desc" style="padding-left: 2rem;">Trigger execution loop hooks instantly upon catalog folder discovery passes.</div>
+                                <div class="ws-checkbox-group">
+                                    <div class="checkboxContainer checkboxContainer-withDescription ws-field">
+                                        <label class="emby-checkbox-label">
+                                            <input id="ProcessOnLibraryScan" name="ProcessOnLibraryScan" type="checkbox" is="emby-checkbox" />
+                                            <span>Process on Library Scan</span>
+                                        </label>
+                                        <div class="ws-desc">Generate subtitles automatically when Jellyfin scans your media libraries.</div>
+                                    </div>
+
+                                    <div class="checkboxContainer checkboxContainer-withDescription ws-field">
+                                        <label class="emby-checkbox-label">
+                                            <input id="SkipExisting" name="SkipExisting" type="checkbox" is="emby-checkbox" />
+                                            <span>Skip Existing Subtitles</span>
+                                        </label>
+                                        <div class="ws-desc">Skip media files that already have subtitles. Only generate missing ones.</div>
+                                    </div>
+
+                                    <div class="checkboxContainer checkboxContainer-withDescription ws-field">
+                                        <label class="emby-checkbox-label">
+                                            <input id="RegenerateAI" name="RegenerateAI" type="checkbox" is="emby-checkbox" />
+                                            <span>Regenerate AI Subtitles</span>
+                                        </label>
+                                        <div class="ws-desc">Replaces existing whisper-generated subtitles even if they already exist.</div>
+                                    </div>
+
+                                    <div class="checkboxContainer checkboxContainer-withDescription ws-field">
+                                        <label class="emby-checkbox-label">
+                                            <input id="TranslateToEnglish" name="TranslateToEnglish" type="checkbox" is="emby-checkbox" />
+                                            <span>Translate to English</span>
+                                        </label>
+                                        <div class="ws-desc">Translate non-English audio to English subtitles instead of the original language.</div>
+                                    </div>
+
+                                    <div class="checkboxContainer checkboxContainer-withDescription ws-field">
+                                        <label class="emby-checkbox-label">
+                                            <input id="WordTimestamps" name="WordTimestamps" type="checkbox" is="emby-checkbox" />
+                                            <span>Word-Level Timestamps</span>
+                                        </label>
+                                        <div class="ws-desc">More precise subtitle timing (word-level sync) at the cost of longer processing time.</div>
+                                    </div>
+
+                                    <div class="checkboxContainer checkboxContainer-withDescription ws-field">
+                                        <label class="emby-checkbox-label">
+                                            <input id="EnableMainMenu" name="EnableMainMenu" type="checkbox" is="emby-checkbox" />
+                                            <span>Show in Main Menu</span>
+                                        </label>
+                                        <div class="ws-desc">Show the Whisper Subtitles entry in the server's main navigation. Refresh the page or clear cache to apply.</div>
+                                    </div>
                                 </div>
 
-                                <div class="checkboxContainer checkboxContainer-withDescription ws-field">
-                                    <label class="emby-checkbox-label">
-                                        <input id="SkipExisting" name="SkipExisting" type="checkbox" is="emby-checkbox" />
-                                        <span>Skip Existing Subtitles</span>
-                                    </label>
-                                    <div class="ws-desc" style="padding-left: 2rem;">Bypass parsing logic for assets that possess pre-existing subtitle structures.</div>
-                                </div>
-
-                                <div class="checkboxContainer checkboxContainer-withDescription ws-field">
-                                    <label class="emby-checkbox-label">
-                                        <input id="RegenerateAI" name="RegenerateAI" type="checkbox" is="emby-checkbox" />
-                                        <span>Regenerate AI Subtitles</span>
-                                    </label>
-                                    <div class="ws-desc" style="padding-left: 2rem;">Force overwrite parsing routines if existing targets match internal AI hashes.</div>
-                                </div>
-
-                                <div class="checkboxContainer checkboxContainer-withDescription ws-field">
-                                    <label class="emby-checkbox-label">
-                                        <input id="TranslateToEnglish" name="TranslateToEnglish" type="checkbox" is="emby-checkbox" />
-                                        <span>Translate to English</span>
-                                    </label>
-                                    <div class="ws-desc" style="padding-left: 2rem;">Forced conversion tracking maps multilingual content blocks direct to English matrices.</div>
-                                </div>
-
-                                <div class="checkboxContainer checkboxContainer-withDescription ws-field">
-                                    <label class="emby-checkbox-label">
-                                        <input id="WordTimestamps" name="WordTimestamps" type="checkbox" is="emby-checkbox" />
-                                        <span>Enable Word-Level Timestamps</span>
-                                    </label>
-                                    <div class="ws-desc" style="padding-left: 2rem;">Improves granular frame syncing timelines, but lengthens compute run-times.</div>
-                                </div>
-
-                                <div class="checkboxContainer checkboxContainer-withDescription ws-field">
-                                    <label class="emby-checkbox-label">
-                                        <input id="EnableMainMenu" name="EnableMainMenu" type="checkbox" is="emby-checkbox" />
-                                        <span>Show Whisper Subtitles in Main Menu</span>
-                                    </label>
-                                    <div class="ws-desc" style="padding-left: 2rem;">Toggle the Whisper Subtitles entry in the server's main navigation. Save and refresh the client (or clear cache) to apply.</div>
-                                </div>
-
-                                <div class="ws-field">
+                                <div class="ws-field" style="margin-top:1.5rem;">
                                     <label class="ws-label">Libraries to Process <span id="libraryCount" class="ws-label-hint"></span></label>
                                     <div id="LibrariesToProcessContainer" class="ws-library-list">
-                                        <p style="color:var(--text-color-secondary,#888);text-align:center;margin:10px 0;">Loading target server libraries...</p>
+                                        <p style="color:var(--text-color-secondary,#888);text-align:center;margin:10px 0;">Loading libraries...</p>
                                     </div>
-                                    <div class="ws-desc">Isolate parsing runs to targeted libraries. Empty sets default to checking all media folders.</div>
+                                    <div class="ws-desc">Only process media in selected libraries. Leave none selected to process all libraries.</div>
                                 </div>
 
                                 <div class="inputContainer ws-field">
                                     <label class="ws-label" for="FoldersToExclude">Folders to Exclude</label>
                                     <textarea is="emby-input" id="FoldersToExclude" name="FoldersToExclude" class="emby-input"></textarea>
-                                    <div class="ws-desc">Exclude local absolute paths (one folder rule entry per line).</div>
+                                    <div class="ws-desc">Exclude specific folders by absolute path (one per line).</div>
                                 </div>
                             </div>
                         </div>
 
-                    </div><div class="ws-card" style="margin-top: 1.5rem;">
+                    </div>
+
+                    <div class="ws-card" style="margin-top: 1.5rem;">
                         <h3><span class="material-icons">memory</span> System Status</h3>
 
                         <div id="binaryInstructions" class="ws-banner warning show">
-                            <div style="font-weight:700;margin-bottom:6px;font-size:1rem;">System Execution Binary Absent</div>
-                            <div style="margin-bottom:12px;">The underlying runtime binary is packed into local directories but must register access configurations via the system cache space.</div>
+                            <div style="font-weight:700;margin-bottom:6px;font-size:1rem;">Runtime Binary Not Deployed</div>
+                            <div style="margin-bottom:12px;">The whisper.cpp binary needs to be copied from the plugin folder to the system cache before it can run.</div>
                             <div style="margin:10px 0;">
                                 <button is="emby-button" type="button" id="InstallBinaryButton" class="raised emby-button" style="background:var(--accent,#00a4dc);color:#fff;">
                                     <span>Deploy Runtime Binary</span>
                                 </button>
                             </div>
                             <div style="font-size:0.8rem;color:var(--text-color-secondary,#aaa);">
-                                Manual target fallback location path: copy from <code>~/.config/jellyfin/plugins/Whisper Subtitles_*/whisper/</code> straight to <code>~/.cache/whisper-cpp/</code>
+                                Manual fallback: copy from <code>~/.config/jellyfin/plugins/Whisper Subtitles_*/whisper/</code> to <code>~/.cache/whisper-cpp/</code>
                             </div>
                         </div>
 
                         <div id="binaryOk" class="ws-banner success">
-                            <strong>✓ Whisper core environment validation passed. Ready.</strong>
+                            <strong>✓ Runtime binary deployed and ready.</strong>
                         </div>
 
                         <div id="binaryStatusText" class="ws-banner info" style="margin-top:8px;">
-                            <strong>Binary System Node Point:</strong> <span id="binaryPathText">unknown</span><br/>
-                            <strong>Active Thread Allocations:</strong> <span id="cpuThreadsText">-</span> available logical processor units
+                            <strong>Binary Path:</strong> <span id="binaryPathText">unknown</span><br/>
+                            <strong>Available Threads:</strong> <span id="cpuThreadsText">-</span> logical processors
                         </div>
 
                         <div id="diagnosticsInfo" class="ws-banner info" style="margin-top:8px;">
-                            Analyzing platform performance metrics...
-                        </div>
-                    </div>
-
-                    <div class="ws-card">
-                        <h3><span class="material-icons">info</span> About Module</h3>
-
-                        <table class="ws-about-table">
-                            <tr><td>Version</td><td id="aboutVersion">-</td></tr>
-                            <tr><td>Repository Source</td><td><a href="https://github.com/zakattack02/Whisper-Script" target="_blank">github.com/zakattack02/Whisper-Script</a></td></tr>
-                            <tr><td>License Profile</td><td>MIT Open Source Agreement</td></tr>
-                            <tr><td>Transcription Core</td><td>whisper.cpp standalone optimization layer (ggerganov)</td></tr>
-                        </table>
-
-                        <div class="ws-about-desc">
-                            <p>Generates high-fidelity subtitle tracking sheets automatically. Harnesses advanced local transcription engines without needing to route external data packets out to third party provider cloud spaces.</p>
+                            Analyzing system performance metrics...
                         </div>
                     </div>
 
                     <div class="ws-save-bar">
-                        <span class="dirty-indicator" id="dirtyIndicator">● Unsaved Workspace Configuration Changes</span>
+                        <span class="dirty-indicator" id="dirtyIndicator">● Unsaved Changes</span>
                         <button is="emby-button" type="submit" class="raised button-submit emby-button" style="padding: 0.5rem 2rem;">
-                            <span>Save Configuration</span>
+                            <span>Save</span>
                         </button>
                     </div>
 
@@ -368,12 +364,12 @@
                         if (!el) return;
                         var html = '';
                         if (stats) {
-                            html += '<strong>Binary Environment System Node:</strong> ' + (stats.binaryReady ? '✓ Operational' : '✗ Unconfigured');
-                            if (stats.gpuType) html += '<br/><strong>Hardware Target Stack:</strong> ' + stats.gpuType;
-                            if (stats.modelsDownloaded !== undefined) html += '<br/><strong>Models Cached:</strong> ' + stats.modelsDownloaded + ' / ' + stats.modelsAvailable;
-                            if (stats.queueLength !== undefined) html += '<br/><strong>Current Processing Queue:</strong> ' + stats.queueLength + ' job nodes actively waiting';
+                            html += '<strong>Binary Ready:</strong> ' + (stats.binaryReady ? '✓ Yes' : '✗ No');
+                            if (stats.gpuType) html += '<br/><strong>GPU Type:</strong> ' + stats.gpuType;
+                            if (stats.modelsDownloaded !== undefined) html += '<br/><strong>Models:</strong> ' + stats.modelsDownloaded + ' / ' + stats.modelsAvailable + ' downloaded';
+                            if (stats.queueLength !== undefined) html += '<br/><strong>Queue:</strong> ' + stats.queueLength + ' jobs waiting';
                         }
-                        el.innerHTML = html || 'Diagnostics polling context empty.';
+                        el.innerHTML = html || 'No diagnostics data available.';
                         showBanner('diagnosticsInfo');
                     }).catch(function () {
                         var el = document.getElementById('diagnosticsInfo');
@@ -401,7 +397,7 @@
                         });
 
                         if (videoFolders.length === 0) {
-                            container.innerHTML = '<p style="color:var(--text-color-secondary,#888);text-align:center;margin:10px 0;">No matching server libraries mapped.</p>';
+                            container.innerHTML = '<p style="color:var(--text-color-secondary,#888);text-align:center;margin:10px 0;">No matching libraries found.</p>';
                             return;
                         }
 
@@ -415,16 +411,16 @@
                             checkbox.checked = selectedLibraries.indexOf(checkbox.value) !== -1;
 
                             label.appendChild(checkbox);
-                            label.appendChild(document.createTextNode(' ' + (library.Name || 'Unnamed Media Library Source')));
+                            label.appendChild(document.createTextNode(' ' + (library.Name || 'Unnamed')));
                             container.appendChild(label);
                         });
 
                         loadLibraryCounts(selectedLibraries);
                     }).catch(function (error) {
-                        console.error('[WhisperSubtitles] Error loading target server libraries:', error);
+                        console.error('[WhisperSubtitles] Error loading libraries:', error);
                         var container = document.getElementById('LibrariesToProcessContainer');
                         if (container) {
-                            container.innerHTML = '<p style="color:var(--error-color,#dc0000);text-align:center;margin:10px 0;">Failed to pull system libraries.</p>';
+                            container.innerHTML = '<p style="color:var(--error-color,#dc0000);text-align:center;margin:10px 0;">Failed to load libraries.</p>';
                         }
                     });
                 }
@@ -527,7 +523,7 @@
                         markClean();
                         Dashboard.processPluginConfigurationUpdateResult();
                     }).catch(function (error) {
-                        console.error('[WhisperSubtitles] Exception caught applying configuration update set:', error);
+                        console.error('[WhisperSubtitles] Error saving config:', error);
                         Dashboard.hideLoadingMsg();
                     });
 
@@ -539,7 +535,7 @@
                     var statusDiv = document.getElementById('downloadStatus');
 
                     statusDiv.className = 'ws-banner info show';
-                    statusDiv.innerHTML = '⟳ Downloading language target model definitions: "' + selectedModel + '"...';
+                    statusDiv.innerHTML = '⟳ Downloading "' + selectedModel + '" model...';
 
                     if (typeof ApiClient === 'undefined') return;
 
@@ -550,11 +546,11 @@
                         contentType: 'application/json'
                     }).then(function () {
                         statusDiv.className = 'ws-banner success show';
-                        statusDiv.innerHTML = '✓ Model tracking mapping configuration "' + selectedModel + '" pulled successfully.';
+                        statusDiv.innerHTML = '✓ Model "' + selectedModel + '" downloaded successfully.';
                         setTimeout(function () { statusDiv.className = 'ws-banner'; }, 5000);
                     }).catch(function () {
                         statusDiv.className = 'ws-banner error show';
-                        statusDiv.innerHTML = '✗ Target download routine aborted abnormally — review logs on active instance console output layers.';
+                        statusDiv.innerHTML = '✗ Download failed. Check the server logs for details.';
                     });
                 });
 
@@ -562,7 +558,7 @@
                     var statusDiv = document.getElementById('binaryOk');
 
                     statusDiv.className = 'ws-banner info show';
-                    statusDiv.innerHTML = '⟳ Deploying system execute elements...';
+                    statusDiv.innerHTML = '⟳ Deploying runtime binary...';
 
                     if (typeof ApiClient === 'undefined') return;
 
@@ -577,16 +573,16 @@
                     }).then(function (statusResponse) {
                         if (statusResponse && statusResponse.IsReady) {
                             statusDiv.className = 'ws-banner success show';
-                            statusDiv.innerHTML = '✓ Local binary workspace deployed successfully.';
+                            statusDiv.innerHTML = '✓ Binary deployed successfully.';
                             setBinaryStatus(true, statusResponse.BinaryPath, statusResponse.GpuType);
                         } else {
                             statusDiv.className = 'ws-banner error show';
-                            statusDiv.innerHTML = '✗ Failure verifying engine node pointers following install loop execution path mapping passes.';
+                            statusDiv.innerHTML = '✗ Binary deployment failed.';
                         }
                         setTimeout(function () { statusDiv.className = 'ws-banner'; }, 5000);
                     }).catch(function () {
                         statusDiv.className = 'ws-banner error show';
-                        statusDiv.innerHTML = '✗ Execution thread context caught engine asset registration fault routines.';
+                        statusDiv.innerHTML = '✗ Deployment error.';
                     });
                 });
 

@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/zakattack02/Whisper-Script/feature/jellyfin-plugin/logo.png",
     "versions": [
       {
+        "version": "3.0.0.2",
+        "changelog": "fix folder layout",
+        "targetAbi": "10.11.2.0",
+        "sourceUrl": "https://github.com/zakattack02/Whisper-Script/releases/download/v3.0.0.2/jellyfin-plugin-whispersubtitles_3.0.0.2.zip",
+        "checksum": "4b5f32226f117649cf53fc170c6117d7",
+        "timestamp": "2026-05-28T05:30:24Z"
+      },
+      {
         "version": "3.0.0.1",
         "changelog": "libnccl.so.2 added",
         "targetAbi": "10.11.2.0",

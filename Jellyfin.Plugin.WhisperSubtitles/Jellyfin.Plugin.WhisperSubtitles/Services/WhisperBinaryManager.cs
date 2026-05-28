@@ -193,7 +193,7 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
                     File.Copy(cudaSource, _cudaBinaryPath, overwrite: true);
                     EnsureExecutable(_cudaBinaryPath);
 
-                    foreach (var lib in new[] { "libcudart.so.12", "libcublas.so.12", "libcublasLt.so.12", "libnccl.so.2", "libnccl.so" })
+                    foreach (var lib in new[] { "libcudart.so.12", "libcublas.so.12", "libcublasLt.so.12", "libnccl.so.2" })
                     {
                         var libSource = Path.Combine(Path.GetDirectoryName(cudaSource) ?? string.Empty, lib);
                         if (File.Exists(libSource))

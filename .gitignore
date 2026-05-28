@@ -1,4 +1,3 @@
-
 *.backup
 *.py.backup
 .venv
@@ -6,3 +5,25 @@ bin/
 obj/
 releases/
 wiki/
+whisper.cpp/
+
+BenchmarkDotNet.Artifacts/
+/package/
+*.lscache
+
+# Web dashboard build output
+IntroSkipper/Configuration/index.js
+IntroSkipper/Configuration/index.css
+IntroSkipper/Configuration/introskipper.js
+IntroSkipper/Configuration/introskipper.css
+
+# Web dashboard dependencies
+web/node_modules
+
+# Visual Studio
+.vs/
+
+# JetBrains Rider
+.idea/
+/.cursor
+.agents/

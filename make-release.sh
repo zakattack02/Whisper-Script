@@ -308,45 +308,52 @@ PYTHON_EOF
 echo -e "${GREEN}\u2713 Manifest updated${NC}"
 echo ""
 
-# ── Step 8: Git commit + tags ─────────────────────────────────────────────────
+# ── Step 8: Local commit + tag ────────────────────────────────────────────────
 echo -e "${YELLOW}[8/9] Committing and tagging...${NC}"
 
 git add "$MANIFEST_FILE" "$BUILD_PROPS_FILE"
 git commit -m "Release v${NEW_VERSION}: ${CHANGELOG_ONELINE}"
 git tag "v${NEW_VERSION}"
-git push origin HEAD
-git push origin "v${NEW_VERSION}"
 
-echo -e "${GREEN}\u2713 Committed and tagged${NC}"
+echo -e "${GREEN}\u2713 Committed and tagged locally${NC}"
 echo ""
 
-# ── Step 9: GitHub release ────────────────────────────────────────────────────
+# ── Step 9: GitHub release (push only after successful release) ───────────────
 echo -e "${YELLOW}[9/9] Publishing to GitHub...${NC}"
 
+RELEASE_NOTES="$CHANGELOG_ONELINE"
+RELEASE_CREATED=false
+
 if command -v gh &>/dev/null && command -v git &>/dev/null; then
-    # Build release asset list: combined zip is the primary, CPU-only is additional
-    RELEASE_ASSETS="$PACKAGE_PATH"
-    RELEASE_NOTES="$CHANGELOG_ONELINE"
-    
     if $HAS_CUDA && [ -f "$CPU_PACKAGE_PATH" ]; then
-        gh release create "v${NEW_VERSION}" "$PACKAGE_PATH" "$CPU_PACKAGE_PATH" \
+        if gh release create "v${NEW_VERSION}" "$PACKAGE_PATH" "$CPU_PACKAGE_PATH" \
             --title "v${NEW_VERSION}" \
-            --notes "$RELEASE_NOTES"
-        echo -e "${GREEN}\u2713 Uploaded combined + CPU-only zips${NC}"
+            --notes "$RELEASE_NOTES"; then
+            RELEASE_CREATED=true
+            echo -e "${GREEN}\u2713 Uploaded combined + CPU-only zips${NC}"
+        fi
     else
-        gh release create "v${NEW_VERSION}" "$PACKAGE_PATH" \
+        if gh release create "v${NEW_VERSION}" "$PACKAGE_PATH" \
             --title "v${NEW_VERSION}" \
-            --notes "$RELEASE_NOTES"
+            --notes "$RELEASE_NOTES"; then
+            RELEASE_CREATED=true
+        fi
     fi
 
-    RELEASE_URL=$(gh release view "v${NEW_VERSION}" --json url --jq .url 2>/dev/null)
-    echo -e "${GREEN}\u2713 GitHub release created: ${CYAN}${RELEASE_URL}${NC}"
+    if $RELEASE_CREATED; then
+        git push origin HEAD
+        git push origin "v${NEW_VERSION}"
+        RELEASE_URL=$(gh release view "v${NEW_VERSION}" --json url --jq .url 2>/dev/null)
+        echo -e "${GREEN}\u2713 GitHub release created: ${CYAN}${RELEASE_URL}${NC}"
+    else
+        echo -e "${RED}\u2717 GitHub release creation failed — tag and commit kept locally${NC}"
+        echo -e "${YELLOW}  Fix the issue, delete the tag with: git tag -d v${NEW_VERSION}${NC}"
+        exit 1
+    fi
 else
-    echo -e "${YELLOW}\u26a0 gh CLI not found — manual steps:${NC}"
-    echo "    git add manifest.json Directory.Build.props"
-    echo "    git commit -m 'Release v${NEW_VERSION}'"
-    echo "    git tag v${NEW_VERSION}"
-    echo "    git push origin HEAD && git push origin v${NEW_VERSION}"
+    echo -e "${YELLOW}\u26a0 gh CLI not found — pushing anyway, create release manually:${NC}"
+    git push origin HEAD
+    git push origin "v${NEW_VERSION}"
     echo "    gh release create v${NEW_VERSION} ${PACKAGE_PATH} --title v${NEW_VERSION} --notes '${CHANGELOG_ONELINE}'"
 fi
 echo ""

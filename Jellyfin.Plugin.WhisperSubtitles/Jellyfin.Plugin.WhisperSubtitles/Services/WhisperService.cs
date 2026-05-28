@@ -9,9 +9,6 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Net.Http;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.WhisperSubtitles.Services
@@ -54,8 +51,9 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
                 _logger.LogWarning("Whisper binary not in cache — will deploy from plugin bundle on first use.");
         }
 
-        public string  BinaryPath      => _binaryManager.BinaryPath;
-        public string? DetectedGpuType => _binaryManager.DetectedGPUType;
+        public string  BinaryPath             => _binaryManager.BinaryPath;
+        public string? DetectedGpuType        => _binaryManager.DetectedGPUType;
+        public bool    IsCudaBinaryAvailable   => _binaryManager.IsCudaBinaryAvailable;
 
         /// <summary>Returns true if the whisper binary is available and ready to use.</summary>
         public bool IsBinaryAvailable() => _binaryManager.IsBinaryAvailable();
@@ -133,6 +131,7 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
             string language,
             bool   translate,
             bool   wordTimestamps,
+            IProgress<double>? progress = null,
             CancellationToken cancellationToken = default)
         {
             var config = Plugin.Instance?.Configuration ?? new Configuration.PluginConfiguration();
@@ -158,23 +157,41 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
                 return false;
             }
 
+            var outputDir  = Path.GetDirectoryName(outputPath) ?? Directory.GetCurrentDirectory();
+            var outputStem = Path.GetFileNameWithoutExtension(outputPath);
+
+            // ── Extract audio from video ───────────────────────────────────
+            var tempWav = Path.Combine(
+                Path.GetTempPath(),
+                $"whisper_{Guid.NewGuid():N}.wav");
+
             try
             {
-                var outputDir  = Path.GetDirectoryName(outputPath) ?? Directory.GetCurrentDirectory();
-                var outputStem = Path.GetFileNameWithoutExtension(outputPath);
-
-                // ── Extract audio from video ───────────────────────────────────
-                var tempWav = Path.Combine(
-                    Path.GetTempPath(),
-                    $"whisper_{Guid.NewGuid():N}.wav");
-
                 if (!await ExtractAudioAsync(videoPath, tempWav, cancellationToken))
                 {
                     _logger.LogError("Failed to extract audio from {Video}", videoPath);
                     return false;
                 }
 
+                // Determine which binary to use
                 var gpuType = config.UseGPUAcceleration ? _binaryManager.DetectedGPUType : null;
+                string binaryPath;
+
+                if (gpuType == "cuda" && _binaryManager.IsCudaBinaryAvailable)
+                {
+                    binaryPath = _binaryManager.CudaBinaryPath;
+                    _logger.LogInformation("Using CUDA binary at {Path}", binaryPath);
+                }
+                else
+                {
+                    binaryPath = _binaryManager.BinaryPath;
+                    if (config.UseGPUAcceleration && gpuType is not null)
+                    {
+                        _logger.LogWarning("CUDA binary not available, falling back to CPU binary");
+                        gpuType = null;
+                    }
+                }
+
                 var acceleration = gpuType is not null ? $"GPU ({gpuType})" : "CPU";
 
                 _logger.LogInformation(
@@ -186,13 +203,20 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
                 if (wavDurationMs <= ChunkDurationMs)
                 {
                     if (!await RunWhisperCli(
-                        modelFile, tempWav, outputDir, outputStem,
+                        binaryPath, modelFile, tempWav, outputDir, outputStem,
                         language, translate, wordTimestamps, gpuType, cancellationToken))
                         return false;
+
+                    progress?.Report(1.0);
                 }
                 else
                 {
                     var chunks = await SplitWavAsync(tempWav, ChunkDurationMs, cancellationToken);
+                    if (chunks.Count == 0)
+                    {
+                        _logger.LogError("Audio splitting failed — aborting subtitle generation");
+                        return false;
+                    }
                     try
                     {
                         var mergedSrt = new StringBuilder();
@@ -203,13 +227,15 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
                             var chunkStem = $"{outputStem}.part{i:D3}";
 
                             if (!await RunWhisperCli(
-                                modelFile, chunks[i], outputDir, chunkStem,
+                                binaryPath, modelFile, chunks[i], outputDir, chunkStem,
                                 language, translate, wordTimestamps, gpuType, cancellationToken))
                                 return false;
 
                             var chunkSrtPath = Path.Combine(outputDir, $"{chunkStem}.srt");
                             segmentOffset = MergeSrtInto(chunkSrtPath, mergedSrt, segmentOffset);
                             File.Delete(chunkSrtPath);
+
+                            progress?.Report((double)(i + 1) / chunks.Count);
                         }
 
                         await File.WriteAllTextAsync(outputPath, mergedSrt.ToString(), cancellationToken);
@@ -244,10 +270,14 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
                 _logger.LogError(ex, "Unexpected error generating subtitles for {Video}", videoPath);
                 return false;
             }
+            finally
+            {
+                try { if (File.Exists(tempWav)) File.Delete(tempWav); } catch { }
+            }
         }
 
         private async Task<bool> RunWhisperCli(
-            string modelFile, string wavPath, string outputDir, string outputStem,
+            string binaryPath, string modelFile, string wavPath, string outputDir, string outputStem,
             string language, bool translate, bool wordTimestamps, string? gpuType,
             CancellationToken cancellationToken)
         {
@@ -255,11 +285,11 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
                 modelFile, wavPath, outputDir, outputStem,
                 language, translate, wordTimestamps, gpuType);
 
-            _logger.LogInformation("Command: {Binary} {Args}", _binaryManager.BinaryPath, args);
+            _logger.LogInformation("Command: {Binary} {Args}", binaryPath, args);
 
             var psi = new ProcessStartInfo
             {
-                FileName               = _binaryManager.BinaryPath,
+                FileName               = binaryPath,
                 Arguments              = args,
                 RedirectStandardOutput = true,
                 RedirectStandardError  = true,
@@ -267,6 +297,12 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
                 CreateNoWindow         = true,
                 WorkingDirectory       = outputDir
             };
+
+            // Set LD_LIBRARY_PATH for CUDA binary to find bundled .so files
+            if (binaryPath == _binaryManager.CudaBinaryPath)
+            {
+                psi.EnvironmentVariables["LD_LIBRARY_PATH"] = _binaryManager.CudaLibDir;
+            }
 
             using var process = Process.Start(psi);
             if (process is null)
@@ -302,7 +338,18 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
             process.BeginOutputReadLine();
             process.BeginErrorReadLine();
 
-            await process.WaitForExitAsync(cancellationToken);
+            using var whisperTimeout = new CancellationTokenSource(TimeSpan.FromMinutes(60));
+            using var whisperCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, whisperTimeout.Token);
+            try
+            {
+                await process.WaitForExitAsync(whisperCts.Token);
+            }
+            catch (OperationCanceledException) when (whisperTimeout.IsCancellationRequested)
+            {
+                _logger.LogError("whisper-cli timed out after 60 minutes, killing process");
+                if (!process.HasExited) process.Kill(entireProcessTree: true);
+                return false;
+            }
             outDone.Wait(5_000);
             errDone.Wait(5_000);
 
@@ -333,25 +380,43 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
 
         private async Task<int> GetWavDurationMsAsync(string wavPath, CancellationToken ct)
         {
-            var ffprobe = (_binaryManager.JellyfinFFmpegPath ?? "ffmpeg")
-                .Replace("ffmpeg", "ffprobe");
-            var psi = new ProcessStartInfo
+            var ffprobe = Plugin.Instance?.Configuration.FfprobePath;
+            if (string.IsNullOrEmpty(ffprobe))
+                ffprobe = _binaryManager.FfprobePath ?? "ffprobe";
+
+            try
             {
-                FileName               = ffprobe,
-                Arguments              = $"-v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 \"{wavPath}\"",
-                RedirectStandardOutput = true,
-                UseShellExecute        = false,
-                CreateNoWindow         = true
-            };
+                var psi = new ProcessStartInfo
+                {
+                    FileName               = ffprobe,
+                    Arguments              = $"-v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 \"{wavPath}\"",
+                    RedirectStandardOutput = true,
+                    UseShellExecute        = false,
+                    CreateNoWindow         = true
+                };
 
-            using var proc = Process.Start(psi);
-            if (proc is null) return 0;
+                using var proc = Process.Start(psi);
+                if (proc is null) return 0;
 
-            var output = await proc.StandardOutput.ReadToEndAsync(ct);
-            await proc.WaitForExitAsync(ct);
+                using var ffprobeTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+                using var ffprobeCts = CancellationTokenSource.CreateLinkedTokenSource(ct, ffprobeTimeout.Token);
+                var output = await proc.StandardOutput.ReadToEndAsync(ffprobeCts.Token);
+                try { await proc.WaitForExitAsync(ffprobeCts.Token); }
+                catch (OperationCanceledException) when (ffprobeTimeout.IsCancellationRequested)
+                {
+                    if (!proc.HasExited) proc.Kill(entireProcessTree: true);
+                    _logger.LogWarning("ffprobe timed out");
+                    return 0;
+                }
 
-            if (double.TryParse(output.Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out var seconds))
-                return (int)(seconds * 1000);
+                if (double.TryParse(output.Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out var seconds))
+                    return (int)(seconds * 1000);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to detect audio duration via {Ffprobe}", ffprobe);
+            }
+
             return 0;
         }
 
@@ -380,21 +445,41 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
             if (proc is null)
             {
                 _logger.LogError("Failed to start FFmpeg for audio splitting");
-                return new List<string> { wavPath };
+                return new List<string>();
             }
 
-            var err = await proc.StandardError.ReadToEndAsync(ct);
-            await proc.WaitForExitAsync(ct);
+            using var splitTimeout = new CancellationTokenSource(TimeSpan.FromMinutes(30));
+            using var splitCts = CancellationTokenSource.CreateLinkedTokenSource(ct, splitTimeout.Token);
+            try
+            {
+                var err = await proc.StandardError.ReadToEndAsync(splitCts.Token);
+                await proc.WaitForExitAsync(splitCts.Token);
+            }
+            catch (OperationCanceledException) when (splitTimeout.IsCancellationRequested)
+            {
+                _logger.LogError("FFmpeg split timed out after 30 minutes");
+                if (!proc.HasExited) proc.Kill(entireProcessTree: true);
+                return new List<string>();
+            }
 
             if (proc.ExitCode != 0)
             {
-                _logger.LogError("FFmpeg split failed ({Code}): {Err}", proc.ExitCode, err);
-                return new List<string> { wavPath };
+                _logger.LogError("FFmpeg split failed ({Code}): {Err}", proc.ExitCode, proc.StandardError.ReadToEnd());
+                return new List<string>();
             }
 
-            var files = Directory.GetFiles(dir, $"{prefix}*.wav")
-                .OrderBy(f => f)
-                .ToList();
+            List<string> files;
+            try
+            {
+                files = Directory.GetFiles(dir, $"{prefix}*.wav")
+                    .OrderBy(f => f)
+                    .ToList();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to list split chunks in {Dir}", dir);
+                return new List<string>();
+            }
 
             if (files.Count == 0)
             {
@@ -457,7 +542,7 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
             sb.Append($"-f \"{videoPath}\" ");
 
             // Language
-            sb.Append($"-l {language} ");
+            sb.Append($"-l \"{language}\" ");
 
             // Output — SRT format, stem only (no extension)
             // Output file is created in the process WorkingDirectory (set to outputDir)
@@ -537,8 +622,16 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
                     return false;
                 }
 
-                var stderr = await process.StandardError.ReadToEndAsync(cancellationToken);
-                await process.WaitForExitAsync(cancellationToken);
+                using var extractTimeout = new CancellationTokenSource(TimeSpan.FromMinutes(30));
+                using var extractCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, extractTimeout.Token);
+                var stderr = await process.StandardError.ReadToEndAsync(extractCts.Token);
+                try { await process.WaitForExitAsync(extractCts.Token); }
+                catch (OperationCanceledException) when (extractTimeout.IsCancellationRequested)
+                {
+                    _logger.LogError("FFmpeg audio extraction timed out after 30 minutes");
+                    if (!process.HasExited) process.Kill(entireProcessTree: true);
+                    return false;
+                }
 
                 if (process.ExitCode != 0)
                 {

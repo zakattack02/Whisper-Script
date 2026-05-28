@@ -1,5 +1,6 @@
 #!/bin/bash
 # make-release.sh - builds whisper.cpp + C# plugin, packages, and releases
+# Usage: bash make-release.sh [--dry-run]
 
 set -e  # Exit on error — don't hide failures
 
@@ -25,20 +26,33 @@ BUILD_OUTPUT="${PLUGIN_FOLDER}/bin/${BUILD_CONFIG}/${TARGET_FRAMEWORK}/publish"
 
 # Error handling function
 error_exit() {
-    echo -e "${RED}✗ $1${NC}"
+    echo -e "${RED}\u2717 $1${NC}"
     exit 1
 }
 
+# Parse --dry-run flag
+DRY_RUN=false
+for arg in "$@"; do
+    [ "$arg" = "--dry-run" ] && DRY_RUN=true
+done
+
+# ── Preflight: dirty-tree check ───────────────────────────────────────────────
+if ! git diff-index --quiet HEAD; then
+    error_exit "Working tree has uncommitted changes. Commit or stash first."
+fi
+if ! git diff-index --cached --quiet HEAD; then
+    error_exit "Staged but uncommitted changes. Commit first."
+fi
+
+# ── Preflight: dependencies ───────────────────────────────────────────────────
 clear
 echo -e "${BLUE}╔═══════════════════════════════════════════════════════╗${NC}"
 echo -e "${BLUE}║  Whisper Subtitles Plugin - Release Wizard            ║${NC}"
 echo -e "${BLUE}╚═══════════════════════════════════════════════════════╝${NC}"
 echo ""
-
-# ── Preflight checks ─────────────────────────────────────────────────────────
-echo -e "${YELLOW}[0/8] Checking dependencies...${NC}"
+echo -e "${YELLOW}[0/9] Checking dependencies...${NC}"
 MISSING=()
-for cmd in git cmake dotnet zip python3 md5sum; do
+for cmd in git cmake dotnet zip python3 sha256sum; do
     if ! command -v "$cmd" &>/dev/null; then
         MISSING+=("$cmd")
     fi
@@ -46,34 +60,41 @@ done
 if [ ${#MISSING[@]} -ne 0 ]; then
     error_exit "Missing required tools: ${MISSING[*]}\n  Install: sudo apt-get install -y git cmake build-essential dotnet-sdk-9.0 zip python3"
 fi
-echo -e "${GREEN}✓ All dependencies present${NC}"
+echo -e "${GREEN}\u2713 All dependencies present${NC}"
 echo ""
 
 # ── Version selection ─────────────────────────────────────────────────────────
 CURRENT_VERSION=$(grep -oP '<Version>\K[^<]+' "$BUILD_PROPS_FILE")
 [ -z "$CURRENT_VERSION" ] && error_exit "Could not read version from $BUILD_PROPS_FILE"
 
+# Check if tag already exists
+if git tag -l "v${CURRENT_VERSION}" | grep -q .; then
+    error_exit "Tag v${CURRENT_VERSION} already exists. Increment version first."
+fi
+
 echo -e "${CYAN}Current version: ${GREEN}$CURRENT_VERSION${NC}"
 echo ""
 echo -e "${YELLOW}How would you like to increment the version?${NC}"
-echo "  1) Patch (0.0.0.47 → 0.0.0.48)"
-echo "  2) Minor (0.0.0.47 → 0.0.1.0)"
-echo "  3) Major (0.0.0.47 → 0.1.0.0)"
-echo "  4) Manual entry"
-echo "  5) Use current version as-is"
+echo "  1) Revision (3.0.0.0 \u2192 3.0.0.1 — hotfix/bug-fix)"
+echo "  2) Patch    (3.0.0.0 \u2192 3.0.1.0 — minor fix)"
+echo "  3) Minor    (3.0.0.0 \u2192 3.1.0.0 — new feature)"
+echo "  4) Major    (3.0.0.0 \u2192 4.0.0.0 — breaking change)"
+echo "  5) Manual entry"
+echo "  6) Use current version as-is"
 echo ""
-read -p "Select option (1-5): " VERSION_OPTION
+read -p "Select option (1-6): " VERSION_OPTION
 
 case $VERSION_OPTION in
     1) NEW_VERSION=$(echo "$CURRENT_VERSION" | awk -F. '{$NF=$NF+1; print}' OFS=.) ;;
     2) NEW_VERSION=$(echo "$CURRENT_VERSION" | awk -F. '{$(NF-1)=$(NF-1)+1; $NF=0; print}' OFS=.) ;;
     3) NEW_VERSION=$(echo "$CURRENT_VERSION" | awk -F. '{$(NF-2)=$(NF-2)+1; $(NF-1)=0; $NF=0; print}' OFS=.) ;;
-    4) read -p "Enter version (e.g., 0.0.0.48): " NEW_VERSION ;;
-    5) NEW_VERSION="$CURRENT_VERSION" ;;
+    4) NEW_VERSION=$(echo "$CURRENT_VERSION" | awk -F. '{$(NF-3)=$(NF-3)+1; $(NF-2)=0; $(NF-1)=0; $NF=0; print}' OFS=.) ;;
+    5) read -p "Enter version (e.g., 3.0.1.0): " NEW_VERSION ;;
+    6) NEW_VERSION="$CURRENT_VERSION" ;;
     *) error_exit "Invalid option" ;;
 esac
 
-echo -e "${GREEN}Version: $CURRENT_VERSION → $NEW_VERSION${NC}"
+echo -e "${GREEN}Version: $CURRENT_VERSION \u2192 $NEW_VERSION${NC}"
 echo ""
 
 # ── Changelog ────────────────────────────────────────────────────────────────
@@ -101,24 +122,30 @@ echo ""
 [[ ! $REPLY =~ ^[Yy]$ ]] && { echo -e "${RED}Cancelled.${NC}"; exit 1; }
 echo ""
 
+if $DRY_RUN; then
+    echo -e "${YELLOW}--dry-run: stopping before build${NC}"
+    echo -e "  Would build v${NEW_VERSION}: ${CHANGELOG_ONELINE}"
+    exit 0
+fi
+
 # ── Step 1: Update version ────────────────────────────────────────────────────
-echo -e "${YELLOW}[1/8] Updating version...${NC}"
+echo -e "${YELLOW}[1/9] Updating version...${NC}"
 sed -i "s|<Version>.*</Version>|<Version>$NEW_VERSION</Version>|" "$BUILD_PROPS_FILE"
 sed -i "s|<AssemblyVersion>.*</AssemblyVersion>|<AssemblyVersion>$NEW_VERSION</AssemblyVersion>|" "$BUILD_PROPS_FILE"
 sed -i "s|<FileVersion>.*</FileVersion>|<FileVersion>$NEW_VERSION</FileVersion>|" "$BUILD_PROPS_FILE"
-echo -e "${GREEN}✓ Version updated${NC}"
+echo -e "${GREEN}\u2713 Version updated${NC}"
 echo ""
 
 # ── Step 2: Clean ─────────────────────────────────────────────────────────────
-echo -e "${YELLOW}[2/8] Cleaning previous builds...${NC}"
+echo -e "${YELLOW}[2/9] Cleaning previous builds...${NC}"
 rm -rf "${PLUGIN_FOLDER}/bin/${BUILD_CONFIG}"
 rm -rf "${PLUGIN_FOLDER}/obj"
 mkdir -p "$RELEASES_DIR"
-echo -e "${GREEN}✓ Cleaned${NC}"
+echo -e "${GREEN}\u2713 Cleaned${NC}"
 echo ""
 
 # ── Step 3: Build whisper.cpp ─────────────────────────────────────────────────
-echo -e "${YELLOW}[3/8] Building whisper.cpp using Build-whisper.sh...${NC}"
+echo -e "${YELLOW}[3/9] Building whisper.cpp using Build-whisper.sh...${NC}"
 
 # Create output directory for the binary (use absolute path)
 WHISPER_OUTPUT="$(cd "$PLUGIN_FOLDER" && pwd)/bin/whisper/linux-x64"
@@ -126,31 +153,55 @@ mkdir -p "$WHISPER_OUTPUT"
 
 # Docker is now the default build method for GLIBC compatibility
 # Use --no-docker flag to force native build if needed
-# Example: bash make-release.sh (will use Docker by default)
-# Or: bash Scripts/Build-whisper.sh --no-docker <output> (for native build)
-
-# Call the build script with the plugin directory as output
-# Docker is used by default if available; falls back to native build if not
 bash "${PLUGIN_FOLDER}/../Scripts/Build-whisper.sh" "$WHISPER_OUTPUT" "/tmp/whisper-cache" || {
     error_exit "whisper.cpp build failed"
 }
 
-# Verify binary was built
-[ ! -f "$WHISPER_OUTPUT/whisper-whisper-cli" ] && error_exit "whisper binary not found at $WHISPER_OUTPUT/whisper-whisper-cli"
+[ ! -f "$WHISPER_OUTPUT/whisper-whisper-cli" ] && error_exit "CPU whisper binary not found at $WHISPER_OUTPUT/whisper-whisper-cli"
 
-echo -e "${GREEN}✓ whisper.cpp built${NC}"
+HAS_CUDA=false
+if [ -f "$WHISPER_OUTPUT/whisper-whisper-cli-cuda" ]; then
+    HAS_CUDA=true
+    echo -e "${GREEN}  \u2713 CUDA binary also built: whisper-whisper-cli-cuda${NC}"
+else
+    echo -e "${YELLOW}  \u26a0 CUDA binary not produced (GPU support unavailable)${NC}"
+fi
+
+echo -e "${GREEN}\u2713 whisper.cpp built${NC}"
 echo ""
 
-# ── Step 4: Verify binary ────────────────────────────────────────────────────
-echo -e "${YELLOW}[4/8] Verifying whisper binary...${NC}"
-# Note: WHISPER_OUTPUT was computed in Step 3
-[ -f "$WHISPER_OUTPUT/whisper-whisper-cli" ] || error_exit "Binary not found at $WHISPER_OUTPUT/whisper-whisper-cli"
-chmod +x "$WHISPER_OUTPUT/whisper-whisper-cli"
-echo -e "${GREEN}✓ Binary verified: $WHISPER_OUTPUT/whisper-whisper-cli${NC}"
+# ── Step 4: Verify binaries ──────────────────────────────────────────────────
+echo -e "${YELLOW}[4/9] Verifying whisper binaries...${NC}"
+
+# Docker creates files as root — fix ownership if possible
+if command -v sudo &>/dev/null; then
+    sudo chown -R "$(id -u):$(id -g)" "$WHISPER_OUTPUT" 2>/dev/null || true
+fi
+
+[ -f "$WHISPER_OUTPUT/whisper-whisper-cli" ] || error_exit "CPU binary not found at $WHISPER_OUTPUT/whisper-whisper-cli"
+chmod +x "$WHISPER_OUTPUT/whisper-whisper-cli" 2>/dev/null || true
+echo -e "${GREEN}\u2713 CPU binary verified: $WHISPER_OUTPUT/whisper-whisper-cli ($(du -h "$WHISPER_OUTPUT/whisper-whisper-cli" | cut -f1))${NC}"
+
+if $HAS_CUDA; then
+    chmod +x "$WHISPER_OUTPUT/whisper-whisper-cli-cuda" 2>/dev/null || true
+    echo -e "${GREEN}\u2713 CUDA binary verified: $WHISPER_OUTPUT/whisper-whisper-cli-cuda ($(du -h "$WHISPER_OUTPUT/whisper-whisper-cli-cuda" | cut -f1))${NC}"
+    
+    for lib in libcudart.so.12 libcublas.so.12 libcublasLt.so.12; do
+        if [ -f "$WHISPER_OUTPUT/$lib" ]; then
+            chmod +x "$WHISPER_OUTPUT/$lib" 2>/dev/null || true
+            echo "  \u2713 $lib ($(du -h "$WHISPER_OUTPUT/$lib" | cut -f1))"
+        else
+            echo -e "${YELLOW}  \u26a0 $lib missing — CUDA binary may not function${NC}"
+        fi
+    done
+else
+    echo -e "${YELLOW}  (CUDA binary not available — GPU support disabled)${NC}"
+fi
+
 echo ""
 
 # ── Step 5: Build C# plugin ───────────────────────────────────────────────────
-echo -e "${YELLOW}[5/8] Building C# plugin...${NC}"
+echo -e "${YELLOW}[5/9] Building C# plugin...${NC}"
 dotnet publish \
     --configuration "$BUILD_CONFIG" \
     "${PLUGIN_FOLDER}/${PLUGIN_NAME}.csproj" \
@@ -159,40 +210,79 @@ dotnet publish \
 
 [ ! -d "$BUILD_OUTPUT" ] && error_exit "Build output not found: $BUILD_OUTPUT"
 
-# Copy whisper binary into publish output so it ends up in the zip
-echo "  Copying whisper binary into publish output..."
-# Note: WHISPER_OUTPUT was computed in Step 3
+# Copy whisper binaries and CUDA libs into publish output
+echo "  Copying whisper binaries and CUDA libraries into publish output..."
 mkdir -p "$BUILD_OUTPUT/whisper/linux-x64"
 cp "$WHISPER_OUTPUT/whisper-whisper-cli" "$BUILD_OUTPUT/whisper/linux-x64/whisper-whisper-cli"
-chmod +x "$BUILD_OUTPUT/whisper/linux-x64/whisper-whisper-cli"
+chmod +x "$BUILD_OUTPUT/whisper/linux-x64/whisper-whisper-cli" 2>/dev/null || true
 
-echo -e "${GREEN}✓ C# plugin built${NC}"
+HAS_CUDA=false
+if [ -f "$WHISPER_OUTPUT/whisper-whisper-cli-cuda" ]; then
+    HAS_CUDA=true
+    cp "$WHISPER_OUTPUT/whisper-whisper-cli-cuda" "$BUILD_OUTPUT/whisper/linux-x64/whisper-whisper-cli-cuda"
+    chmod +x "$BUILD_OUTPUT/whisper/linux-x64/whisper-whisper-cli-cuda" 2>/dev/null || true
+    
+    for lib in libcudart.so.12 libcublas.so.12 libcublasLt.so.12; do
+        if [ -f "$WHISPER_OUTPUT/$lib" ]; then
+            cp "$WHISPER_OUTPUT/$lib" "$BUILD_OUTPUT/whisper/linux-x64/$lib"
+        fi
+    done
+fi
+
+echo -e "${GREEN}\u2713 C# plugin built${NC}"
 echo ""
 
-# ── Step 6: Package zip ───────────────────────────────────────────────────────
+# ── Step 6: Package zips ──────────────────────────────────────────────────────
 PACKAGE_NAME="jellyfin-plugin-whispersubtitles_${NEW_VERSION}.zip"
 PACKAGE_PATH="$(pwd)/${RELEASES_DIR}/${PACKAGE_NAME}"
 
-echo -e "${YELLOW}[6/8] Creating package: ${PACKAGE_NAME}${NC}"
+echo -e "${YELLOW}[6/9] Creating packages...${NC}"
 
+# Combined zip (CPU + CUDA) — manifest default, backward compatible
 [ -f "$PACKAGE_PATH" ] && rm -f "$PACKAGE_PATH"
-
 (cd "$BUILD_OUTPUT" && zip -q -r "$PACKAGE_PATH" .)
-
 [ ! -f "$PACKAGE_PATH" ] && error_exit "Failed to create zip"
 
-CHECKSUM=$(md5sum "$PACKAGE_PATH" | awk '{print $1}')
+CHECKSUM_MD5=$(md5sum "$PACKAGE_PATH" | awk '{print $1}')
+CHECKSUM_SHA256=$(sha256sum "$PACKAGE_PATH" | awk '{print $1}')
 FILESIZE=$(du -h "$PACKAGE_PATH" | cut -f1)
 
-echo -e "${GREEN}✓ Package created (${FILESIZE}, MD5: ${CHECKSUM})${NC}"
+echo -e "${GREEN}\u2713 Combined package created (${FILESIZE}, MD5: ${CHECKSUM_MD5})${NC}"
+
+# CPU-only zip (no CUDA binaries) — for users without NVIDIA GPUs
+if $HAS_CUDA; then
+    CPU_PACKAGE_NAME="jellyfin-plugin-whispersubtitles_${NEW_VERSION}_cpu.zip"
+    CPU_PACKAGE_PATH="$(pwd)/${RELEASES_DIR}/${CPU_PACKAGE_NAME}"
+    
+    # Create a temp copy of the publish output without CUDA files
+    CPU_OUTPUT="${BUILD_OUTPUT}_cpu"
+    rm -rf "$CPU_OUTPUT"
+    mkdir -p "$CPU_OUTPUT/whisper/linux-x64"
+    
+    # Copy everything except CUDA binaries
+    rsync -a --exclude='whisper/linux-x64/whisper-whisper-cli-cuda' --exclude='whisper/linux-x64/libcudart.so.12' --exclude='whisper/linux-x64/libcublas.so.12' --exclude='whisper/linux-x64/libcublasLt.so.12' "$BUILD_OUTPUT/" "$CPU_OUTPUT/"
+    
+    [ -f "$CPU_PACKAGE_PATH" ] && rm -f "$CPU_PACKAGE_PATH"
+    (cd "$CPU_OUTPUT" && zip -q -r "$CPU_PACKAGE_PATH" .)
+    rm -rf "$CPU_OUTPUT"
+    
+    CPU_CHECKSUM_MD5=$(md5sum "$CPU_PACKAGE_PATH" | awk '{print $1}')
+    CPU_CHECKSUM_SHA256=$(sha256sum "$CPU_PACKAGE_PATH" | awk '{print $1}')
+    CPU_FILESIZE=$(du -h "$CPU_PACKAGE_PATH" | cut -f1)
+    
+    echo -e "${GREEN}\u2713 CPU-only package created (${CPU_FILESIZE}, MD5: ${CPU_CHECKSUM_MD5})${NC}"
+    echo -e "${YELLOW}  \u2192 Manifest points to combined (CPU+CUDA) zip${NC}"
+    echo -e "${YELLOW}  \u2192 CPU-only zip published as additional asset${NC}"
+fi
+
 echo ""
 
 # ── Step 7: Update manifest.json ─────────────────────────────────────────────
-echo -e "${YELLOW}[7/8] Updating manifest.json...${NC}"
+echo -e "${YELLOW}[7/9] Updating manifest.json...${NC}"
 TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 CHANGELOG_ESCAPED=$(echo "$CHANGELOG_ONELINE" | sed 's/"/\\"/g')
 
-python3 - "$MANIFEST_FILE" "$NEW_VERSION" "$CHANGELOG_ESCAPED" "$CHECKSUM" "$TIMESTAMP" "$PACKAGE_NAME" <<'PYTHON_EOF'
+python3 - "$MANIFEST_FILE" "$NEW_VERSION" "$CHANGELOG_ESCAPED" "$CHECKSUM_MD5" "$TIMESTAMP" "$PACKAGE_NAME" <<'PYTHON_EOF'
 import json, sys
 
 manifest_file, new_version, changelog, checksum, timestamp, package_name = sys.argv[1:]
@@ -215,27 +305,44 @@ with open(manifest_file, 'w') as f:
 print("OK")
 PYTHON_EOF
 
-echo -e "${GREEN}✓ Manifest updated${NC}"
+echo -e "${GREEN}\u2713 Manifest updated${NC}"
 echo ""
 
-# ── Step 8: GitHub release ────────────────────────────────────────────────────
-echo -e "${YELLOW}[8/8] Publishing to GitHub...${NC}"
+# ── Step 8: Git commit + tags ─────────────────────────────────────────────────
+echo -e "${YELLOW}[8/9] Committing and tagging...${NC}"
+
+git add "$MANIFEST_FILE" "$BUILD_PROPS_FILE"
+git commit -m "Release v${NEW_VERSION}: ${CHANGELOG_ONELINE}"
+git tag "v${NEW_VERSION}"
+git push origin HEAD
+git push origin "v${NEW_VERSION}"
+
+echo -e "${GREEN}\u2713 Committed and tagged${NC}"
+echo ""
+
+# ── Step 9: GitHub release ────────────────────────────────────────────────────
+echo -e "${YELLOW}[9/9] Publishing to GitHub...${NC}"
 
 if command -v gh &>/dev/null && command -v git &>/dev/null; then
-    git add "$MANIFEST_FILE" "$BUILD_PROPS_FILE"
-    git commit -m "Release v${NEW_VERSION}: ${CHANGELOG_ONELINE}"
-    git tag "v${NEW_VERSION}"
-    git push origin HEAD
-    git push origin "v${NEW_VERSION}"
-
-    gh release create "v${NEW_VERSION}" "$PACKAGE_PATH" \
-        --title "v${NEW_VERSION}" \
-        --notes "$CHANGELOG_ONELINE"
+    # Build release asset list: combined zip is the primary, CPU-only is additional
+    RELEASE_ASSETS="$PACKAGE_PATH"
+    RELEASE_NOTES="$CHANGELOG_ONELINE"
+    
+    if $HAS_CUDA && [ -f "$CPU_PACKAGE_PATH" ]; then
+        gh release create "v${NEW_VERSION}" "$PACKAGE_PATH" "$CPU_PACKAGE_PATH" \
+            --title "v${NEW_VERSION}" \
+            --notes "$RELEASE_NOTES"
+        echo -e "${GREEN}\u2713 Uploaded combined + CPU-only zips${NC}"
+    else
+        gh release create "v${NEW_VERSION}" "$PACKAGE_PATH" \
+            --title "v${NEW_VERSION}" \
+            --notes "$RELEASE_NOTES"
+    fi
 
     RELEASE_URL=$(gh release view "v${NEW_VERSION}" --json url --jq .url 2>/dev/null)
-    echo -e "${GREEN}✓ GitHub release created: ${CYAN}${RELEASE_URL}${NC}"
+    echo -e "${GREEN}\u2713 GitHub release created: ${CYAN}${RELEASE_URL}${NC}"
 else
-    echo -e "${YELLOW}⚠ gh CLI not found — manual steps:${NC}"
+    echo -e "${YELLOW}\u26a0 gh CLI not found — manual steps:${NC}"
     echo "    git add manifest.json Directory.Build.props"
     echo "    git commit -m 'Release v${NEW_VERSION}'"
     echo "    git tag v${NEW_VERSION}"
@@ -249,11 +356,16 @@ echo -e "${BLUE}═════════════════════�
 echo -e "${GREEN}[DONE] v${NEW_VERSION} released successfully${NC}"
 echo -e "${BLUE}═══════════════════════════════════════════════════════${NC}"
 echo ""
-echo -e "  Package:  ${BLUE}${PACKAGE_PATH}${NC}"
-echo -e "  Size:     ${BLUE}${FILESIZE}${NC}"
-echo -e "  MD5:      ${BLUE}${CHECKSUM}${NC}"
+echo -e "  Combined package: ${BLUE}${PACKAGE_PATH}${NC}"
+echo -e "  Size:             ${BLUE}${FILESIZE}${NC}"
+echo -e "  MD5:              ${BLUE}${CHECKSUM_MD5}${NC}"
+echo -e "  SHA256:           ${BLUE}${CHECKSUM_SHA256}${NC}"
+if [ -n "$CPU_PACKAGE_PATH" ]; then
+    echo -e "  CPU-only package: ${BLUE}${CPU_PACKAGE_PATH}${NC}"
+    echo -e "  CPU-only size:    ${BLUE}${CPU_FILESIZE}${NC}"
+fi
 echo ""
 echo -e "${CYAN}Install in Jellyfin:${NC}"
-echo "  Dashboard → Plugins → Repositories → Add"
+echo "  Dashboard \u2192 Plugins \u2192 Repositories \u2192 Add"
 echo "  Or manually upload the zip"
 echo ""

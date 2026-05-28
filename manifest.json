@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/zakattack02/Whisper-Script/feature/jellyfin-plugin/logo.png",
     "versions": [
       {
+        "version": "3.0.0.1",
+        "changelog": "Bug fixes and improvements",
+        "targetAbi": "10.11.2.0",
+        "sourceUrl": "https://github.com/zakattack02/Whisper-Script/releases/download/v3.0.0.1/jellyfin-plugin-whispersubtitles_3.0.0.1.zip",
+        "checksum": "759733738482a1f064999332dc0eac18",
+        "timestamp": "2026-05-28T04:04:03Z"
+      },
+      {
         "version": "3.0.0.0",
         "changelog": "Semantic versioning restructure. Dual CPU+GPU binaries with CUDA support. Dockerfile now builds both whisper-whisper-cli (CPU) and whisper-whisper-cli-cuda (CUDA) + bundles libcudart/libcublas. Plugin auto-selects CUDA binary when GPU is enabled and cuda binary is deployed.",
         "targetAbi": "10.11.2.0",

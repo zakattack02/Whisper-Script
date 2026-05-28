@@ -1,18 +1,27 @@
-name: '🧪 Test Plugin'
+name: '🧪 Build & Test Plugin'
 
 on:
   push:
-    branches:
-      - master
-    paths-ignore:
-      - '**/*.md'
+    branches: [master]
+    paths-ignore: ['**/*.md']
   pull_request:
-    branches:
-      - master
-    paths-ignore:
-      - '**/*.md'
+    branches: [master]
+    paths-ignore: ['**/*.md']
   workflow_dispatch:
 
 jobs:
-  call:
-    uses: jellyfin/jellyfin-meta-plugins/.github/workflows/test.yaml@master
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore Jellyfin.Plugin.WhisperSubtitles.sln
+
+      - name: Build
+        run: dotnet build Jellyfin.Plugin.WhisperSubtitles.sln --configuration Release --no-restore --warnings-as-errors

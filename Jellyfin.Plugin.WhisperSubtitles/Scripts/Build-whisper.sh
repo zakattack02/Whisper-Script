@@ -100,7 +100,7 @@ build_in_docker() {
         echo "✓ CUDA binary: ${cuda_dest} ($(du -h "${cuda_dest}" | cut -f1))"
         
         # Verify CUDA .so files
-        for lib in libcudart.so.12 libcublas.so.12 libcublasLt.so.12; do
+        for lib in libcudart.so.12 libcublas.so.12 libcublasLt.so.12 libnccl.so.2 libnccl.so; do
             if [ -f "${OUTPUT_DIR}/${lib}" ]; then
                 chmod +x "${OUTPUT_DIR}/${lib}" 2>/dev/null || true
                 echo "  ✓ ${lib} ($(du -h "${OUTPUT_DIR}/${lib}" | cut -f1))"

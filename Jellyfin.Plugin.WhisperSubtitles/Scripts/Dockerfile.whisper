@@ -59,7 +59,9 @@ RUN cmake --build whisper.cpp/build --config Release -j $(nproc) --target whispe
 RUN mkdir -p /cuda-libs && \
     cp -v /usr/local/cuda/lib64/libcudart.so.12 /cuda-libs/ && \
     cp -v /usr/local/cuda/lib64/libcublas.so.12 /cuda-libs/ && \
-    cp -v /usr/local/cuda/lib64/libcublasLt.so.12 /cuda-libs/
+    cp -v /usr/local/cuda/lib64/libcublasLt.so.12 /cuda-libs/ && \
+    cp -v /usr/lib/x86_64-linux-gnu/libnccl.so.2 /cuda-libs/ 2>/dev/null || true && \
+    cp -v /usr/lib/x86_64-linux-gnu/libnccl.so /cuda-libs/ 2>/dev/null || true
 
 # ── Output stage ──────────────────────────────────────────────────────
 FROM ubuntu:22.04 AS output
@@ -69,10 +71,14 @@ COPY --from=cuda-builder /build/whisper.cpp/build/bin/whisper-cli /build/whisper
 COPY --from=cuda-builder /cuda-libs/libcudart.so.12   /build/
 COPY --from=cuda-builder /cuda-libs/libcublas.so.12   /build/
 COPY --from=cuda-builder /cuda-libs/libcublasLt.so.12 /build/
+COPY --from=cuda-builder /cuda-libs/libnccl.so.2      /build/
+COPY --from=cuda-builder /cuda-libs/libnccl.so         /build/ 2>/dev/null || true
 
 CMD cp /build/whisper-whisper-cli     /output/whisper-whisper-cli && \
     cp /build/whisper-whisper-cli-cuda /output/whisper-whisper-cli-cuda && \
     cp /build/libcudart.so.12   /output/ && \
     cp /build/libcublas.so.12   /output/ && \
     cp /build/libcublasLt.so.12 /output/ && \
+    cp /build/libnccl.so.2     /output/ 2>/dev/null; \
+    cp /build/libnccl.so       /output/ 2>/dev/null; \
     chmod 755 /output/whisper* /output/lib*.so.*

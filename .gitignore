@@ -11,10 +11,6 @@ BenchmarkDotNet.Artifacts/
 /package/
 *.lscache
 
-
-# Web dashboard dependencies
-web/node_modules
-
 # Visual Studio
 .vs/
 

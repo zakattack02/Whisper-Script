@@ -74,32 +74,59 @@ build_in_docker() {
     echo "→ Extracting binary from container..."
     mkdir -p "$OUTPUT_DIR"
     
-    # Create a temporary container to copy the binary
-    docker run --rm -v "${OUTPUT_DIR}:/output" whisper-builder \
-        cp /build/whisper.cpp/build/bin/whisper-whisper-cli /output/whisper-whisper-cli
+    # Container CMD copies CPU binary, CUDA binary, and CUDA .so files
+    docker run --rm -v "${OUTPUT_DIR}:/output" whisper-builder
     
-    # Verify
-    local dest="${OUTPUT_DIR}/${BINARY_NAME}"
-    if [ ! -f "$dest" ]; then
-        echo "ERROR: Binary not found after Docker build at $dest" >&2
+    # Docker creates files as root. Try to fix ownership if possible.
+    if command -v sudo &>/dev/null; then
+        sudo chown -R "$(id -u):$(id -g)" "$OUTPUT_DIR" 2>/dev/null || true
+    fi
+    
+    # Verify CPU binary
+    local cpu_dest="${OUTPUT_DIR}/${BINARY_NAME}"
+    if [ ! -f "$cpu_dest" ]; then
+        echo "ERROR: CPU binary not found after Docker build at $cpu_dest" >&2
         exit 1
     fi
     
-    chmod +x "$dest"
+    chmod +x "$cpu_dest" 2>/dev/null || true
     echo ""
-    echo "✓ Binary built via Docker: ${dest}"
-    echo "  Size: $(du -h "${dest}" | cut -f1)"
+    echo "✓ CPU binary: ${cpu_dest} ($(du -h "${cpu_dest}" | cut -f1))"
     
-    # Verify GLIBC dependencies
+    # Verify CUDA binary (optional — only produced when the CUDA stage builds)
+    local cuda_dest="${OUTPUT_DIR}/${BINARY_NAME}-cuda"
+    if [ -f "$cuda_dest" ]; then
+        chmod +x "$cuda_dest" 2>/dev/null || true
+        echo "✓ CUDA binary: ${cuda_dest} ($(du -h "${cuda_dest}" | cut -f1))"
+        
+        # Verify CUDA .so files
+        for lib in libcudart.so.12 libcublas.so.12 libcublasLt.so.12; do
+            if [ -f "${OUTPUT_DIR}/${lib}" ]; then
+                chmod +x "${OUTPUT_DIR}/${lib}" 2>/dev/null || true
+                echo "  ✓ ${lib} ($(du -h "${OUTPUT_DIR}/${lib}" | cut -f1))"
+            else
+                echo "  ⚠ ${lib} missing — CUDA binary may not function"
+            fi
+        done
+    else
+        echo "  (CUDA binary not built — GPU support unavailable)"
+    fi
+    
+    # Verify GLIBC dependencies on CPU binary
     echo ""
     echo "→ Checking GLIBC requirements..."
     if command -v objdump &>/dev/null; then
-        local glibc_reqs=$(objdump -T "$dest" 2>/dev/null | grep GLIBC_ | grep -oP 'GLIBC_[0-9.]+' | sort -V | uniq | tail -1)
-        echo "  Highest GLIBC requirement: ${glibc_reqs:-unknown}"
+        local glibc_reqs=$(objdump -T "$cpu_dest" 2>/dev/null | grep GLIBC_ | grep -oP 'GLIBC_[0-9.]+' | sort -V | uniq | tail -1)
+        echo "  CPU binary highest GLIBC requirement: ${glibc_reqs:-unknown}"
+        
+        if [ -f "$cuda_dest" ]; then
+            local cuda_glibc=$(objdump -T "$cuda_dest" 2>/dev/null | grep GLIBC_ | grep -oP 'GLIBC_[0-9.]+' | sort -V | uniq | tail -1)
+            echo "  CUDA binary highest GLIBC requirement: ${cuda_glibc:-unknown}"
+        fi
         
         # Warn if GLIBC_2.43 is still required
         if echo "$glibc_reqs" | grep -q "2.43"; then
-            echo "  WARNING: Binary still requires GLIBC 2.43! Docker build may have used wrong base image."
+            echo "  WARNING: CPU binary still requires GLIBC 2.43! Docker build may have used wrong base image."
         fi
     fi
     

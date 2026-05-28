@@ -1,4 +1,4 @@
-FROM ubuntu:22.04
+FROM ubuntu:22.04 AS cpu-builder
 
 ARG DEBIAN_FRONTEND=noninteractive
 
@@ -25,7 +25,54 @@ RUN cmake -B whisper.cpp/build -S whisper.cpp \
 
 RUN cmake --build whisper.cpp/build --config Release -j $(nproc) --target whisper-cli
 
-# Rename to expected name
-RUN cp /build/whisper.cpp/build/bin/whisper-cli /build/whisper.cpp/build/bin/whisper-whisper-cli
+# ── CUDA build stage ─────────────────────────────────────────────────
+FROM nvidia/cuda:12.4.1-devel-ubuntu22.04 AS cuda-builder
 
-CMD ["cp", "/build/whisper.cpp/build/bin/whisper-whisper-cli", "/output/whisper-whisper-cli"]
+ARG DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y \
+    git \
+    cmake \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /build
+
+RUN git clone --depth=1 https://github.com/ggerganov/whisper.cpp
+
+RUN cmake -B whisper.cpp/build -S whisper.cpp \
+    -DWHISPER_BUILD_TESTS=OFF \
+    -DWHISPER_BUILD_EXAMPLES=ON \
+    -DBUILD_SHARED_LIBS=OFF \
+    -DGGML_OPENMP=OFF \
+    -DGGML_NATIVE=OFF \
+    -DGGML_CUDA=ON \
+    -DCMAKE_CUDA_ARCHITECTURES="50;60;70;75;80;86;89" \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_C_FLAGS="-march=x86-64 -mtune=generic" \
+    -DCMAKE_CXX_FLAGS="-march=x86-64 -mtune=generic" \
+    -DCMAKE_EXE_LINKER_FLAGS="-static-libgcc -static-libstdc++ -Wl,--as-needed"
+
+RUN cmake --build whisper.cpp/build --config Release -j $(nproc) --target whisper-cli
+
+# Extract the CUDA runtime .so files needed at runtime
+RUN mkdir -p /cuda-libs && \
+    cp -v /usr/local/cuda/lib64/libcudart.so.12 /cuda-libs/ && \
+    cp -v /usr/local/cuda/lib64/libcublas.so.12 /cuda-libs/ && \
+    cp -v /usr/local/cuda/lib64/libcublasLt.so.12 /cuda-libs/
+
+# ── Output stage ──────────────────────────────────────────────────────
+FROM ubuntu:22.04 AS output
+
+COPY --from=cpu-builder  /build/whisper.cpp/build/bin/whisper-cli /build/whisper-whisper-cli
+COPY --from=cuda-builder /build/whisper.cpp/build/bin/whisper-cli /build/whisper-whisper-cli-cuda
+COPY --from=cuda-builder /cuda-libs/libcudart.so.12   /build/
+COPY --from=cuda-builder /cuda-libs/libcublas.so.12   /build/
+COPY --from=cuda-builder /cuda-libs/libcublasLt.so.12 /build/
+
+CMD cp /build/whisper-whisper-cli     /output/whisper-whisper-cli && \
+    cp /build/whisper-whisper-cli-cuda /output/whisper-whisper-cli-cuda && \
+    cp /build/libcudart.so.12   /output/ && \
+    cp /build/libcublas.so.12   /output/ && \
+    cp /build/libcublasLt.so.12 /output/ && \
+    chmod 755 /output/whisper* /output/lib*.so.*

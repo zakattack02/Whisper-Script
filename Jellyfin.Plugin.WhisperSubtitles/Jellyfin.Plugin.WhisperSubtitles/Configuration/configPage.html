@@ -28,9 +28,8 @@
         .ws-config .ws-banner.error { background: rgba(220,0,0,0.08); color: var(--error-color, #dc0000); border-left-color: var(--error-color, #dc0000); }
         .ws-config .ws-banner.info { background: rgba(0,164,220,0.08); color: var(--info-color, #00a4dc); border-left-color: var(--info-color, #00a4dc); }
         
-        .ws-config .ws-library-list { border: 1px solid var(--border-color, #444); background: rgba(0,0,0,0.2); border-radius: 6px; padding: 0.75rem; max-height: 200px; overflow-y: auto; }
-        .ws-config .ws-library-list label { display: flex; align-items: center; gap: 0.5rem; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.03); cursor: pointer; }
-        .ws-config .ws-library-list label:last-child { border-bottom: none; }
+        .ws-config .ws-library-list { border: 1px solid var(--border-color, #444); background: rgba(0,0,0,0.2); border-radius: 6px; padding: 0.75rem; max-height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.25rem; }
+        .ws-config .ws-library-list label { display: flex; align-items: center; gap: 0.5rem; padding: 6px 8px; border-radius: 4px; cursor: pointer; white-space: nowrap; }
         
         .ws-config textarea.emby-input { height: 100px; width: 100%; font-family: monospace; box-sizing: border-box; background: rgba(0,0,0,0.2); border-radius: 6px; padding: 0.5rem; }
         .ws-config .ws-about-table { width: 100%; max-width: 500px; border-collapse: collapse; font-size: 0.9rem; }
@@ -43,6 +42,7 @@
         .ws-config .dirty-indicator { color: var(--warning-color, #ff9800); font-size: 0.85rem; display: none; font-weight: 600; }
         .ws-config code { font-family: monospace; background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; color: #ff9800; }
         .ws-config .ws-inline-flex { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+        .ws-config .ws-label-hint { color: var(--text-color-secondary, #aaa); font-size: 0.75rem; font-weight: 400; margin-left: 0.5rem; }
     </style>
 </head>
 <body>
@@ -52,6 +52,10 @@
                 <div class="pageHeader">
                     <span class="material-icons pageHeaderIcon" style="font-size:1.5rem;vertical-align:middle;margin-right:8px;color:var(--accent,#00a4dc);">subtitles</span>
                     <h1 style="display:inline;vertical-align:middle;font-size:1.4rem;margin:0;font-weight:normal;">Whisper Subtitles</h1>
+                    <a is="emby-linkbutton" class="raised raised-mini emby-button" style="margin-left:2em;" target="_blank" href="https://github.com/IAmParadox27/jellyfin-plugin-file-transformation">
+                        <i class="md-icon button-icon button-icon-left secondaryText"></i>
+                        <span>Help</span>
+                    </a>
                 </div>
 
                 <form id="WhisperSubtitlesConfigForm" style="margin-top:1.5rem;">
@@ -102,13 +106,22 @@
                                 <div class="checkboxContainer checkboxContainer-withDescription ws-field">
                                     <label class="emby-checkbox-label">
                                         <input id="UseGPUAcceleration" name="UseGPUAcceleration" type="checkbox" is="emby-checkbox" />
-                                        <span>Enable GPU Acceleration</span>
+                                        <span>Enable CUDA (NVIDIA GPU)</span>
                                     </label>
-                                    <div class="ws-desc" style="padding-left: 2rem;">Utilizes CUDA/Vulkan computing layers (requires functional NVIDIA/AMD runtime stacks).</div>
+                                    <div class="ws-desc" style="padding-left: 2rem;">Uses the CUDA GPU binary instead of the CPU binary. Requires a deployed CUDA runtime binary and an NVIDIA GPU accessible inside the container (<code>--gpus all</code>).</div>
                                 </div>
 
                                 <div id="gpuInfo" class="ws-banner info">
                                     <strong>Runtime Hardware Status:</strong> <span id="gpuTypeText">detecting hardware profile...</span>
+                                </div>
+                                <div id="cudaInfo" class="ws-banner info" style="display:none;">
+                                    <strong>CUDA Binary:</strong> <span id="cudaBinaryText">not available</span>
+                                </div>
+
+                                <div class="inputContainer ws-field">
+                                    <label class="ws-label" for="FfprobePath">FFprobe Path (optional)</label>
+                                    <input is="emby-input" type="text" id="FfprobePath" name="FfprobePath" class="emby-input" placeholder="Auto-detect" />
+                                    <div class="ws-desc">Path to <code>ffprobe</code> binary. Used to measure audio duration for chunked processing. Leave empty for auto-detect.</div>
                                 </div>
                             </div>
                         </div>
@@ -157,8 +170,16 @@
                                     <div class="ws-desc" style="padding-left: 2rem;">Improves granular frame syncing timelines, but lengthens compute run-times.</div>
                                 </div>
 
+                                <div class="checkboxContainer checkboxContainer-withDescription ws-field">
+                                    <label class="emby-checkbox-label">
+                                        <input id="EnableMainMenu" name="EnableMainMenu" type="checkbox" is="emby-checkbox" />
+                                        <span>Show Whisper Subtitles in Main Menu</span>
+                                    </label>
+                                    <div class="ws-desc" style="padding-left: 2rem;">Toggle the Whisper Subtitles entry in the server's main navigation. Save and refresh the client (or clear cache) to apply.</div>
+                                </div>
+
                                 <div class="ws-field">
-                                    <label class="ws-label">Libraries to Process</label>
+                                    <label class="ws-label">Libraries to Process <span id="libraryCount" class="ws-label-hint"></span></label>
                                     <div id="LibrariesToProcessContainer" class="ws-library-list">
                                         <p style="color:var(--text-color-secondary,#888);text-align:center;margin:10px 0;">Loading target server libraries...</p>
                                     </div>
@@ -243,7 +264,7 @@
                 function showBanner(id) { var e = document.getElementById(id); if (e) e.classList.add('show'); }
                 function hideBanner(id) { var e = document.getElementById(id); if (e) e.classList.remove('show'); }
 
-                function setBinaryStatus(isReady, binaryPath, gpuType) {
+                function setBinaryStatus(isReady, binaryPath, gpuType, cudaAvailable) {
                     if (isReady) {
                         hideBanner('binaryInstructions');
                         showBanner('binaryOk');
@@ -264,6 +285,22 @@
                         hideBanner('gpuInfo');
                     }
 
+                    var cudaEl = document.getElementById('cudaInfo');
+                    var cudaText = document.getElementById('cudaBinaryText');
+                    if (cudaEl && cudaText) {
+                        if (cudaAvailable) {
+                            cudaEl.style.display = 'block';
+                            cudaText.textContent = '✓ deployed and ready';
+                            cudaText.style.color = 'var(--success-color, #00c853)';
+                        } else if (gpuType === 'cuda') {
+                            cudaEl.style.display = 'block';
+                            cudaText.textContent = 'not deployed — falling back to CPU';
+                            cudaText.style.color = 'var(--warning-color, #ff9800)';
+                        } else {
+                            cudaEl.style.display = 'none';
+                        }
+                    }
+
                     var c = document.getElementById('cpuThreadsText');
                     if (c) c.textContent = navigator.hardwareConcurrency || '?';
                 }
@@ -277,7 +314,8 @@
                         setBinaryStatus(
                             response && response.IsReady === true,
                             response && response.BinaryPath,
-                            response && response.GpuType
+                            response && response.GpuType,
+                            response && response.CudaBinaryAvailable === true
                         );
                     }).catch(function () {
                         setBinaryStatus(false);
@@ -300,6 +338,8 @@
                         document.getElementById('SkipExisting').checked = config.SkipExisting !== false;
                         document.getElementById('RegenerateAI').checked = config.RegenerateAI || false;
                         document.getElementById('UseGPUAcceleration').checked = config.UseGPUAcceleration || false;
+                        document.getElementById('EnableMainMenu').checked = config.EnableMainMenu || false;
+                        document.getElementById('FfprobePath').value = config.FfprobePath || '';
 
                         var foldersToExclude = config.FoldersToExclude || [];
                         document.getElementById('FoldersToExclude').value = foldersToExclude.join('\n');
@@ -378,12 +418,49 @@
                             label.appendChild(document.createTextNode(' ' + (library.Name || 'Unnamed Media Library Source')));
                             container.appendChild(label);
                         });
+
+                        loadLibraryCounts(selectedLibraries);
                     }).catch(function (error) {
                         console.error('[WhisperSubtitles] Error loading target server libraries:', error);
                         var container = document.getElementById('LibrariesToProcessContainer');
                         if (container) {
                             container.innerHTML = '<p style="color:var(--error-color,#dc0000);text-align:center;margin:10px 0;">Failed to pull system libraries.</p>';
                         }
+                    });
+                }
+
+                function loadLibraryCounts(selectedLibraries) {
+                    if (typeof ApiClient === 'undefined') return;
+                    var countEl = document.getElementById('libraryCount');
+                    if (!countEl) return;
+                    countEl.textContent = '';
+
+                    if (!selectedLibraries || selectedLibraries.length === 0) {
+                        countEl.textContent = '\u2014';
+                        return;
+                    }
+
+                    ApiClient.fetch({
+                        type: 'GET',
+                        url: ApiClient.getUrl('api/WhisperSubtitles/LibraryItemCounts', { libraryIds: selectedLibraries.join(',') })
+                    }).then(function (response) {
+                        if (!response) return;
+                        var parts = [];
+                        if (response.totalItemCount > 0) {
+                            parts.push('#' + response.totalItemCount.toLocaleString());
+                        }
+                        if (response.estimatedMinutes > 0) {
+                            var timeStr = response.estimatedMinutes < 60
+                                ? response.estimatedMinutes + 'm'
+                                : Math.floor(response.estimatedMinutes / 60) + 'h ' + (response.estimatedMinutes % 60) + 'm';
+                            parts.push('eta: ' + timeStr);
+                        }
+                        if (response.processingMode) {
+                            parts.push(response.processingMode);
+                        }
+                        countEl.textContent = parts.join('  \u00b7  ');
+                    }).catch(function () {
+                        countEl.textContent = '';
                     });
                 }
 
@@ -400,6 +477,14 @@
                 document.getElementById('WhisperSubtitlesConfigForm').addEventListener('change', markDirty);
                 document.querySelectorAll('input, select, textarea').forEach(function (el) {
                     el.addEventListener('input', markDirty);
+                });
+
+                document.getElementById('LibrariesToProcessContainer').addEventListener('change', function () {
+                    var selected = [];
+                    document.querySelectorAll('.library-checkbox:checked').forEach(function (cb) {
+                        selected.push(cb.value);
+                    });
+                    loadLibraryCounts(selected);
                 });
 
                 function saveConfig(e) {
@@ -422,6 +507,8 @@
                         config.SkipExisting = document.getElementById('SkipExisting').checked;
                         config.RegenerateAI = document.getElementById('RegenerateAI').checked;
                         config.UseGPUAcceleration = document.getElementById('UseGPUAcceleration').checked;
+                        config.EnableMainMenu = document.getElementById('EnableMainMenu').checked;
+                        config.FfprobePath = document.getElementById('FfprobePath').value.trim() || null;
 
                         var selectedLibraries = [];
                         document.querySelectorAll('.library-checkbox:checked').forEach(function (cb) {

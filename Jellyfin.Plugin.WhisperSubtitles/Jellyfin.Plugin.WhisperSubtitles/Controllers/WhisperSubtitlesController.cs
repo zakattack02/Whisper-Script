@@ -1,8 +1,13 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Jellyfin.Plugin.WhisperSubtitles.Configuration;
 using Jellyfin.Plugin.WhisperSubtitles.Services;
+using MediaBrowser.Controller.Entities;
+using MediaBrowser.Controller.Library;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -16,13 +21,16 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Controllers
     {
         private readonly ILogger<WhisperSubtitlesController> _logger;
         private readonly ILoggerFactory _loggerFactory;
+        private readonly ILibraryManager _libraryManager;
 
         public WhisperSubtitlesController(
             ILogger<WhisperSubtitlesController> logger,
-            ILoggerFactory loggerFactory)
+            ILoggerFactory loggerFactory,
+            ILibraryManager libraryManager)
         {
-            _logger       = logger       ?? throw new ArgumentNullException(nameof(logger));
-            _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
+            _logger         = logger         ?? throw new ArgumentNullException(nameof(logger));
+            _loggerFactory  = loggerFactory  ?? throw new ArgumentNullException(nameof(loggerFactory));
+            _libraryManager = libraryManager ?? throw new ArgumentNullException(nameof(libraryManager));
             _logger.LogInformation("WhisperSubtitlesController initialized");
         }
 
@@ -32,6 +40,62 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Controllers
         {
             _logger.LogInformation("Test endpoint called");
             return Ok("WhisperSubtitles controller is working!");
+        }
+
+        /// <summary>Returns item counts for the specified libraries.</summary>
+        [HttpGet("LibraryItemCounts")]
+        [AllowAnonymous]
+        public ActionResult<LibraryItemCountsResponse> LibraryItemCounts(
+            [FromQuery] string? libraryIds)
+        {
+            _logger.LogInformation("LibraryItemCounts called with ids: {Ids}", libraryIds);
+
+            var ids = (libraryIds ?? string.Empty)
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(id => Guid.TryParse(id, out var g) ? g : Guid.Empty)
+                .Where(g => g != Guid.Empty)
+                .ToHashSet();
+
+            var virtualFolders = _libraryManager.GetVirtualFolders();
+            var libraries = new List<LibraryCountInfo>();
+
+            foreach (var vf in virtualFolders)
+            {
+                if (!Guid.TryParse(vf.ItemId, out var folderId))
+                    continue;
+
+                if (ids.Count > 0 && !ids.Contains(folderId))
+                    continue;
+
+                var count = _libraryManager.GetCount(new InternalItemsQuery
+                {
+                    ParentId = folderId,
+                    Recursive = true,
+                    IsVirtualItem = false
+                });
+
+                libraries.Add(new LibraryCountInfo
+                {
+                    Id = vf.ItemId ?? string.Empty,
+                    Name = vf.Name ?? "Unknown",
+                    ItemCount = count
+                });
+            }
+
+            var total = libraries.Sum(l => l.ItemCount);
+
+            var config = Plugin.Instance?.Configuration ?? new PluginConfiguration();
+            var useGpu = config.UseGPUAcceleration;
+            var minutesPerItem = useGpu ? 2 : 35;
+            var estimatedMinutes = total * minutesPerItem;
+
+            return Ok(new LibraryItemCountsResponse
+            {
+                TotalItemCount = total,
+                EstimatedMinutes = estimatedMinutes,
+                ProcessingMode = useGpu ? "GPU" : "CPU",
+                Libraries = libraries
+            });
         }
 
         /// <summary>Downloads (deploys from bundle) the requested Whisper model.</summary>
@@ -129,9 +193,10 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Controllers
 
                 return Ok(new BinaryStatusResponse
                 {
-                    IsReady    = isReady,
-                    BinaryPath = svc.BinaryPath,
-                    GpuType    = svc.DetectedGpuType
+                    IsReady              = isReady,
+                    BinaryPath           = svc.BinaryPath,
+                    GpuType              = svc.DetectedGpuType,
+                    CudaBinaryAvailable  = svc.IsCudaBinaryAvailable
                 });
             }
             catch (Exception ex)
@@ -168,10 +233,11 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Controllers
 
                 return Ok(new BinaryInstallResponse
                 {
-                    Success    = true,
-                    Message    = "whisper binary deployed successfully",
-                    BinaryPath = svc.BinaryPath,
-                    GpuType    = svc.DetectedGpuType
+                    Success              = true,
+                    Message              = "whisper binary deployed successfully",
+                    BinaryPath           = svc.BinaryPath,
+                    GpuType              = svc.DetectedGpuType,
+                    CudaBinaryAvailable  = svc.IsCudaBinaryAvailable
                 });
             }
             catch (OperationCanceledException)
@@ -242,17 +308,34 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Controllers
 
     public class BinaryStatusResponse
     {
-        public bool    IsReady    { get; set; }
-        public string  Message    { get; set; } = string.Empty;
-        public string? BinaryPath { get; set; }
-        public string? GpuType    { get; set; }
+        public bool    IsReady           { get; set; }
+        public string  Message           { get; set; } = string.Empty;
+        public string? BinaryPath        { get; set; }
+        public string? GpuType           { get; set; }
+        public bool    CudaBinaryAvailable { get; set; }
     }
 
     public class BinaryInstallResponse
     {
-        public bool    Success    { get; set; }
-        public string  Message    { get; set; } = string.Empty;
-        public string? BinaryPath { get; set; }
-        public string? GpuType    { get; set; }
+        public bool    Success           { get; set; }
+        public string  Message           { get; set; } = string.Empty;
+        public string? BinaryPath        { get; set; }
+        public string? GpuType           { get; set; }
+        public bool    CudaBinaryAvailable { get; set; }
+    }
+
+    public class LibraryCountInfo
+    {
+        public string Id { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public int ItemCount { get; set; }
+    }
+
+    public class LibraryItemCountsResponse
+    {
+        public int TotalItemCount { get; set; }
+        public int EstimatedMinutes { get; set; }
+        public string ProcessingMode { get; set; } = "CPU";
+        public List<LibraryCountInfo> Libraries { get; set; } = new();
     }
 }

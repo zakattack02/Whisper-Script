@@ -69,7 +69,9 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Tasks
 
             _logger.LogInformation("Processing {Count} video(s)", videos.Count);
 
+            var videoCount = videos.Count;
             int processed = 0, skipped = 0, errors = 0;
+            double videoWeight = videoCount > 0 ? 100.0 / videoCount : 0;
 
             foreach (var video in videos)
             {
@@ -88,7 +90,7 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Tasks
                         _logger.LogDebug("Skipping (has subtitles): {Path}", videoPath);
                         skipped++;
                         processed++;
-                        progress?.Report((double)processed / videos.Count * 100);
+                        progress?.Report((double)processed / videoCount * 100);
                         continue;
                     }
 
@@ -97,12 +99,19 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Tasks
 
                     _logger.LogInformation("Generating: {Path}", videoPath);
 
+                    double baseProgress = (double)processed / videoCount * 100;
+                    var videoProgress = new Progress<double>(p =>
+                    {
+                        progress?.Report(baseProgress + p * videoWeight);
+                    });
+
                     var ok = await _whisperService.GenerateSubtitleAsync(
                         videoPath, subtitlePath,
                         config.WhisperModel.ToString(),
                         config.TargetLanguage,
                         config.TranslateToEnglish,
                         config.WordTimestamps,
+                        videoProgress,
                         cancellationToken);
 
                     if (!ok)
@@ -118,7 +127,7 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Tasks
                 }
 
                 processed++;
-                progress?.Report((double)processed / videos.Count * 100);
+                progress?.Report((double)processed / videoCount * 100);
             }
 
             _logger.LogInformation(

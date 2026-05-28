@@ -59,6 +59,7 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Configuration
             SkipExisting = true;
             RegenerateAI = false;
             UseGPUAcceleration = true;
+            EnableMainMenu = true;
             LibrariesToProcess = new List<string>();
             FoldersToExclude = new List<string>();
         }
@@ -107,6 +108,16 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Configuration
         /// Gets or sets a value indicating whether to enable GPU acceleration.
         /// </summary>
         public bool UseGPUAcceleration { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether to show the plugin in the main menu navigation.
+        /// </summary>
+        public bool EnableMainMenu { get; set; }
+
+        /// <summary>
+        /// Gets or sets the path to ffprobe. Leave empty for auto-detection.
+        /// </summary>
+        public string? FfprobePath { get; set; }
 
         /// <summary>
         /// Gets or sets the list of library IDs to process. If empty, all libraries are processed.

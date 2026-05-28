@@ -94,6 +94,7 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Tasks
                         config.TargetLanguage,
                         config.TranslateToEnglish,
                         config.WordTimestamps,
+                        null,
                         cancellationToken);
                 }
                 catch (Exception ex)

@@ -338,24 +338,22 @@ if command -v gh &>/dev/null && command -v git &>/dev/null; then
         gh release delete "v${NEW_VERSION}" --yes
     fi
 
+    # Push branch and tag first so gh release create can find the tag
+    git push origin HEAD
+    git push origin "v${NEW_VERSION}"
+
     if $HAS_CUDA && [ -f "$CPU_PACKAGE_PATH" ]; then
-        if gh release create "v${NEW_VERSION}" "$PACKAGE_PATH" "$CPU_PACKAGE_PATH" \
+        gh release create "v${NEW_VERSION}" "$PACKAGE_PATH" "$CPU_PACKAGE_PATH" \
             --title "v${NEW_VERSION}" \
-            --notes "$RELEASE_NOTES"; then
-            RELEASE_CREATED=true
+            --notes "$RELEASE_NOTES" && RELEASE_CREATED=true && \
             echo -e "${GREEN}\u2713 Uploaded combined + CPU-only zips${NC}"
-        fi
     else
-        if gh release create "v${NEW_VERSION}" "$PACKAGE_PATH" \
+        gh release create "v${NEW_VERSION}" "$PACKAGE_PATH" \
             --title "v${NEW_VERSION}" \
-            --notes "$RELEASE_NOTES"; then
-            RELEASE_CREATED=true
-        fi
+            --notes "$RELEASE_NOTES" && RELEASE_CREATED=true
     fi
 
     if $RELEASE_CREATED; then
-        git push origin HEAD
-        git push origin "v${NEW_VERSION}"
         RELEASE_URL=$(gh release view "v${NEW_VERSION}" --json url --jq .url 2>/dev/null)
         echo -e "${GREEN}\u2713 GitHub release created: ${CYAN}${RELEASE_URL}${NC}"
     else

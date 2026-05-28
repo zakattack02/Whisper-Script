@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyDescriptionAttribute("Automatic subtitle generation for Jellyfin using OpenAI\'s Whisper")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("3.0.0.1")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("3.0.0.1+a57a1516f5d9ef29aae06f2f1902ea174beab9cb")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("3.0.0.1+cac4abd9ae8f85bb1c48353d80913740206a7677")]
 [assembly: System.Reflection.AssemblyProductAttribute("Jellyfin.Plugin.WhisperSubtitles")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Jellyfin.Plugin.WhisperSubtitles")]
 [assembly: System.Reflection.AssemblyVersionAttribute("3.0.0.1")]

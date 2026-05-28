@@ -1,0 +1,41 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v9.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v9.0": {
+      "Jellyfin.Plugin.WhisperSubtitles/3.0.0.0": {
+        "dependencies": {
+          "Whisper.net": "1.8.1"
+        },
+        "runtime": {
+          "Jellyfin.Plugin.WhisperSubtitles.dll": {}
+        }
+      },
+      "Whisper.net/1.8.1": {
+        "runtime": {
+          "lib/net9.0/Whisper.net.dll": {
+            "assemblyVersion": "1.8.1.0",
+            "fileVersion": "1.8.1.0"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "Jellyfin.Plugin.WhisperSubtitles/3.0.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Whisper.net/1.8.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-NOcPlajorIQ5bIaf21PESirTvhCSb/T4qbUZreoU31jOu2W6kGJRgy+1f/M7PK/atcWXLF5FsXIj2lHi5sym1w==",
+      "path": "whisper.net/1.8.1",
+      "hashPath": "whisper.net.1.8.1.nupkg.sha512"
+    }
+  }
+}

@@ -1,0 +1,77 @@
+[
+  {
+    "guid": "a8b7c6d5-e4f3-4a5b-9c8d-7e6f5a4b3c2d",
+    "name": "Whisper Subtitles",
+    "description": "Automatically generate AI-powered subtitles for your media library using OpenAI Whisper. Supports translation, multiple models (tiny to large + turbo), word-level timestamps, and intelligent subtitle detection.",
+    "overview": "Generate accurate subtitles using OpenAI's Whisper AI model with GPU acceleration support",
+    "owner": "zakattack02",
+    "category": "Metadata",
+    "imageUrl": "https://raw.githubusercontent.com/zakattack02/Whisper-Script/feature/jellyfin-plugin/logo.png",
+    "versions": [
+      {
+        "version": "3.0.0.0",
+        "changelog": "Semantic versioning restructure. Dual CPU+GPU binaries with CUDA support. Dockerfile now builds both whisper-whisper-cli (CPU) and whisper-whisper-cli-cuda (CUDA) + bundles libcudart/libcublas. Plugin auto-selects CUDA binary when GPU is enabled and cuda binary is deployed.",
+        "targetAbi": "10.11.2.0",
+        "sourceUrl": "https://github.com/zakattack02/Whisper-Script/releases/download/v3.0.0.0/jellyfin-plugin-whispersubtitles_3.0.0.0.zip",
+        "checksum": "8f21e36bf8b89fe8e55d0867468a5ff4",
+        "timestamp": "2026-05-28T01:25:54Z"
+      },
+      {
+        "version": "2.2.0.0",
+        "changelog": "Per-video sub-progress reporting. The scheduled task now reports progress as each chunk finishes, so the percentage bar updates smoothly instead of freezing per video.",
+        "targetAbi": "10.11.2.0",
+        "sourceUrl": "https://github.com/zakattack02/Whisper-Script/releases/download/v2.2.0.0/jellyfin-plugin-whispersubtitles_2.2.0.0.zip",
+        "checksum": "d455fbd46da88cc6fac999f081842e90",
+        "timestamp": "2026-05-27T21:30:42Z"
+      },
+      {
+        "version": "2.1.0.0",
+        "changelog": "Fixed ffprobe path detection. Added FfprobePath config field + FindFfprobe() fallback chain + configPage.html input.",
+        "targetAbi": "10.11.2.0",
+        "sourceUrl": "https://github.com/zakattack02/Whisper-Script/releases/download/v2.1.0.0/jellyfin-plugin-whispersubtitles_2.1.0.0.zip",
+        "checksum": "10577c4c601dbc58bdd0e8445e0a01c3",
+        "timestamp": "2026-05-27T21:10:39Z"
+      },
+      {
+        "version": "2.0.0.0",
+        "changelog": "Split long audio into 30-minute chunks to prevent OOM killer on low-RAM servers (4GB). Process each chunk separately and merge SRTs.",
+        "targetAbi": "10.11.2.0",
+        "sourceUrl": "https://github.com/zakattack02/Whisper-Script/releases/download/v2.0.0.0/jellyfin-plugin-whispersubtitles_2.0.0.0.zip",
+        "checksum": "27ea9f29cf676210cd581852934d641d",
+        "timestamp": "2026-05-27T20:22:23Z"
+      },
+      {
+        "version": "1.1.2.0",
+        "changelog": "Fixed -ngl 999 -> -dev 0 for GPU path (whisper-cli doesn't support -ngl). CPU path already fixed in 0.0.0.92/93.",
+        "targetAbi": "10.11.2.0",
+        "sourceUrl": "https://github.com/zakattack02/Whisper-Script/releases/download/v1.1.2.0/jellyfin-plugin-whispersubtitles_1.1.2.0.zip",
+        "checksum": "de4d2066900c50e57ed0bd5d3f8a7590",
+        "timestamp": "2026-05-27T20:06:55Z"
+      },
+      {
+        "version": "1.1.1.0",
+        "changelog": "Fixed AVX-512 SIGILL: added GGML_NATIVE=OFF to cmake so binary doesn't include AVX-512 instructions from build machine (Ryzen 9950X3D)",
+        "targetAbi": "10.11.2.0",
+        "sourceUrl": "https://github.com/zakattack02/Whisper-Script/releases/download/v1.1.1.0/jellyfin-plugin-whispersubtitles_1.1.1.0.zip",
+        "checksum": "0b3a1e82cb8d79a4abba3fa810dccc06",
+        "timestamp": "2026-05-27T20:04:08Z"
+      },
+      {
+        "version": "1.1.0.0",
+        "changelog": "Fixed whisper-cli arguments: removed unsupported --output-dir and -vv flags, added -ng for CPU-only mode",
+        "targetAbi": "10.11.2.0",
+        "sourceUrl": "https://github.com/zakattack02/Whisper-Script/releases/download/v1.1.0.0/jellyfin-plugin-whispersubtitles_1.1.0.0.zip",
+        "checksum": "ce55182e34edfd3f469a5f7ca067a105",
+        "timestamp": "2026-05-27T19:51:59Z"
+      },
+      {
+        "version": "1.0.0.0",
+        "changelog": "Add FFmpeg audio extraction for MP4/MKV support, polished card-based config page, fix PluginPageInfo for Jellyfin 10.11.2",
+        "targetAbi": "10.11.2.0",
+        "sourceUrl": "https://github.com/zakattack02/Whisper-Script/releases/download/v1.0.0.0/jellyfin-plugin-whispersubtitles_1.0.0.0.zip",
+        "checksum": "ae190b9d4ef6361a6eb4ce3bf5b67b46",
+        "timestamp": "2026-05-27T19:37:47Z"
+      }
+    ]
+  }
+]

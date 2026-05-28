@@ -1,6 +1,9 @@
 *.backup
 *.py.backup
 .venv
+*.backup
+*.py.backup
+.venv
 bin/
 obj/
 releases/
@@ -16,5 +19,7 @@ BenchmarkDotNet.Artifacts/
 
 # JetBrains Rider
 .idea/
+/.cursor
+.agents/
 /.cursor
 .agents/

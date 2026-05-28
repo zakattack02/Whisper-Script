@@ -162,30 +162,43 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
         {
             try
             {
-                // Skip deployment if any binary already exists
-                if (IsBinaryAvailable())
+                var cpuExists = File.Exists(_binaryPath);
+                var cudaExists = File.Exists(_cudaBinaryPath);
+
+                // If CPU binary exists and CUDA is either present or not bundled, skip
+                if (cpuExists && cudaExists)
                 {
-                    _logger.LogInformation("Binary already available in cache, skipping deployment");
+                    _logger.LogInformation("Both CPU and CUDA binaries already in cache, skipping deployment");
                     return true;
                 }
 
-                _logger.LogInformation("Deploying bundled whisper binary from plugin directory...");
-
-                var source = FindBundledBinary();
-                if (source is null)
+                if (cpuExists && FindBundledCudaBinary() is null)
                 {
-                    _logger.LogError(
-                        "Bundled binary not found inside plugin folder. " +
-                        "Expected '{Name}' inside whisper/{Platform}/ sub-directory.",
-                        BundledBinaryName, GetPlatformString());
-                    return false;
+                    _logger.LogInformation("CPU binary cached, no CUDA binary bundled — skipping deployment");
+                    return true;
                 }
 
-                _logger.LogInformation("Copying {Source} → {Dest}", source, _binaryPath);
-                File.Copy(source, _binaryPath, overwrite: true);
-                EnsureExecutable(_binaryPath);
+                if (!cpuExists)
+                {
+                    _logger.LogInformation("Deploying bundled whisper binary from plugin directory...");
+
+                    var source = FindBundledBinary();
+                    if (source is null)
+                    {
+                        _logger.LogError(
+                            "Bundled binary not found inside plugin folder. " +
+                            "Expected '{Name}' inside whisper/{Platform}/ sub-directory.",
+                            BundledBinaryName, GetPlatformString());
+                        return false;
+                    }
+
+                    _logger.LogInformation("Copying {Source} → {Dest}", source, _binaryPath);
+                    File.Copy(source, _binaryPath, overwrite: true);
+                    EnsureExecutable(_binaryPath);
+                }
 
                 // Deploy CUDA binary and .so files if present in the bundle
+                // (runs even when CPU is cached, so upgrades from CPU-only deploy CUDA)
                 var cudaSource = FindBundledCudaBinary();
                 if (cudaSource is not null)
                 {
@@ -204,12 +217,12 @@ namespace Jellyfin.Plugin.WhisperSubtitles.Services
                         }
                     }
                 }
-                else
-                {
-                    _logger.LogInformation("No CUDA binary bundled — GPU acceleration will not be available");
-                }
 
-                return await TestBinaryAsync(cancellationToken);
+                // Test only if we freshly deployed the CPU binary
+                if (!cpuExists)
+                    return await TestBinaryAsync(cancellationToken);
+
+                return true;
             }
             catch (Exception ex)
             {

@@ -72,10 +72,10 @@ CURRENT_VERSION=$(grep -oP '<Version>\K[^<]+' "$BUILD_PROPS_FILE")
 echo -e "${CYAN}Current version: ${GREEN}$CURRENT_VERSION${NC}"
 echo ""
 echo -e "${YELLOW}How would you like to increment the version?${NC}"
-echo "  1) Revision (3.0.0.0 \u2192 3.0.0.1 — hotfix/bug-fix)"
-echo "  2) Patch    (3.0.0.0 \u2192 3.0.1.0 — minor fix)"
-echo "  3) Minor    (3.0.0.0 \u2192 3.1.0.0 — new feature)"
-echo "  4) Major    (3.0.0.0 \u2192 4.0.0.0 — breaking change)"
+echo -e "  1) Revision (3.0.0.0 \u2192 3.0.0.1 — hotfix/bug-fix)"
+echo -e "  2) Patch    (3.0.0.0 \u2192 3.0.1.0 — minor fix)"
+echo -e "  3) Minor    (3.0.0.0 \u2192 3.1.0.0 — new feature)"
+echo -e "  4) Major    (3.0.0.0 \u2192 4.0.0.0 — breaking change)"
 echo "  5) Manual entry"
 echo "  6) Use current version as-is"
 echo ""
@@ -308,9 +308,10 @@ echo ""
 # ── Step 8: Local commit + tag ────────────────────────────────────────────────
 echo -e "${YELLOW}[8/9] Committing and tagging...${NC}"
 
-# Check if tag already exists for the new version
+# If tag already exists, delete and recreate (overwrite mode)
 if git tag -l "v${NEW_VERSION}" | grep -q .; then
-    error_exit "Tag v${NEW_VERSION} already exists. Choose a different version or delete the tag with: git tag -d v${NEW_VERSION}"
+    echo -e "${YELLOW}  \u26a0 Tag v${NEW_VERSION} exists locally — deleting and recreating${NC}"
+    git tag -d "v${NEW_VERSION}"
 fi
 
 git add -A
@@ -327,6 +328,16 @@ RELEASE_NOTES="$CHANGELOG_ONELINE"
 RELEASE_CREATED=false
 
 if command -v gh &>/dev/null && command -v git &>/dev/null; then
+    # Delete existing remote tag and release if present (overwrite mode)
+    if git ls-remote --tags origin "refs/tags/v${NEW_VERSION}" | grep -q .; then
+        echo -e "${YELLOW}  \u26a0 Remote tag v${NEW_VERSION} exists — deleting${NC}"
+        git push --delete origin "v${NEW_VERSION}"
+    fi
+    if gh release view "v${NEW_VERSION}" &>/dev/null; then
+        echo -e "${YELLOW}  \u26a0 Release v${NEW_VERSION} exists — deleting${NC}"
+        gh release delete "v${NEW_VERSION}" --yes
+    fi
+
     if $HAS_CUDA && [ -f "$CPU_PACKAGE_PATH" ]; then
         if gh release create "v${NEW_VERSION}" "$PACKAGE_PATH" "$CPU_PACKAGE_PATH" \
             --title "v${NEW_VERSION}" \
@@ -375,6 +386,6 @@ if [ -n "$CPU_PACKAGE_PATH" ]; then
 fi
 echo ""
 echo -e "${CYAN}Install in Jellyfin:${NC}"
-echo "  Dashboard \u2192 Plugins \u2192 Repositories \u2192 Add"
+echo -e "  Dashboard \u2192 Plugins \u2192 Repositories \u2192 Add"
 echo "  Or manually upload the zip"
 echo ""

@@ -36,12 +36,14 @@ for arg in "$@"; do
     [ "$arg" = "--dry-run" ] && DRY_RUN=true
 done
 
-# ── Preflight: dirty-tree check ───────────────────────────────────────────────
+# ── Preflight: dirty-tree check (warning only) ─────────────────────────────────
 if ! git diff-index --quiet HEAD; then
-    error_exit "Working tree has uncommitted changes. Commit or stash first."
+    echo -e "${YELLOW}⚠ Working tree has uncommitted changes. They will be included in the release commit.${NC}"
+    DIRTY_TREE=true
 fi
 if ! git diff-index --cached --quiet HEAD; then
-    error_exit "Staged but uncommitted changes. Commit first."
+    echo -e "${YELLOW}⚠ Staged but uncommitted changes. They will be included in the release commit.${NC}"
+    DIRTY_TREE=true
 fi
 
 # ── Preflight: dependencies ───────────────────────────────────────────────────
@@ -66,11 +68,6 @@ echo ""
 # ── Version selection ─────────────────────────────────────────────────────────
 CURRENT_VERSION=$(grep -oP '<Version>\K[^<]+' "$BUILD_PROPS_FILE")
 [ -z "$CURRENT_VERSION" ] && error_exit "Could not read version from $BUILD_PROPS_FILE"
-
-# Check if tag already exists
-if git tag -l "v${CURRENT_VERSION}" | grep -q .; then
-    error_exit "Tag v${CURRENT_VERSION} already exists. Increment version first."
-fi
 
 echo -e "${CYAN}Current version: ${GREEN}$CURRENT_VERSION${NC}"
 echo ""
@@ -186,7 +183,7 @@ if $HAS_CUDA; then
     chmod +x "$WHISPER_OUTPUT/whisper-whisper-cli-cuda" 2>/dev/null || true
     echo -e "${GREEN}\u2713 CUDA binary verified: $WHISPER_OUTPUT/whisper-whisper-cli-cuda ($(du -h "$WHISPER_OUTPUT/whisper-whisper-cli-cuda" | cut -f1))${NC}"
     
-    for lib in libcudart.so.12 libcublas.so.12 libcublasLt.so.12; do
+    for lib in libcudart.so.12 libcublas.so.12 libcublasLt.so.12 libnccl.so.2; do
         if [ -f "$WHISPER_OUTPUT/$lib" ]; then
             chmod +x "$WHISPER_OUTPUT/$lib" 2>/dev/null || true
             echo "  \u2713 $lib ($(du -h "$WHISPER_OUTPUT/$lib" | cut -f1))"
@@ -222,7 +219,7 @@ if [ -f "$WHISPER_OUTPUT/whisper-whisper-cli-cuda" ]; then
     cp "$WHISPER_OUTPUT/whisper-whisper-cli-cuda" "$BUILD_OUTPUT/whisper/linux-x64/whisper-whisper-cli-cuda"
     chmod +x "$BUILD_OUTPUT/whisper/linux-x64/whisper-whisper-cli-cuda" 2>/dev/null || true
     
-    for lib in libcudart.so.12 libcublas.so.12 libcublasLt.so.12; do
+    for lib in libcudart.so.12 libcublas.so.12 libcublasLt.so.12 libnccl.so.2; do
         if [ -f "$WHISPER_OUTPUT/$lib" ]; then
             cp "$WHISPER_OUTPUT/$lib" "$BUILD_OUTPUT/whisper/linux-x64/$lib"
         fi
@@ -260,7 +257,7 @@ if $HAS_CUDA; then
     mkdir -p "$CPU_OUTPUT/whisper/linux-x64"
     
     # Copy everything except CUDA binaries
-    rsync -a --exclude='whisper/linux-x64/whisper-whisper-cli-cuda' --exclude='whisper/linux-x64/libcudart.so.12' --exclude='whisper/linux-x64/libcublas.so.12' --exclude='whisper/linux-x64/libcublasLt.so.12' "$BUILD_OUTPUT/" "$CPU_OUTPUT/"
+    rsync -a --exclude='whisper/linux-x64/whisper-whisper-cli-cuda' --exclude='whisper/linux-x64/libcudart.so.12' --exclude='whisper/linux-x64/libcublas.so.12' --exclude='whisper/linux-x64/libcublasLt.so.12' --exclude='whisper/linux-x64/libnccl.so.2' "$BUILD_OUTPUT/" "$CPU_OUTPUT/"
     
     [ -f "$CPU_PACKAGE_PATH" ] && rm -f "$CPU_PACKAGE_PATH"
     (cd "$CPU_OUTPUT" && zip -q -r "$CPU_PACKAGE_PATH" .)
@@ -311,7 +308,12 @@ echo ""
 # ── Step 8: Local commit + tag ────────────────────────────────────────────────
 echo -e "${YELLOW}[8/9] Committing and tagging...${NC}"
 
-git add "$MANIFEST_FILE" "$BUILD_PROPS_FILE"
+# Check if tag already exists for the new version
+if git tag -l "v${NEW_VERSION}" | grep -q .; then
+    error_exit "Tag v${NEW_VERSION} already exists. Choose a different version or delete the tag with: git tag -d v${NEW_VERSION}"
+fi
+
+git add -A
 git commit -m "Release v${NEW_VERSION}: ${CHANGELOG_ONELINE}"
 git tag "v${NEW_VERSION}"
 

@@ -1,19 +1,34 @@
 {
-    // jellyfinDir : The directory of the cloned jellyfin server project
-    // This needs to be built once before it can be used
-    "jellyfinDir": "${workspaceFolder}/../jellyfin/Jellyfin.Server",
-    // jellyfinWebDir : The directory of the cloned jellyfin-web project
-    // This needs to be built once before it can be used
-    "jellyfinWebDir": "${workspaceFolder}/../jellyfin-web",
-    // jellyfinDataDir : the root data directory for a running jellyfin instance
-    // This is where jellyfin stores its configs, plugins, metadata etc
-    // This is platform specific by default, but on Windows defaults to
-    // ${env:LOCALAPPDATA}/jellyfin
-    // and on Linux, it defaults to
-    // ${env:XDG_DATA_HOME}/jellyfin
-    // However ${env:XDG_DATA_HOME} does not work in Visual Studio Code's development container!
-    "jellyfinWindowsDataDir": "${env:LOCALAPPDATA}/jellyfin",
-    "jellyfinLinuxDataDir": "$HOME/.local/share/jellyfin",
-    // The name of the plugin
-    "pluginName": "Jellyfin.Plugin.Template",
+    "dotnet.defaultSolution": "Jellyfin.Plugin.WhisperSubtitles/Jellyfin.Plugin.WhisperSubtitles.sln",
+    "editor.formatOnSave": true,
+    "editor.rulers": [120],
+    "files.exclude": {
+        "**/bin/": true,
+        "**/obj/": true,
+        "**/.git": true,
+        "releases/": true,
+        "wiki/": true,
+        "whisper.cpp/": true
+    },
+    "search.exclude": {
+        "**/bin/": true,
+        "**/obj/": true,
+        "releases/": true,
+        "wiki/": true,
+        "whisper.cpp/": true
+    },
+    "files.associations": {
+        "*.props": "xml",
+        "*.targets": "xml"
+    },
+    "[csharp]": {
+        "editor.defaultFormatter": "ms-dotnettools.csharp",
+        "editor.tabSize": 4
+    },
+    "[xml]": {
+        "editor.tabSize": 2
+    },
+    "[json]": {
+        "editor.tabSize": 2
+    }
 }

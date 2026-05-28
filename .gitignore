@@ -1,5 +1,20 @@
+*.backup
+*.py.backup
+.venv
 bin/
 obj/
+releases/
+wiki/
+whisper.cpp/
+
+BenchmarkDotNet.Artifacts/
+/package/
+*.lscache
+
+# Visual Studio
 .vs/
+
+# JetBrains Rider
 .idea/
-artifacts
+/.cursor
+.agents/
